@@ -1,0 +1,73 @@
+{
+  "sliders": [
+    {
+      "id": 1,
+      "name": "Product Showcase",
+      "isExpanded": true,
+      "slides": [
+        {
+          "id": 1,
+          "imageUrl": "https://i.pinimg.com/564x/73/26/c9/7326c9dbc082b6daf064b8cc9960ae0c.jpg",
+          "title": "Product 1",
+          "description": "This is the first product description"
+        },
+                {
+          "id": 4,
+          "imageUrl": "https://i.pinimg.com/564x/73/26/c9/7326c9dbc082b6daf064b8cc9960ae0c.jpg",
+          "title": "Product 1",
+          "description": "This is the first product description"
+        },
+        {
+          "id": 2,
+          "imageUrl": "https://oldnavyprod.a.bigcontent.io/v1/static/240501_25-M1203_B_DP_NewArrivals_0501",
+          "title": "Product 2",
+          "description": "This is the second product description"
+        },
+        {
+          "id": 3,
+          "imageUrl": "https://oldnavyprod.a.bigcontent.io/v1/static/240501_25-M1203_B_DP_NewArrivals_0501",
+          "title": "Product 3",
+          "description": "This is the third product description"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Featured Items",
+      "isExpanded": false,
+      "slides": [
+        {
+          "id": 4,
+          "imageUrl": "https://media.istockphoto.com/id/1073644414/photo/adorable-young-teenage-boy-waist-up-studio-portrait-isolated-over-white-background-handsome.jpg?s=612x612&w=0&k=20&c=ZK9XWuYLC9eeei6cWCHkkIM1hio8xK4RL42GSV4dhQE=",
+          "title": "Featured Item 1",
+          "description": "This is a featured item description"
+        },
+        {
+          "id": 3,
+          "imageUrl": "https://t3.ftcdn.net/jpg/04/09/86/52/360_F_409865253_TdIyeXBFvAy8W1AXIqx3gWO5CUwtJNkd.jpg",
+          "title": "Featured Item 2",
+          "description": "Another featured item description"
+        },
+                {
+          "id": 1,
+          "imageUrl": "https://i.pinimg.com/564x/73/26/c9/7326c9dbc082b6daf064b8cc9960ae0c.jpg",
+          "title": "Product 1",
+          "description": "This is the first product description"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Special Offers",
+      "isExpanded": false,
+      "slides": [
+        {
+          "id": 6,
+          "imageUrl": "https://previews.123rf.com/images/annanahabed/annanahabed1505/annanahabed150500093/40448749-fashion-kid-cute-little-boy-wearing-turquoise-shirt-blue-shorts-and-shoes.jpg",
+          "title": "Special Offer 1",
+          "description": "Limited time special offer"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "316306505100eb403a3967b6474b1529"
+name = "abdullahdev3"
+handle = "abdullahdev3-3"
+application_url = "https://a-textile-weight-high.trycloudflare.com"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+
+[webhooks]
+api_version = "2025-04"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://a-textile-weight-high.trycloudflare.com/auth/callback",
+  "https://a-textile-weight-high.trycloudflare.com/auth/shopify/callback",
+  "https://a-textile-weight-high.trycloudflare.com/api/auth/callback"
+]
+
+[pos]
+embedded = false

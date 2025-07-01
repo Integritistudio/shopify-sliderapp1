@@ -1,0 +1,14 @@
+{{ 'slider.css' | asset_url | stylesheet_tag }}
+{{ 'slider.js' | asset_url | script_tag }}
+
+<div class="slider slider-style-one">
+  <h1> app is working</h1>
+</div>
+
+{% schema %}
+{
+  "name": "Style One Image Slider",
+  "target": "body",
+  "settings": [],
+}
+{% endschema %}

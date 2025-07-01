@@ -1,0 +1,31 @@
+{
+  "name": "abdullahdev3",
+  "version": "1.0.0",
+  "main": "web/index.js",
+  "license": "UNLICENSED",
+  "scripts": {
+    "shopify": "shopify",
+    "build": "shopify app build",
+    "dev": "shopify app dev",
+    "info": "shopify app info",
+    "generate": "shopify app generate",
+    "deploy": "shopify app deploy"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.1.2",
+    "@shopify/app": "^3.48.0",
+    "@shopify/cli": "^3.48.0",
+    "cors": "^2.8.5",
+    "jquery": "^3.7.1",
+    "slick-carousel": "^1.8.1"
+  },
+  "author": "hp",
+  "private": true,
+  "workspaces": [
+    "extensions/*",
+    "web",
+    "web/frontend"
+  ]
+}
