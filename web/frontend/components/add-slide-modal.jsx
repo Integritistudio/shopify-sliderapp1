@@ -76,21 +76,6 @@ export default function AddSlideModal({ isOpen, onClose, onAddSlide, sliderName 
     }
   }
 
-  const generatePlaceholderUrl = () => {
-    const colors = ["FF6B6B", "4ECDC4", "45B7D1", "F7DC6F", "BB8FCE", "85C1E9", "F8C471"]
-    const randomColor = colors[Math.floor(Math.random() * colors.length)]
-    const slideNumber = Math.floor(Math.random() * 100) + 1
-    return `https://via.placeholder.com/400x300/${randomColor}/FFFFFF?text=Slide+${slideNumber}`
-  }
-
-  const handleGeneratePlaceholder = () => {
-    const placeholderUrl = generatePlaceholderUrl()
-    setFormData((prev) => ({
-      ...prev,
-      imageUrl: placeholderUrl,
-    }))
-    setImageLoading(true)
-  }
 
   return (
     <Modal
@@ -122,9 +107,7 @@ export default function AddSlideModal({ isOpen, onClose, onAddSlide, sliderName 
                 helpText="Leave empty to use a default placeholder image"
               />
             </div>
-            <Button onClick={handleGeneratePlaceholder} disabled={isSubmitting}>
-              Generate Random
-            </Button>
+
           </Stack>
 
           <TextField
