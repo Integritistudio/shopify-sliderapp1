@@ -3,11 +3,12 @@
 client_id = "316306505100eb403a3967b6474b1529"
 name = "abdullahdev3"
 handle = "abdullahdev3-3"
-application_url = "https://a-textile-weight-high.trycloudflare.com"
+application_url = "https://traveling-mood-half-design.trycloudflare.com"
 embedded = true
 
 [build]
 include_config_on_deploy = true
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2025-04"
@@ -18,9 +19,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://a-textile-weight-high.trycloudflare.com/auth/callback",
-  "https://a-textile-weight-high.trycloudflare.com/auth/shopify/callback",
-  "https://a-textile-weight-high.trycloudflare.com/api/auth/callback"
+  "https://traveling-mood-half-design.trycloudflare.com/auth/callback",
+  "https://traveling-mood-half-design.trycloudflare.com/auth/shopify/callback",
+  "https://traveling-mood-half-design.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
