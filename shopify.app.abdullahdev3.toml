@@ -3,7 +3,7 @@
 client_id = "316306505100eb403a3967b6474b1529"
 name = "abdullahdev3"
 handle = "abdullahdev3-3"
-application_url = "https://streaming-loud-environment-lopez.trycloudflare.com"
+application_url = "https://shopify-sliderapp1.onrender.com"
 embedded = true
 
 [build]
@@ -19,9 +19,10 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://streaming-loud-environment-lopez.trycloudflare.com/auth/callback",
-  "https://streaming-loud-environment-lopez.trycloudflare.com/auth/shopify/callback",
-  "https://streaming-loud-environment-lopez.trycloudflare.com/api/auth/callback"
+  "https://shopify-sliderapp1.onrender.com/auth/callback",
+  "https://shopify-sliderapp1.onrender.com/auth/shopify/callback",
+  "https://shopify-sliderapp1.onrender.com/api/auth/callback"
+
 ]
 
 [pos]
