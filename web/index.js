@@ -13,14 +13,16 @@ const PORT = Number.parseInt(process.env.BACKEND_PORT || process.env.PORT || "30
 const STATIC_PATH =
   process.env.NODE_ENV === "production" ? `${process.cwd()}/frontend/dist` : `${process.cwd()}/frontend/`
 // Initialize Sequelize with PostgreSQL connection
-const sequelize = new Sequelize({
-  database: process.env.DB_NAME,
-  username: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  dialect: process.env.DB_DIALECT,
-  logging: console.log,
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
+  dialect: 'postgres',
+  protocol: 'postgres',
+  logging: false, // Or true for debugging
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false, // Required by Render
+    },
+  },
 });
 
 // Define Slider model with shop field
@@ -139,7 +141,7 @@ async function migrateDatabase() {
         defaultValue: "default-store", // Temporary default for existing records
       })
       console.log("Added shop column to Sliders table")
-      
+
       // Add index for better performance
       await queryInterface.addIndex("Sliders", ["shop"], {
         name: "sliders_shop_index"
@@ -275,7 +277,7 @@ app.get("/api/sliders", async (req, res) => {
   try {
     const shop = res.locals.shopify.session.shop
     console.log(`Fetching sliders for shop: ${shop}`)
-    
+
     const sliders = await Slider.findAll({
       where: {
         shop: shop
@@ -348,7 +350,7 @@ app.put("/api/sliders/:id", async (req, res) => {
         shop: shop
       }
     })
-    
+
     if (!slider) {
       return res.status(404).json({ error: "Slider not found" })
     }
@@ -378,7 +380,7 @@ app.delete("/api/sliders/:id", async (req, res) => {
         shop: shop
       }
     })
-    
+
     if (!slider) {
       return res.status(404).json({ error: "Slider not found" })
     }
@@ -407,7 +409,7 @@ app.post("/api/sliders/:sliderId/slides", async (req, res) => {
         shop: shop
       }
     })
-    
+
     if (!slider) {
       return res.status(404).json({ error: "Slider not found" })
     }
@@ -441,7 +443,7 @@ app.put("/api/sliders/:sliderId/slides/:slideId", async (req, res) => {
         shop: shop
       }
     })
-    
+
     if (!slider) {
       return res.status(404).json({ error: "Slider not found" })
     }
@@ -483,7 +485,7 @@ app.delete("/api/sliders/:sliderId/slides/:slideId", async (req, res) => {
         shop: shop
       }
     })
-    
+
     if (!slider) {
       return res.status(404).json({ error: "Slider not found" })
     }
