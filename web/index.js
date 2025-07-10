@@ -215,12 +215,12 @@ app.get("/slider-cdn.js", (req, res) => {
   try {
     console.log("Serving slider-cdn.js")
 
-    // Add CORS headers
     res.header("Access-Control-Allow-Origin", "*")
     res.header("Content-Type", "application/javascript")
 
-    // Read the CDN script file
-    const scriptPath = join(process.cwd(), "public", "slider-cdn.js")
+    // ✅ Correct path - points to web/frontend/public/slider-cdn.js
+    const scriptPath = join(process.cwd(), "frontend", "public", "slider-cdn.js")
+
     const scriptContent = readFileSync(scriptPath, "utf8")
 
     res.send(scriptContent)
@@ -229,6 +229,7 @@ app.get("/slider-cdn.js", (req, res) => {
     res.status(404).send("// CDN script not found")
   }
 })
+
 
 // Handle OPTIONS requests for CORS
 app.options("/api/public/*", (req, res) => {
