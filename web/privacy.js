@@ -85,8 +85,7 @@
 //   },
 // };
 import { DeliveryMethod } from "@shopify/shopify-api"
-import { Slider } from "./models/Slider"
-import { Slide } from "./models/Slide"
+import { Slider } from "./models/Slider.js"
 import { Op } from "sequelize"
 
 /**
