@@ -120,10 +120,10 @@
             <div>
               <div style="padding: 2px 10px;">
                 <div style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
-                <div style="width: 100%; height: 400px;">
+                <div style="width: 100%;">
                   <img src="${slide.imageUrl || "/placeholder.svg?height=250&width=400"}" 
                        alt="${slide.title || `Slide ${index + 1}`}" 
-                       style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                       style="width: 100%; height: 100%; object-fit: contain; display: block;"
                        onerror="this.src='/placeholder.svg?height=250&width=400'">
                        </div>
                   <div style="padding: 1rem; text-align: center;">

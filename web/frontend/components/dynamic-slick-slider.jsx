@@ -5,7 +5,6 @@ import { Card, Stack, Text, Spinner, Heading } from "@shopify/polaris"
 
 const slideImageContainerStyle = {
   width: "100%",
-  height: "280px",
   position: "relative",
   backgroundColor: "#f6f6f7",
   borderRadius: "8px 8px 0 0",
@@ -18,8 +17,7 @@ const slideImageContainerStyle = {
 const slideImageStyle = {
   width: "100%",
   height: "100%",
-  maxHeight: "280px",
-  objectFit: "cover",
+  objectFit: "contain",
   objectPosition: "center",
   borderRadius: "8px 8px 0 0",
 }
