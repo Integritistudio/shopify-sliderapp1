@@ -154,6 +154,7 @@ async function migrateDatabase() {
 }
 
 const app = express()
+express.raw({ type: "application/json" })
 
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin())
@@ -540,34 +541,36 @@ function verifyShopifyWebhook(req, res, next) {
   next();
 }
 
-app.post("/api/webhooks/customers/data_request", verifyShopifyWebhook, (req, res) => {
-  const payload = req.body;
-  console.log("Received customers/data_request webhook:");
-  console.log(JSON.stringify(payload, null, 2));
- 
-  // TODO: Retrieve and return customer data if required
-  res.status(200).send("Data request received");
-});
- 
-// 2. Customer Redaction
-app.post("/api/webhooks/customers/redact", verifyShopifyWebhook, (req, res) => {
-  const payload = req.body;
-  console.log("Received customers/redact webhook:");
-  console.log(JSON.stringify(payload, null, 2));
- 
-  // TODO: Delete/redact customer data
-  res.status(200).send("Customer redaction received");
-});
- 
-// 3. Shop Redaction
-app.post("/api/webhooks/shop/redact", verifyShopifyWebhook, (req, res) => {
-  const payload = req.body;
-  console.log("Received shop/redact webhook:");
-  console.log(JSON.stringify(payload, null, 2));
- 
-  // TODO: Delete all data related to this shop
-  res.status(200).send("Shop redaction received");
-});
+// Shopify expects the raw body to calculate the HMAC
+app.post(
+  "/api/webhooks",
+  express.raw({ type: "application/json" }), // Preserve raw body for HMAC verification
+  verifyShopifyWebhook, // Your middleware from index.js
+  async (req, res) => {
+    const topic = req.get("X-Shopify-Topic");
+    const shop = req.get("X-Shopify-Shop-Domain");
+    const webhookId = req.get("X-Shopify-Webhook-Id");
+    const body = req.body.toString("utf8");
+
+    // Match the topic to the PrivacyWebhookHandlers keys
+    const handlerKey = topic?.toUpperCase().replace(/\//g, "_"); // e.g., CUSTOMERS_DATA_REQUEST
+    const handler = PrivacyWebhookHandlers[handlerKey];
+
+    if (handler?.callback) {
+      try {
+        await handler.callback(topic, shop, body, webhookId);
+        res.status(200).send("Webhook processed");
+      } catch (err) {
+        console.error("Webhook handler error:", err);
+        res.status(500).send("Webhook error");
+      }
+    } else {
+      console.warn(`No handler for webhook topic: ${topic}`);
+      res.status(200).send("No handler for this topic");
+    }
+  }
+);
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
