@@ -525,6 +525,50 @@ app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res, _next) => {
     )
 })
 
+
+function verifyShopifyWebhook(req, res, next) {
+  const hmacHeader = req.get("X-Shopify-Hmac-Sha256");
+  const generatedHash = crypto
+    .createHmac("sha256", process.env.SHOPIFY_WEBHOOK_SECRET)
+    .update(req.rawBody, "utf8")
+    .digest("base64");
+ 
+  if (generatedHash !== hmacHeader) {
+    return res.status(401).send("Unauthorized – HMAC verification failed");
+  }
+ 
+  next();
+}
+
+app.post("/api/webhooks/customers/data_request", verifyShopifyWebhook, (req, res) => {
+  const payload = req.body;
+  console.log("Received customers/data_request webhook:");
+  console.log(JSON.stringify(payload, null, 2));
+ 
+  // TODO: Retrieve and return customer data if required
+  res.status(200).send("Data request received");
+});
+ 
+// 2. Customer Redaction
+app.post("/api/webhooks/customers/redact", verifyShopifyWebhook, (req, res) => {
+  const payload = req.body;
+  console.log("Received customers/redact webhook:");
+  console.log(JSON.stringify(payload, null, 2));
+ 
+  // TODO: Delete/redact customer data
+  res.status(200).send("Customer redaction received");
+});
+ 
+// 3. Shop Redaction
+app.post("/api/webhooks/shop/redact", verifyShopifyWebhook, (req, res) => {
+  const payload = req.body;
+  console.log("Received shop/redact webhook:");
+  console.log(JSON.stringify(payload, null, 2));
+ 
+  // TODO: Delete all data related to this shop
+  res.status(200).send("Shop redaction received");
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
