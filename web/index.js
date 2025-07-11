@@ -12,7 +12,6 @@ import cdnRoutes from "./routes/cdn.js"
 import publicRoutes from "./routes/public.js"
 import sliderRoutes from "./routes/sliders.js"
 import slideRoutes from "./routes/slides.js"
-import productRoutes from "./routes/products.js"
 import webhookRoutes from "./routes/webhooks.js"
 import { requestLogger, errorHandler, notFoundHandler, handleOptions } from "./utils/index.js"
 
@@ -46,7 +45,6 @@ app.options("/api/public/*", handleOptions)
 app.use("/api/*", shopify.validateAuthenticatedSession())
 
 // API Routes
-app.use("/api", productRoutes)
 app.use("/api", sliderRoutes)
 app.use("/api", slideRoutes)
 app.use("/api", webhookRoutes)
