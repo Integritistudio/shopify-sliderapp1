@@ -5,7 +5,7 @@ import { Card, Stack, Text, Spinner, Heading } from "@shopify/polaris"
 
 const slideImageContainerStyle = {
   width: "100%",
-  height: "250px",
+  height: "280px",
   position: "relative",
   backgroundColor: "#f6f6f7",
   borderRadius: "8px 8px 0 0",
@@ -26,8 +26,10 @@ const slideImageStyle = {
 
 export default function DynamicSlickSlider({ slides, sliderId, sliderType = "center" }) {
   const sliderRef = useRef(null)
+  const thumbnailRef = useRef(null)
   const [slickLoaded, setSlickLoaded] = useState(false)
   const [loadingError, setLoadingError] = useState(null)
+  const [uniqueId] = useState(`slider-${sliderId}-${Math.random().toString(36).substr(2, 9)}`)
 
   const validSlides = (slides || []).filter((slide) => !!slide)
 
@@ -64,30 +66,35 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
     if (!slickLoaded || !sliderRef.current || validSlides.length === 0) return
 
     const $slider = window.$(sliderRef.current)
+    const $thumbnails = thumbnailRef.current ? window.$(thumbnailRef.current) : null
 
     if ($slider.hasClass("slick-initialized")) {
       $slider.slick("unslick")
     }
+    if ($thumbnails && $thumbnails.hasClass("slick-initialized")) {
+      $thumbnails.slick("unslick")
+    }
 
     setTimeout(() => {
       try {
-        // Pure Slick configurations
-        let slickConfig = {}
+        // Base configuration with custom arrows disabled
+        let slickConfig = {
+          arrows: false, // Disable default arrows for all types
+        }
 
         switch (sliderType) {
           case "center":
             slickConfig = {
+              ...slickConfig,
               centerMode: true,
               centerPadding: "60px",
               slidesToShow: 3,
               dots: true,
-              arrows: true,
               infinite: true,
               responsive: [
                 {
                   breakpoint: 768,
                   settings: {
-                    arrows: false,
                     centerMode: true,
                     centerPadding: "40px",
                     slidesToShow: 3,
@@ -96,7 +103,6 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
                 {
                   breakpoint: 480,
                   settings: {
-                    arrows: false,
                     centerMode: true,
                     centerPadding: "40px",
                     slidesToShow: 1,
@@ -109,11 +115,11 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
           case "multiple":
           case "multiple-items":
             slickConfig = {
+              ...slickConfig,
               infinite: true,
               slidesToShow: 3,
               slidesToScroll: 3,
               dots: true,
-              arrows: true,
               responsive: [
                 {
                   breakpoint: 1024,
@@ -129,7 +135,6 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
                   settings: {
                     slidesToShow: 1,
                     slidesToScroll: 1,
-                    arrows: false,
                   },
                 },
                 {
@@ -137,7 +142,6 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
                   settings: {
                     slidesToShow: 1,
                     slidesToScroll: 1,
-                    arrows: false,
                   },
                 },
               ],
@@ -146,6 +150,7 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
           case "fade":
             slickConfig = {
+              ...slickConfig,
               dots: true,
               infinite: true,
               speed: 500,
@@ -158,26 +163,24 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
           case "autoplay":
             slickConfig = {
+              ...slickConfig,
               slidesToShow: 3,
               slidesToScroll: 1,
               autoplay: true,
               autoplaySpeed: 2000,
               dots: true,
-              arrows: true,
               pauseOnHover: true,
               responsive: [
                 {
                   breakpoint: 768,
                   settings: {
                     slidesToShow: 2,
-                    arrows: false,
                   },
                 },
                 {
                   breakpoint: 480,
                   settings: {
                     slidesToShow: 1,
-                    arrows: false,
                   },
                 },
               ],
@@ -186,24 +189,22 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
           case "lazy":
             slickConfig = {
+              ...slickConfig,
               lazyLoad: "ondemand",
               slidesToShow: 3,
               slidesToScroll: 1,
               dots: true,
-              arrows: true,
               responsive: [
                 {
                   breakpoint: 768,
                   settings: {
                     slidesToShow: 2,
-                    arrows: false,
                   },
                 },
                 {
                   breakpoint: 480,
                   settings: {
                     slidesToShow: 1,
-                    arrows: false,
                   },
                 },
               ],
@@ -212,24 +213,22 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
           case "infinite":
             slickConfig = {
+              ...slickConfig,
               infinite: true,
               slidesToShow: 3,
               slidesToScroll: 1,
               dots: true,
-              arrows: true,
               responsive: [
                 {
                   breakpoint: 768,
                   settings: {
                     slidesToShow: 2,
-                    arrows: false,
                   },
                 },
                 {
                   breakpoint: 480,
                   settings: {
                     slidesToShow: 1,
-                    arrows: false,
                   },
                 },
               ],
@@ -238,6 +237,7 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
           case "variable":
             slickConfig = {
+              ...slickConfig,
               dots: true,
               infinite: true,
               speed: 300,
@@ -249,6 +249,7 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
           case "vertical":
             slickConfig = {
+              ...slickConfig,
               dots: true,
               vertical: true,
               slidesToShow: 3,
@@ -256,19 +257,28 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
             }
             break
 
+          case "thumbnails":
+            slickConfig = {
+              ...slickConfig,
+              slidesToShow: 1,
+              slidesToScroll: 1,
+              fade: true,
+              asNavFor: thumbnailRef.current,
+            }
+            break
+
           default:
             slickConfig = {
+              ...slickConfig,
               centerMode: true,
               centerPadding: "60px",
               slidesToShow: 3,
               dots: true,
-              arrows: true,
               infinite: true,
               responsive: [
                 {
                   breakpoint: 768,
                   settings: {
-                    arrows: false,
                     centerMode: true,
                     centerPadding: "40px",
                     slidesToShow: 3,
@@ -277,7 +287,6 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
                 {
                   breakpoint: 480,
                   settings: {
-                    arrows: false,
                     centerMode: true,
                     centerPadding: "40px",
                     slidesToShow: 1,
@@ -288,6 +297,36 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
         }
 
         $slider.slick(slickConfig)
+
+        // Initialize thumbnail navigation if needed
+        if (sliderType === "thumbnails" && $thumbnails) {
+          $thumbnails.slick({
+            slidesToShow: 5,
+            slidesToScroll: 1,
+            asNavFor: sliderRef.current,
+            dots: false,
+            centerMode: true,
+            focusOnSelect: true,
+            arrows: false,
+          })
+        }
+
+        // Attach custom button handlers
+        const prevButton = document.querySelector(`.custom-prev-${uniqueId}`)
+        const nextButton = document.querySelector(`.custom-next-${uniqueId}`)
+
+        if (prevButton) {
+          prevButton.addEventListener('click', () => {
+            $slider.slick('slickPrev')
+          })
+        }
+
+        if (nextButton) {
+          nextButton.addEventListener('click', () => {
+            $slider.slick('slickNext')
+          })
+        }
+
       } catch (error) {
         setLoadingError("Failed to initialize slider")
       }
@@ -297,8 +336,11 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
       if (window.$ && sliderRef.current?.classList.contains("slick-initialized")) {
         window.$(sliderRef.current).slick("unslick")
       }
+      if (window.$ && thumbnailRef.current?.classList.contains("slick-initialized")) {
+        window.$(thumbnailRef.current).slick("unslick")
+      }
     }
-  }, [slickLoaded, validSlides, sliderType, sliderId])
+  }, [slickLoaded, validSlides, sliderType, sliderId, uniqueId])
 
   const loadScript = (src) => {
     return new Promise((resolve, reject) => {
@@ -319,39 +361,135 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
 
   if (loadingError) {
     return (
-      <div style={{ textAlign: "center", padding: "2rem 0" }}>
-        <Card sectioned>
-          <Stack vertical spacing="tight" alignment="center">
-            <Heading>Slider Error</Heading>
-            <Text color="critical">{loadingError}</Text>
-          </Stack>
-        </Card>
+      <div style={{ 
+        textAlign: "center", 
+        padding: "3rem 2rem",
+        background: "linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)",
+        border: "2px solid #feb2b2",
+        borderRadius: "16px",
+        margin: "2rem auto",
+        maxWidth: "600px",
+        color: "#e53e3e",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        boxShadow: "0 4px 12px rgba(229, 62, 62, 0.1)"
+      }}>
+        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
+        <Heading>Error loading slider</Heading>
+        <Text color="critical">{loadingError}</Text>
       </div>
     )
   }
 
   if (validSlides.length === 0) {
     return (
-      <div style={{ textAlign: "center", padding: "2rem 0" }}>
-        <Card sectioned>
-          <Stack vertical spacing="tight" alignment="center">
-            <Heading>No Slides Yet</Heading>
-            <Text color="subdued">Add your first slide using the Add button below!</Text>
-          </Stack>
-        </Card>
+      <div style={{ 
+        textAlign: "center",
+        padding: "3rem 2rem",
+        background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+        borderRadius: "16px",
+        margin: "2rem auto",
+        maxWidth: "600px",
+        color: "#666",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+      }}>
+        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🎠</div>
+        <Heading>No slides available</Heading>
+        <Text color="subdued">This slider doesn't have any slides yet.</Text>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: "1rem 3rem", position: "relative" }}>
+    <div style={{ 
+      maxWidth: "1000px", 
+      margin: "2rem auto", 
+      padding: "1rem", 
+      position: "relative",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    }}>
       {slickLoaded ? (
-        <div ref={sliderRef} className={`slider-${sliderId} ${sliderType}`}>
-          {validSlides.map((slide, index) => (
-            <div key={`${slide.id}-${sliderId}`}>
-              <div style={{ padding: "0 10px" }}>
-                <Card>
-                  <div style={{ position: "relative", overflow: "hidden" }}>
+        <>
+          {/* Custom Navigation Buttons */}
+          <button 
+            className={`custom-prev-${uniqueId}`}
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+              background: "rgba(255, 255, 255, 0.9)",
+              border: "none",
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              transition: "all 0.3s ease",
+              fontSize: "18px",
+              color: "#333"
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "rgba(255,255,255,1)"
+              e.target.style.transform = "translateY(-50%) scale(1.1)"
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "rgba(255,255,255,0.9)"
+              e.target.style.transform = "translateY(-50%) scale(1)"
+            }}
+          >
+            ‹
+          </button>
+
+          <button 
+            className={`custom-next-${uniqueId}`}
+            style={{
+              position: "absolute",
+              right: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+              background: "rgba(255, 255, 255, 0.9)",
+              border: "none",
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              transition: "all 0.3s ease",
+              fontSize: "18px",
+              color: "#333"
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "rgba(255,255,255,1)"
+              e.target.style.transform = "translateY(-50%) scale(1.1)"
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "rgba(255,255,255,0.9)"
+              e.target.style.transform = "translateY(-50%) scale(1)"
+            }}
+          >
+            ›
+          </button>
+
+          {/* Main Slider */}
+          <div ref={sliderRef} className={`slider-${uniqueId} ${sliderType}`}>
+            {validSlides.map((slide, index) => (
+              <div key={`${slide.id}-${sliderId}`}>
+                <div style={{ padding: "2px 10px" }}>
+                  <div style={{ 
+                    background: "white", 
+                    borderRadius: "8px", 
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)", 
+                    overflow: "hidden" 
+                  }}>
                     <div style={slideImageContainerStyle}>
                       <img
                         src={slide.imageUrl || "/placeholder.svg?height=250&width=400"}
@@ -362,22 +500,51 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
                         }}
                       />
                     </div>
-                    <div style={{ padding: "1rem" }}>
-                      <Stack vertical spacing="tight">
-                        <Text variant="headingSm" fontWeight="semibold">
-                          {slide.title || `Slide ${index + 1}`}
-                        </Text>
-                        <Text variant="bodyMd" color="subdued">
-                          {slide.description || "No description available"}
-                        </Text>
-                      </Stack>
+                    <div style={{ padding: "1rem", textAlign: "center" }}>
+                      <h3 style={{ 
+                        margin: "0 0 0.5rem 0", 
+                        fontSize: "1.2rem", 
+                        color: "#333" 
+                      }}>
+                        {slide.title || `Slide ${index + 1}`}
+                      </h3>
+                      <p style={{ 
+                        margin: "0", 
+                        color: "#666", 
+                        fontSize: "0.9rem" 
+                      }}>
+                        {slide.description || "No description available"}
+                      </p>
                     </div>
                   </div>
-                </Card>
+                </div>
               </div>
+            ))}
+          </div>
+
+          {/* Thumbnail Navigation */}
+          {sliderType === "thumbnails" && (
+            <div ref={thumbnailRef} className={`slider-thumbnails-${uniqueId}`} style={{ marginTop: "20px" }}>
+              {validSlides.map((slide, index) => (
+                <div key={`thumb-${slide.id}-${sliderId}`}>
+                  <img 
+                    src={slide.imageUrl || "/placeholder.svg?height=80&width=120"} 
+                    alt={`Thumbnail ${index + 1}`} 
+                    style={{ 
+                      width: "100%", 
+                      height: "80px", 
+                      objectFit: "cover", 
+                      borderRadius: "4px" 
+                    }}
+                    onError={(e) => {
+                      e.target.src = "/placeholder.svg?height=80&width=120"
+                    }}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       ) : (
         <div style={{ textAlign: "center", padding: "2rem 0" }}>
           <Card sectioned>
@@ -390,56 +557,49 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
       )}
 
       <style jsx>{`
-        /* Container spacing to prevent arrow overlap */
-        .slider-${sliderId} {
-          margin: 0 -20px;
+        /* Hide default Slick arrows */
+        .slider-${uniqueId}.slick-slider .slick-prev,
+        .slider-${uniqueId}.slick-slider .slick-next {
+          display: none !important;
         }
         
-        /* Arrow positioning to prevent overlap with slides */
-        .slider-${sliderId} .slick-prev {
-          left: -25px;
-          z-index: 10;
-        }
-        
-        .slider-${sliderId} .slick-next {
-          right: -25px;
-          z-index: 10;
-        }
-        
-        /* Ensure arrows are outside the slide area */
-        .slider-${sliderId} .slick-prev:before,
-        .slider-${sliderId} .slick-next:before {
-          color: #008060;
-          font-size: 20px;
-        }
-        
-        /* Active dot styling */
-        .slider-${sliderId} .slick-dots li button:before {
+        /* Custom dots styling */
+        .slider-${uniqueId}.slick-slider .slick-dots li button:before {
           color: #008060;
         }
         
-        .slider-${sliderId} .slick-dots li.slick-active button:before {
+        .slider-${uniqueId}.slick-slider .slick-dots li.slick-active button:before {
           color: #004c3f;
         }
         
-        /* Responsive arrow positioning */
+        /* Custom button hover effects */
+        .custom-prev-${uniqueId}:hover,
+        .custom-next-${uniqueId}:hover {
+          background: rgba(255, 255, 255, 1) !important;
+          transform: translateY(-50%) scale(1.1) !important;
+        }
+        
+        .custom-prev-${uniqueId}:active,
+        .custom-next-${uniqueId}:active {
+          transform: translateY(-50%) scale(0.95) !important;
+        }
+        
+        /* Responsive button sizing */
         @media (max-width: 768px) {
-          .slider-${sliderId} .slick-prev {
-            left: -25px;
-          }
-          
-          .slider-${sliderId} .slick-next {
-            right: -25px;
+          .custom-prev-${uniqueId},
+          .custom-next-${uniqueId} {
+            width: 40px !important;
+            height: 40px !important;
+            font-size: 16px !important;
           }
         }
         
         @media (max-width: 480px) {
-          .slider-${sliderId} .slick-prev {
-            left: -25px;
-          }
-          
-          .slider-${sliderId} .slick-next {
-            right: -25px;
+          .custom-prev-${uniqueId},
+          .custom-next-${uniqueId} {
+            width: 35px !important;
+            height: 35px !important;
+            font-size: 14px !important;
           }
         }
       `}</style>
