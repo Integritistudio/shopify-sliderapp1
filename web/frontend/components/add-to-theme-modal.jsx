@@ -27,7 +27,7 @@ export default function AddToThemeModal({ isOpen, onClose, slider, onDeploy }) {
 
       // Generate simple script without deployment tracking
       const sliderLiquidCode = generateSimpleSliderCode(slider)
-
+  
       setDeploymentResult({
         liquidCode: sliderLiquidCode,
         instructions:
@@ -79,7 +79,9 @@ export default function AddToThemeModal({ isOpen, onClose, slider, onDeploy }) {
     // Use current window location to build the URL
     const currentDomain = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
     // Create a simple script tag
-    return `<script src="${currentDomain}/slider-cdn.js?id=${slider.id}&type=${slider.sliderType}"></script>`
+    console.log("current domain", currentDomain);
+    return slider.id;
+
   }
 
   return (
@@ -97,11 +99,11 @@ export default function AddToThemeModal({ isOpen, onClose, slider, onDeploy }) {
       secondaryActions={
         !deploymentResult
           ? [
-              {
-                content: "Cancel",
-                onAction: handleClose,
-              },
-            ]
+            {
+              content: "Cancel",
+              onAction: handleClose,
+            },
+          ]
           : []
       }
     >
@@ -126,11 +128,11 @@ export default function AddToThemeModal({ isOpen, onClose, slider, onDeploy }) {
                     📋 How to Use This Code
                   </Text>
                   <div style={{ paddingLeft: "1rem" }}>
-                    <Text>1. Copy the code below</Text>
-                    <Text>2. Go to your Shopify Admin → Online Store → Themes → Actions → Edit Code</Text>
-                    <Text>3. Open any template or section, or create a new section (e.g., product.liquid, collection.liquid, etc.)</Text>
-                    <Text>4. Paste the code where you want the slider to appear</Text>
-                    <Text>5. Save the file and preview your store</Text>
+                    <Text>1. Copy the <strong>Slider ID</strong> below</Text>
+                    <Text>2. Go to your Shopify Admin → Online Store → Themes → Customize</Text>
+                    <Text>3. In the theme editor, click “Add section” and choose <strong>SlideEase Slider From Apps sections</strong></Text>
+                    <Text>4. Paste the copied Slider ID into the <strong>ID</strong> field of block setting(SliderEase Block)</Text>
+                    <Text>5. Click “Save” and preview your store to see the slider in action</Text>
                   </div>
                 </Stack>
               </Card>
@@ -182,22 +184,6 @@ export default function AddToThemeModal({ isOpen, onClose, slider, onDeploy }) {
                 </Stack>
               </Card>
 
-              <Banner status="info" title="📍 Placement Suggestions">
-                <Stack vertical spacing="tight">
-                  <Text>
-                    • <strong>Homepage:</strong> Add to <code>templates/index.liquid</code>
-                  </Text>
-                  <Text>
-                    • <strong>Product pages:</strong> Add to <code>templates/product.liquid</code>
-                  </Text>
-                  <Text>
-                    • <strong>Collection pages:</strong> Add to <code>templates/collection.liquid</code>
-                  </Text>
-                  <Text>
-                    • <strong>All pages:</strong> Add to <code>layout/theme.liquid</code>
-                  </Text>
-                </Stack>
-              </Banner>
             </Stack>
           ) : (
             <Stack vertical spacing="loose">

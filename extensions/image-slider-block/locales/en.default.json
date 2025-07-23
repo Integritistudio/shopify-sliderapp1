@@ -1,10 +1,26 @@
 {
-  "ratings": {
-    "stars": {
-      "label": "Ratings"
-    },
-    "home": {
-      "recommendationText": "Recommended Product!"
+  "name": "Dynamic Slider Extension",
+  "settings": {
+    "slider_block": {
+      "name": "Dynamic Slider",
+      "settings": {
+        "slider_id": {
+          "label": "Slider ID",
+          "info": "Enter the ID of the slider you want to display"
+        },
+        "slider_type": {
+          "label": "Slider Type",
+          "info": "Choose the type of slider animation"
+        },
+        "cdn_url": {
+          "label": "CDN Base URL",
+          "info": "The base URL for your slider CDN (without trailing slash)"
+        },
+        "enable_slider": {
+          "label": "Enable Slider",
+          "info": "Toggle to enable or disable this slider"
+        }
+      }
     }
   }
 }

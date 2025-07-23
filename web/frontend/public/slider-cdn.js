@@ -25,6 +25,7 @@
     .then((data) => {
       console.log("Slider data received:", data)
       if (data.slides && data.slides.length > 0) {
+        console.log("Rendering slider with data:", data.slides)
         renderSlider(data, sliderType)
       } else {
         console.warn("No slides found for slider:", sliderId)

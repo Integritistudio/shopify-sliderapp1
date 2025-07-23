@@ -1,3 +1,49 @@
-name = "image-slider-block"
-type = "theme"
+api_version = "2024-07"
 
+[[extensions]]
+type = "theme"
+name = "Dynamic Slider Extension"
+handle = "dynamic-slider"
+
+[extensions.settings]
+
+[[extensions.settings.blocks]]
+type = "slider_block"
+name = "Dynamic Slider"
+
+[[extensions.settings.blocks.settings]]
+type = "text"
+id = "slider_id"
+label = "Slider ID"
+default = "3"
+info = "Enter the numeric ID of the slider you want to display"
+
+[[extensions.settings.blocks.settings]]
+type = "select"
+id = "slider_type"
+label = "Slider Type"
+default = "infinite"
+info = "Choose the type of slider animation"
+
+[[extensions.settings.blocks.settings.options]]
+value = "infinite"
+label = "Infinite"
+
+[[extensions.settings.blocks.settings.options]]
+value = "fade"
+label = "Fade"
+
+[[extensions.settings.blocks.settings.options]]
+value = "slide"
+label = "Slide"
+
+[[extensions.settings.blocks.settings.options]]
+value = "carousel"
+label = "Carousel"
+
+[[extensions.settings.blocks.settings]]
+type = "checkbox"
+id = "enable_slider"
+label = "Enable Slider"
+default = true
+info = "Toggle to enable or disable this slider"
