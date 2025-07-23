@@ -1,9 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "abd28d9097cfbd13e130b26f56ff468d"
-name = "abdullahdev3"
-handle = "abdullahdev3"
-application_url = "https://annually-estimate-lamb-whilst.trycloudflare.com"
+client_id = "cf7accda894ac7655919f84a7efd7911"
+name = "SlideEase"
+handle = "SlideEase"
+application_url = "https://routines-neon-designing-contacted.trycloudflare.com"
 embedded = true
 
 [build]
@@ -15,13 +15,13 @@ api_version = "2025-04"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://annually-estimate-lamb-whilst.trycloudflare.com/auth/callback",
-  "https://annually-estimate-lamb-whilst.trycloudflare.com/auth/shopify/callback",
-  "https://annually-estimate-lamb-whilst.trycloudflare.com/api/auth/callback"
+  "https://routines-neon-designing-contacted.trycloudflare.com/auth/callback",
+  "https://routines-neon-designing-contacted.trycloudflare.com/auth/shopify/callback",
+  "https://routines-neon-designing-contacted.trycloudflare.com/api/auth/callback",
 ]
 
 [pos]
