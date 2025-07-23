@@ -1,4 +1,4 @@
-"use client"
+
 import { Page, Card, Text, Stack, Button, Banner, Image, Badge } from "@shopify/polaris"
 
 export default function UserGuide() {

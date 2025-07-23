@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Page, Stack, Heading, Button, Text, Badge, Spinner } from "@shopify/polaris"
 import { ToastProvider, useToast } from "../contexts/toast-context"
