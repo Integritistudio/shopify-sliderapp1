@@ -29,9 +29,10 @@ function SliderPageContent() {
           "Content-Type": "application/json",
         },
       })
-
+      console.log("response", response)
       if (!response.ok) {
-        throw new Error(`Failed to fetch sliders: ${response.status} ${response.statusText}`)
+        console.log("response.statusText", response.statusText)
+        // throw new Error(`Failed to fetch sliders: ${response.status} ${response.statusText}`)
       }
 
       const data = await response.json()
