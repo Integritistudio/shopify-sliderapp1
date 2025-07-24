@@ -1,4 +1,4 @@
-;(() => {
+; (() => {
   // Parse URL parameters
   const script = document.currentScript
   const url = new URL(script.src)
@@ -116,8 +116,8 @@
 
         <div id="${uniqueId}" class="${type}">
           ${sliderData.slides
-            .map(
-              (slide, index) => `
+        .map(
+          (slide, index) => `
             <div>
               <div style="padding: 2px 10px;">
                 <div style="background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
@@ -135,8 +135,8 @@
               </div>
             </div>
           `,
-            )
-            .join("")}
+        )
+        .join("")}
         </div>
         ${thumbnailsHTML}
       </div>
@@ -559,45 +559,12 @@
   }
 
   function renderEmptySlider() {
-    const emptyHTML = `
-      <div id="${uniqueId}" class="simple-slider-empty" style="
-        text-align: center;
-        padding: 3rem 2rem;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 16px;
-        margin: 2rem auto;
-        max-width: 600px;
-        color: #666;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      ">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">🎠</div>
-        <h3 style="margin: 0 0 0.5rem 0; color: #333; font-size: 1.5rem;">No slides available</h3>
-        <p style="margin: 0; font-size: 1rem; opacity: 0.8;">This slider doesn't have any slides yet.</p>
-      </div>
-    `
+    const emptyHTML = `<div id="${uniqueId}" class="simple-slider-empty" style="min-height: 1px;"></div>`
     script.insertAdjacentHTML("afterend", emptyHTML)
   }
 
   function renderErrorSlider(errorMessage) {
-    const errorHTML = `
-      <div id="${uniqueId}" class="simple-slider-error" style="
-        text-align: center;
-        padding: 3rem 2rem;
-        background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
-        border: 2px solid #feb2b2;
-        border-radius: 16px;
-        margin: 2rem auto;
-        max-width: 600px;
-        color: #e53e3e;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        box-shadow: 0 4px 12px rgba(229, 62, 62, 0.1);
-      ">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">Error loading slider</h3>
-        <p style="margin: 0; font-size: 0.95rem; opacity: 0.9;">${errorMessage}</p>
-      </div>
-    `
-    script.insertAdjacentHTML("afterend", errorHTML)
+    const emptyHTML = `<div id="${uniqueId}" class="simple-slider-empty" style="min-height: 1px;"></div>`
+    script.insertAdjacentHTML("afterend", emptyHTML)
   }
 })()
