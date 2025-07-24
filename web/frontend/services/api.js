@@ -8,7 +8,7 @@ const createSliderAPI = (app) => {
   const request = async (endpoint, options = {}) => {
     const url = `${baseURL}${endpoint}`;
     const sessionToken = await getSessionToken(app);
-    
+
     try {
       const response = await fetch(url, {
         headers: {
@@ -19,7 +19,7 @@ const createSliderAPI = (app) => {
         ...options,
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
-
+      alert("its unser services api response" + response)
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Request failed");

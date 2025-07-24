@@ -29,6 +29,7 @@ function SliderPageContent() {
           "Content-Type": "application/json",
         },
       })
+      alert("its main page api response" + response)
       console.log("response", response)
       if (!response.ok) {
         console.log("response.statusText", response.statusText)
