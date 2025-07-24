@@ -42,7 +42,7 @@ app.use("/", publicRoutes)
 app.options("/api/public/*", handleOptions)
 
 // NOW apply authentication middleware to protected routes
-// app.use("/api/*", shopify.validateAuthenticatedSession())
+app.use("/api/*", shopify.validateAuthenticatedSession())
 
 // API Routes
 app.use("/api", sliderRoutes)
