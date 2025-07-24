@@ -39,19 +39,24 @@ export default function UserGuide() {
     {
       title: "Copy Generated Slider ID",
       description: "Click the **Copy** button to copy the slider ID.",
-      screenshot: "/assets/6-screenshot.PNG",
+      screenshot: "/assets/7-screenshot.PNG",
     },
     {
       title: "Add slider section in theme customizer",
       description: "Go to Online Store > Themes > Customize and add section SlideEase Slider From Apps",
-      screenshot: "/assets/7-screenshot.PNG",
+      screenshot: "/assets/8-screenshot.PNG",
+    },
+    {
+      title: "Add slider id in section block setting",
+      description: "Click on the SliderEase Slider block to enter the Slider ID.",
+      screenshot: "/assets/9-screenshot.PNG",
     }
   ]
 
   return (
     <Page title="SlideEase Setup Guide" subtitle="Follow these simple steps to add your slider to your Shopify store">
       <Stack vertical spacing="loose">
-        <Banner title="Quick Setup in 6 Steps" status="info">
+        <Banner title="Quick Setup in 9 easy Steps" status="info">
           <p>
             This guide will walk you through creating your SlideEase slider. Each step includes visual
             references to help you along the way.
