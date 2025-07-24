@@ -19,7 +19,7 @@ export default function App() {
         <QueryProvider>
           <NavMenu>
             <a href="/" rel="home" />
-            <a href="/sliders">sliders</a>
+            <a href="/setupguide">Slider Setup Guide</a>
 
 
           </NavMenu>
