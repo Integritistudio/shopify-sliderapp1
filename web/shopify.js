@@ -1,12 +1,22 @@
 import dotenv from "dotenv"
 dotenv.config()
+
+import { Pool } from "pg"
 import { LATEST_API_VERSION } from "@shopify/shopify-api";
 import { shopifyApp } from "@shopify/shopify-app-express";
 import { SQLiteSessionStorage } from "@shopify/shopify-app-session-storage-sqlite";
 import { restResources } from "@shopify/shopify-api/rest/admin/2024-10";
 import { PostgreSQLSessionStorage } from "@shopify/shopify-app-session-storage-postgresql";
 
+const pgPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false, // Required for Render
+  },
+})
 
+const sessionStorageDatabase = new PostgreSQLSessionStorage(pgPool)
 
 
 // Path to your SQLite database file
@@ -32,7 +42,7 @@ const shopify = shopifyApp({
     path: "/api/webhooks",
   },
   // Using SQLite for session storage (you can change to PostgreSQL or MySQL later)
-  sessionStorage: new PostgreSQLSessionStorage(process.env.DATABASE_URL)
+  sessionStorage: sessionStorageDatabase
 });
 
 export default shopify;
