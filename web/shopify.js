@@ -1,3 +1,4 @@
+import dotenv from "dotenv"
 dotenv.config()
 import { LATEST_API_VERSION } from "@shopify/shopify-api";
 import { shopifyApp } from "@shopify/shopify-app-express";
