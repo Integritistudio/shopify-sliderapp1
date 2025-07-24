@@ -1,0 +1,65 @@
+{%- comment -%}
+  Admin interface snippet for easier management
+{%- endcomment -%}
+
+<div class="dynamic-slider-admin">
+  <h3>Dynamic Slider Configuration</h3>
+  <p>Use this extension to add dynamic sliders to your theme.</p>
+  
+  <div class="admin-instructions">
+    <h4>Instructions:</h4>
+    <ol>
+      <li>Add the "Dynamic Slider" block to any section</li>
+      <li>Configure the Slider ID (numeric value)</li>
+      <li>Select the slider type from the dropdown</li>
+      <li>Enable the slider using the checkbox</li>
+    </ol>
+  </div>
+  
+  <div class="admin-example">
+    <h4>Example Configuration:</h4>
+    <ul>
+      <li><strong>Slider ID:</strong> 3</li>
+      <li><strong>Slider Type:</strong> infinite</li>
+    </ul>
+    <p><em>This will load the slider with ID 3 using infinite scroll animation</em></p>
+  </div>
+  
+  <div class="admin-note">
+    <p><strong>Note:</strong> The CDN URL is configured internally and doesn't need to be set by users.</p>
+  </div>
+</div>
+
+<style>
+  .dynamic-slider-admin {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+  }
+  
+  .admin-instructions ol,
+  .admin-example ul {
+    padding-left: 20px;
+  }
+  
+  .admin-example {
+    background: white;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 15px;
+  }
+  
+  .admin-note {
+    background: #e3f2fd;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 15px;
+    border-left: 4px solid #2196f3;
+  }
+  
+  .admin-note p {
+    margin: 0;
+    color: #1565c0;
+  }
+</style>

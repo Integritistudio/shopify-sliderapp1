@@ -3,24 +3,25 @@
 client_id = "1180c202545837c83cc50873bda9c1ba"
 name = "abdullahdev3"
 handle = "abdullahdev3-7"
-application_url = "https://sells-presently-responsibility-zambia.trycloudflare.com"
+application_url = "https://caps-tomato-licence-downloads.trycloudflare.com"
 embedded = true
 
 [build]
 include_config_on_deploy = true
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://sells-presently-responsibility-zambia.trycloudflare.com/auth/callback",
-  "https://sells-presently-responsibility-zambia.trycloudflare.com/auth/shopify/callback",
-  "https://sells-presently-responsibility-zambia.trycloudflare.com/api/auth/callback"
+  "https://caps-tomato-licence-downloads.trycloudflare.com/auth/callback",
+  "https://caps-tomato-licence-downloads.trycloudflare.com/auth/shopify/callback",
+  "https://caps-tomato-licence-downloads.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

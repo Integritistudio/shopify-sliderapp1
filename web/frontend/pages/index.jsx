@@ -44,14 +44,14 @@ function SliderPageContent() {
         shop: slider.shop,
         slides: Array.isArray(slider.slides)
           ? slider.slides
-              .filter((slide) => slide && slide.id)
-              .map((slide) => ({
-                id: slide.id,
-                imageUrl: slide.imageUrl || "",
-                title: slide.title || "",
-                description: slide.description || "",
-                createdAt: slide.createdAt,
-              }))
+            .filter((slide) => slide && slide.id)
+            .map((slide) => ({
+              id: slide.id,
+              imageUrl: slide.imageUrl || "",
+              title: slide.title || "",
+              description: slide.description || "",
+              createdAt: slide.createdAt,
+            }))
           : [],
         createdAt: slider.createdAt,
         updatedAt: slider.updatedAt,
@@ -174,18 +174,18 @@ function SliderPageContent() {
         prev.map((slider) =>
           slider.id === sliderId
             ? {
-                ...slider,
-                slides: [
-                  ...slider.slides,
-                  {
-                    id: createdSlide.id,
-                    imageUrl: createdSlide.imageUrl,
-                    title: createdSlide.title,
-                    description: createdSlide.description,
-                    createdAt: createdSlide.createdAt,
-                  },
-                ],
-              }
+              ...slider,
+              slides: [
+                ...slider.slides,
+                {
+                  id: createdSlide.id,
+                  imageUrl: createdSlide.imageUrl,
+                  title: createdSlide.title,
+                  description: createdSlide.description,
+                  createdAt: createdSlide.createdAt,
+                },
+              ],
+            }
             : slider,
         ),
       )
@@ -232,20 +232,20 @@ function SliderPageContent() {
         prev.map((sliderItem) =>
           sliderItem.id === slider.id
             ? {
-                ...sliderItem,
-                slides: sliderItem.slides.map((slide) =>
-                  slide.id === updatedSlide.id
-                    ? {
-                        id: updatedSlideData.id,
-                        imageUrl: updatedSlideData.imageUrl,
-                        title: updatedSlideData.title,
-                        description: updatedSlideData.description,
-                        createdAt: slide.createdAt,
-                        updatedAt: updatedSlideData.updatedAt,
-                      }
-                    : slide,
-                ),
-              }
+              ...sliderItem,
+              slides: sliderItem.slides.map((slide) =>
+                slide.id === updatedSlide.id
+                  ? {
+                    id: updatedSlideData.id,
+                    imageUrl: updatedSlideData.imageUrl,
+                    title: updatedSlideData.title,
+                    description: updatedSlideData.description,
+                    createdAt: slide.createdAt,
+                    updatedAt: updatedSlideData.updatedAt,
+                  }
+                  : slide,
+              ),
+            }
             : sliderItem,
         ),
       )
@@ -273,9 +273,9 @@ function SliderPageContent() {
         prev.map((slider) =>
           slider.id === sliderId
             ? {
-                ...slider,
-                slides: slider.slides.filter((slide) => slide.id !== slideId),
-              }
+              ...slider,
+              slides: slider.slides.filter((slide) => slide.id !== slideId),
+            }
             : slider,
         ),
       )
@@ -342,10 +342,10 @@ function SliderPageContent() {
         prev.map((slider) =>
           slider.id === sliderId
             ? {
-                ...slider,
-                sliderType: updatedSlider.sliderType,
-                updatedAt: updatedSlider.updatedAt,
-              }
+              ...slider,
+              sliderType: updatedSlider.sliderType,
+              updatedAt: updatedSlider.updatedAt,
+            }
             : slider,
         ),
       )
