@@ -6,7 +6,7 @@ import CreateSliderModal from "../components/create-slider-modal"
 import { useAuthenticatedFetch } from "../hooks/useAuthenticatedFetch";
 
 function SliderPageContent() {
-  // const fetch = useAuthenticatedFetch();
+  const fetch = useAuthenticatedFetch();
 
   const { showToast } = useToast()
   const [sliders, setSliders] = useState([])

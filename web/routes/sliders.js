@@ -8,7 +8,7 @@ const router = express.Router()
 router.use(extractShop)
 
 // Sliders API - NOW SCOPED TO SHOP
-router.get("/sliders", shopify.validateAuthenticatedSession(), async (req, res) => {
+router.get("/sliders", async (req, res) => {
   try {
     const shop = req.shop
     console.log("req received and req data is", req)
