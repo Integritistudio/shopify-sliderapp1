@@ -1,7 +1,7 @@
 import express from "express"
 import { Slider, Slide } from "../models/index.js"
 import { extractShop } from "../middleware/auth.js"
-import shopify from "../shopify";
+import shopify from "../shopify.js";
 
 const router = express.Router()
 
