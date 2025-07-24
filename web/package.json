@@ -15,6 +15,7 @@
   "dependencies": {
     "@shopify/app-bridge-utils": "^3.5.1",
     "@shopify/shopify-app-express": "^5.0.8",
+    "@shopify/shopify-app-session-storage-postgresql": "^4.0.20",
     "@shopify/shopify-app-session-storage-sqlite": "^4.0.8",
     "compression": "^1.7.4",
     "cross-env": "^7.0.3",
