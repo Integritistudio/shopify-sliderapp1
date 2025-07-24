@@ -16,7 +16,7 @@ const pgPool = new Pool({
   },
 })
 
-const sessionStorageDatabase = new PostgreSQLSessionStorage(pgPool)
+const sessionStorage = new PostgreSQLSessionStorage(pgPool)
 
 
 // Path to your SQLite database file
@@ -42,7 +42,7 @@ const shopify = shopifyApp({
     path: "/api/webhooks",
   },
   // Using SQLite for session storage (you can change to PostgreSQL or MySQL later)
-  sessionStorage: sessionStorageDatabase
+  sessionStorage,
 });
 
 export default shopify;
