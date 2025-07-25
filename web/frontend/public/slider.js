@@ -4,7 +4,7 @@
   console.log(scriptTag)
   const sliderId = scriptTag.getAttribute("data-slider-id")
   const slidesData = JSON.parse(scriptTag.getAttribute("data-slides") || "[]")
-  const sliderType = scriptTag.getAttribute("data-type") || "center"
+  const sliderType = "Fade Transition"
   const position = scriptTag.getAttribute("data-position") || "middle"
 
   // Validate required data
