@@ -120,7 +120,7 @@
     `
         : ""
 
-    // Create slider HTML with improved styling
+    // Create slider HTML with improved styling and fixed height
     const sliderHTML = `
       <div class="slider-container-${uniqueId}" style="
         max-width: 1000px; 
@@ -189,9 +189,11 @@
                   border-radius: 8px; 
                   box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
                   overflow: hidden;
+                  height: 400px;
                 ">
                   <div style="
                     width: 100%;
+                    height: 300px;
                     position: relative;
                     background-color: #f6f6f7;
                     border-radius: 8px 8px 0 0;
@@ -199,32 +201,46 @@
                     align-items: center;
                     justify-content: center;
                     overflow: hidden;
-                    height: 250px;
                   ">
                     <img src="${slide.imageUrl || "/placeholder.svg?height=250&width=400"}"
                          alt="${slide.title || `Slide ${index + 1}`}"
                          style="
                            width: 100%; 
                            height: 100%; 
-                           object-fit: contain; 
+                           object-fit: cover; 
                            object-position: center; 
                            border-radius: 8px 8px 0 0;
                            display: block;
                          "
                          onerror="this.src='/placeholder.svg?height=250&width=400'">
                   </div>
-                  <div style="padding: 1rem; text-align: center;">
+                  <div style="
+                    padding: 1rem; 
+                    text-align: center;
+                    height: 100px;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                  ">
                     <h3 style="
                       margin: 0 0 0.5rem 0; 
                       font-size: 1.2rem; 
                       color: #333;
                       font-weight: 600;
+                      white-space: nowrap;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
                     ">${slide.title || `Slide ${index + 1}`}</h3>
                     <p style="
                       margin: 0; 
                       color: #666; 
                       font-size: 0.9rem;
                       line-height: 1.4;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 2;
+                      -webkit-box-orient: vertical;
+                      overflow: hidden;
                     ">${slide.description || "No description available"}</p>
                   </div>
                 </div>
@@ -431,7 +447,6 @@
             }
             break
 
-          case "multiple":
           case "multiple-items":
             slickConfig = {
               ...slickConfig,
@@ -530,38 +545,12 @@
             }
             break
 
-          case "infinite":
-            slickConfig = {
-              ...slickConfig,
-              infinite: true,
-              slidesToShow: 3,
-              slidesToScroll: 1,
-              dots: true,
-              responsive: [
-                {
-                  breakpoint: 768,
-                  settings: {
-                    slidesToShow: 2,
-                  },
-                },
-                {
-                  breakpoint: 480,
-                  settings: {
-                    slidesToShow: 1,
-                  },
-                },
-              ],
-            }
-            break
-
-          case "variable":
+          case "variable-width":
             slickConfig = {
               ...slickConfig,
               dots: true,
-              infinite: true,
-              speed: 300,
+              speed: 100,
               slidesToShow: 1,
-              centerMode: true,
               variableWidth: true,
             }
             break
@@ -571,7 +560,7 @@
               ...slickConfig,
               dots: true,
               vertical: true,
-              slidesToShow: 3,
+              slidesToShow: 1,
               slidesToScroll: 1,
             }
             break
@@ -697,21 +686,8 @@
 
   function renderErrorSlider(errorMessage) {
     const errorHTML = `
-      <div id="${uniqueId}" style="
-        text-align: center;
-        padding: 3rem 2rem;
-        background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
-        border: 2px solid #feb2b2;
-        border-radius: 16px;
-        margin: 2rem auto;
-        max-width: 600px;
-        color: #e53e3e;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        box-shadow: 0 4px 12px rgba(229, 62, 62, 0.1);
-      ">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; color: #e53e3e;">Error loading slider</h2>
-        <p style="margin: 0; color: #c53030;">${errorMessage}</p>
+      <div>
+        
       </div>
     `
     script.insertAdjacentHTML("afterend", errorHTML)

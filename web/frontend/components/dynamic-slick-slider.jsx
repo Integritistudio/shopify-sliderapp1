@@ -22,7 +22,7 @@ const slideImageStyle = {
   borderRadius: "8px 8px 0 0",
 }
 
-export default function DynamicSlickSlider({ slides, sliderId, sliderType = "center" }) {
+export default function DynamicSlickSlider({ slides, sliderId, sliderType = "" }) {
   const sliderRef = useRef(null)
   const thumbnailRef = useRef(null)
   const [slickLoaded, setSlickLoaded] = useState(false)
@@ -110,7 +110,6 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
             }
             break
 
-          case "multiple":
           case "multiple-items":
             slickConfig = {
               ...slickConfig,
@@ -209,7 +208,7 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
             }
             break
 
-          case "infinite":
+          case "multiple-items":
             slickConfig = {
               ...slickConfig,
               infinite: true,
@@ -233,23 +232,11 @@ export default function DynamicSlickSlider({ slides, sliderId, sliderType = "cen
             }
             break
 
-          case "variable":
+          case "variable-width":
             slickConfig = {
               ...slickConfig,
               dots: true,
-              infinite: true,
-              speed: 300,
-              slidesToShow: 1,
-              centerMode: true,
-              variableWidth: true,
-            }
-            break
-
-          case "vertical":
-            slickConfig = {
-              ...slickConfig,
-              dots: true,
-              vertical: true,
+            
               slidesToShow: 3,
               slidesToScroll: 1,
             }

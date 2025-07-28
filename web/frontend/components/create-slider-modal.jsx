@@ -7,7 +7,7 @@ import { useToast } from "../contexts/toast-context"
 export default function CreateSliderModal({ isOpen, onClose, onCreateSlider }) {
   const { showToast } = useToast()
   const [sliderName, setSliderName] = useState("")
-  const [sliderType, setSliderType] = useState("center")
+  const [sliderType, setSliderType] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const sliderOptions = [
@@ -37,13 +37,13 @@ export default function CreateSliderModal({ isOpen, onClose, onCreateSlider }) {
     },
     {
       label: "Infinite Loop",
-      value: "infinite",
+      value: "multiple-items",
       description: "Seamless infinite looping through slides",
       features: ["Never-ending loop", "Smooth transitions", "Great for product showcases", "Continuous browsing"],
     },
     {
       label: "Variable Width",
-      value: "variable",
+      value: "variable-width",
       description: "Slides with varying widths for dynamic layouts",
       features: ["Mixed content widths", "Dynamic sizing", "Irregular layouts", "Great for mixed content"],
     },

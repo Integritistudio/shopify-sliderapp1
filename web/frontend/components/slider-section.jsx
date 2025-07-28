@@ -85,18 +85,18 @@ export default function SliderSection({
     }
   }
 
-  function getSliderTypeInfo(type) {
-    const types = {
-      center: { label: "Center Mode", color: "info" },
-      fade: { label: "Fade Transition", color: "success" },
-      lazy: { label: "Lazy Loading", color: "warning" },
-      autoplay: { label: "Autoplay", color: "highlight" },
-      infinite: { label: "Infinite Loop", color: "attention" },
-      variable: { label: "Variable Width", color: "new" },
-      vertical: { label: "Vertical", color: "info" },
-    }
-    return types[type] || types.center
+function getSliderTypeInfo(type) {
+  const types = {
+    center: { label: "Center Mode", color: "info" },
+    fade: { label: "Fade Transition", color: "success" },
+    lazy: { label: "Lazy Loading", color: "warning" },
+    autoplay: { label: "Autoplay", color: "highlight" },
+    'multiple-items': { label: "Infinite Loop", color: "attention" },
+    'variable-width': { label: "Variable Width", color: "new" },
+    thumbnails: { label: "Thumbnails", color: "info" }
   }
+  return types[type]
+}
 
   const sliderTypeInfo = getSliderTypeInfo(slider.sliderType)
 

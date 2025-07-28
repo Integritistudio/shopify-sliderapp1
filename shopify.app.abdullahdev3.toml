@@ -3,7 +3,7 @@
 client_id = "1180c202545837c83cc50873bda9c1ba"
 name = "abdullahdev3"
 handle = "abdullahdev3-7"
-application_url = "https://caps-tomato-licence-downloads.trycloudflare.com"
+application_url = "https://charge-hat-mario-realtor.trycloudflare.com"
 embedded = true
 
 [build]
@@ -19,9 +19,9 @@ scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://caps-tomato-licence-downloads.trycloudflare.com/auth/callback",
-  "https://caps-tomato-licence-downloads.trycloudflare.com/auth/shopify/callback",
-  "https://caps-tomato-licence-downloads.trycloudflare.com/api/auth/callback"
+  "https://charge-hat-mario-realtor.trycloudflare.com/auth/callback",
+  "https://charge-hat-mario-realtor.trycloudflare.com/auth/shopify/callback",
+  "https://charge-hat-mario-realtor.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
