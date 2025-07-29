@@ -1,9 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "1180c202545837c83cc50873bda9c1ba"
+client_id = "ea3d6ff27bb1df8307d68076a65158c8"
 name = "abdullahdev3"
 handle = "abdullahdev3-7"
-application_url = "https://thou-immunology-whereas-offensive.trycloudflare.com"
+application_url = "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com"
 embedded = true
 
 [build]
@@ -15,13 +15,13 @@ api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+scopes = "read_products,write_products"
 
 [auth]
 redirect_urls = [
-  "https://thou-immunology-whereas-offensive.trycloudflare.com/auth/callback",
-  "https://thou-immunology-whereas-offensive.trycloudflare.com/auth/shopify/callback",
-  "https://thou-immunology-whereas-offensive.trycloudflare.com/api/auth/callback"
+  "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com/auth/callback",
+  "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com/auth/shopify/callback",
+  "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

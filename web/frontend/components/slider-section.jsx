@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import { Card, Stack, Text, Button, Badge, Collapsible, Icon } from "@shopify/polaris"
 import { ChevronDownMinor, ChevronUpMinor } from "@shopify/polaris-icons"
@@ -8,6 +7,7 @@ import DynamicSlickSlider from "./dynamic-slick-slider"
 import AddSlideModal from "./add-slide-modal"
 import EditSliderModal from "./edit-slider-modal"
 import AddToThemeModal from "./add-to-theme-modal"
+import CreateFromCollectionModal from "./create-from-collection-modal"
 
 export default function SliderSection({
   slider,
@@ -19,11 +19,13 @@ export default function SliderSection({
   onDeleteSlider,
   onRefresh,
   onUpdateSliderType,
+  onCreateFromCollection, // New prop for creating slider from collection
 }) {
   const { showToast } = useToast()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isAddToThemeModalOpen, setIsAddToThemeModalOpen] = useState(false)
+  const [isCreateFromCollectionModalOpen, setIsCreateFromCollectionModalOpen] = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
   const [tempName, setTempName] = useState(slider.name)
   const [isLoading, setIsLoading] = useState(false)
@@ -37,7 +39,6 @@ export default function SliderSection({
       showToast("Slider name cannot be empty", { error: true })
       return
     }
-
     try {
       setIsLoading(true)
       await onUpdateSliderName(slider.id, tempName.trim())
@@ -85,31 +86,39 @@ export default function SliderSection({
     }
   }
 
-function getSliderTypeInfo(type) {
-  // Normalize the type value
-  const normalizedType = type?.toString().toLowerCase().trim();
-  
-  const types = {
-    center: { label: "Center Mode", color: "info" },
-    fade: { label: "Fade Transition", color: "success" },
-    lazy: { label: "Lazy Loading", color: "warning" },
-    autoplay: { label: "Autoplay", color: "highlight" },
-    infinite: { label: "Infinite Loop", color: "attention" },
-    variable: { label: "Variable Width", color: "new" },
-    vertical: { label: "Vertical", color: "info" },
+  const handleCreateFromCollection = async (sliderName, sliderType, products) => {
+    try {
+      if (onCreateFromCollection) {
+        await onCreateFromCollection(sliderName, sliderType, products)
+      }
+    } catch (error) {
+      console.error("Failed to create slider from collection:", error)
+      throw error
+    }
   }
-  
-  return types[normalizedType] || { label: `Type: ${type}`, color: "critical" }
-}
+
+  function getSliderTypeInfo(type) {
+    const normalizedType = type?.toString().toLowerCase().trim()
+
+    const types = {
+      center: { label: "Center Mode", color: "info" },
+      fade: { label: "Fade Transition", color: "success" },
+      lazy: { label: "Lazy Loading", color: "warning" },
+      autoplay: { label: "Autoplay", color: "highlight" },
+      infinite: { label: "Infinite Loop", color: "attention" },
+      variable: { label: "Variable Width", color: "new" },
+      vertical: { label: "Vertical", color: "info" },
+    }
+
+    return types[normalizedType] || { label: `Type: ${type}`, color: "critical" }
+  }
 
   const sliderTypeInfo = getSliderTypeInfo(slider.sliderType)
 
   return (
     <>
-      {/* Fixed: Removed extra spacing and improved card structure */}
       <Card>
         <div style={{ padding: "1.5rem" }}>
-          {/* Header - Fixed: Better spacing and alignment */}
           <div
             style={{ cursor: "pointer", marginBottom: slider.isExpanded ? "1.5rem" : "0" }}
             onClick={() => onToggleExpanded(slider.id)}
@@ -117,7 +126,6 @@ function getSliderTypeInfo(type) {
             <Stack alignment="center" distribution="equalSpacing">
               <Stack alignment="center" spacing="tight">
                 <Icon source={slider.isExpanded ? ChevronUpMinor : ChevronDownMinor} />
-
                 {isEditingName ? (
                   <Stack alignment="center" spacing="tight">
                     <input
@@ -178,11 +186,9 @@ function getSliderTypeInfo(type) {
                     </Button>
                   </Stack>
                 )}
-
                 <Badge status="info">{slides.length} slides</Badge>
                 <Badge status={sliderTypeInfo.color}>{sliderTypeInfo.label}</Badge>
               </Stack>
-
               <Stack alignment="center" spacing="tight">
                 <Button
                   primary
@@ -209,11 +215,9 @@ function getSliderTypeInfo(type) {
             </Stack>
           </div>
 
-          {/* Fixed: Collapsible Content - No extra spacing issues */}
           <Collapsible open={slider.isExpanded}>
             <div>
               <Stack vertical spacing="loose">
-                {/* Slider Display */}
                 {slides.length > 0 ? (
                   <div
                     style={{
@@ -250,11 +254,13 @@ function getSliderTypeInfo(type) {
                   </div>
                 )}
 
-                {/* Action Buttons */}
                 <div style={{ textAlign: "center", paddingTop: "1rem" }}>
                   <Stack distribution="center" spacing="loose">
                     <Button primary size="large" onClick={() => setIsAddModalOpen(true)} loading={isLoading}>
                       Add New Slide
+                    </Button>
+                    <Button size="large" onClick={() => setIsCreateFromCollectionModalOpen(true)} loading={isLoading}>
+                      🛍️ Create from Collection
                     </Button>
                     <Button
                       size="large"
@@ -278,7 +284,6 @@ function getSliderTypeInfo(type) {
         onAddSlide={handleAddSlide}
         sliderName={slider.name}
       />
-
       <EditSliderModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
@@ -288,7 +293,6 @@ function getSliderTypeInfo(type) {
         sliderName={slider.name}
         isLoading={isLoading}
       />
-
       <AddToThemeModal
         isOpen={isAddToThemeModalOpen}
         onClose={() => setIsAddToThemeModalOpen(false)}
@@ -298,6 +302,11 @@ function getSliderTypeInfo(type) {
             onRefresh()
           }
         }}
+      />
+      <CreateFromCollectionModal
+        isOpen={isCreateFromCollectionModalOpen}
+        onClose={() => setIsCreateFromCollectionModalOpen(false)}
+        onCreateSlider={handleCreateFromCollection}
       />
     </>
   )

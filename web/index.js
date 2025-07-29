@@ -1,6 +1,5 @@
 import dotenv from "dotenv"
 dotenv.config()
-
 import express from "express"
 import serveStatic from "serve-static"
 import { join } from "path"
@@ -12,16 +11,16 @@ import cdnRoutes from "./routes/cdn.js"
 import publicRoutes from "./routes/public.js"
 import sliderRoutes from "./routes/sliders.js"
 import slideRoutes from "./routes/slides.js"
+import collectionsRoutes from "./routes/collections.js"
 import webhookRoutes from "./routes/webhooks.js"
 import { requestLogger, errorHandler, notFoundHandler, handleOptions } from "./utils/index.js"
+import { extractShop } from "./middleware/auth.js"
 
 const PORT = Number.parseInt(process.env.BACKEND_PORT || process.env.PORT || "3000", 10)
 const STATIC_PATH =
   process.env.NODE_ENV === "production" ? `${process.cwd()}/frontend/dist` : `${process.cwd()}/frontend/`
 
 const app = express()
-
-express.raw({ type: "application/json" })
 
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin())
@@ -42,11 +41,14 @@ app.use("/", publicRoutes)
 app.options("/api/public/*", handleOptions)
 
 // NOW apply authentication middleware to protected routes
+// First apply Shopify auth, then our custom extractShop middleware
 app.use("/api/*", shopify.validateAuthenticatedSession())
+app.use("/api/*", extractShop)
 
-// API Routes
+// API Routes - Make sure collections route is included
 app.use("/api", sliderRoutes)
 app.use("/api", slideRoutes)
+app.use("/api", collectionsRoutes)
 app.use("/api", webhookRoutes)
 
 app.use(shopify.cspHeaders())
