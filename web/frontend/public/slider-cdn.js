@@ -99,6 +99,11 @@
     const { sliderType, slides } = sliderData
     console.log(`Rendering Slick slider with ${slides.length} slides of type: ${sliderType}`)
 
+ // Format the slider type for display (capitalize first letter and add spaces)
+    const formattedSliderType = sliderType
+      .replace(/-/g, ' ')
+      .replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+
     // Thumbnail HTML if needed
     const thumbnailsHTML =
       sliderType === "thumbnails"
@@ -129,6 +134,76 @@
         position: relative;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       ">
+
+
+     <!-- Slider Header -->
+<div style="
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: -1rem -1rem 1.5rem -1rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #008060 0%, #004c3f 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+">
+  <h2 style="
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    position: relative;
+    padding-left: 1.75rem;
+  ">
+    <span style="
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1.25rem;
+      height: 1.25rem;
+      background-color: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <path d="M3.27 6.96L12 12.01l8.73-5.05"></path>
+        <path d="M12 22.08V12"></path>
+      </svg>
+    </span>
+    ${formattedSliderType} Slider
+  </h2>
+  <div style="
+    display: flex;
+    gap: 0.5rem;
+  ">
+    <span style="
+      width: 8px;
+      height: 8px;
+      background-color: rgba(255,255,255,0.7);
+      border-radius: 50%;
+    "></span>
+    <span style="
+      width: 8px;
+      height: 8px;
+      background-color: rgba(255,255,255,0.7);
+      border-radius: 50%;
+    "></span>
+    <span style="
+      width: 8px;
+      height: 8px;
+      background-color: rgba(255,255,255,0.7);
+      border-radius: 50%;
+    "></span>
+  </div>
+</div>
+
         <!-- Custom Navigation Buttons -->
         <button class="custom-prev-${uniqueId}" style="
           position: absolute;
