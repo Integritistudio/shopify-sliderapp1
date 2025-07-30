@@ -3,7 +3,7 @@
 client_id = "ea3d6ff27bb1df8307d68076a65158c8"
 name = "abdullahdev3"
 handle = "abdullahdev3-7"
-application_url = "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com"
+application_url = "https://casting-raymond-romantic-rise.trycloudflare.com"
 embedded = true
 
 [build]
@@ -19,9 +19,9 @@ scopes = "read_products,write_products"
 
 [auth]
 redirect_urls = [
-  "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com/auth/callback",
-  "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com/auth/shopify/callback",
-  "https://dna-allocation-uniprotkb-abandoned.trycloudflare.com/api/auth/callback"
+  "https://casting-raymond-romantic-rise.trycloudflare.com/auth/callback",
+  "https://casting-raymond-romantic-rise.trycloudflare.com/auth/shopify/callback",
+  "https://casting-raymond-romantic-rise.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
