@@ -20,8 +20,7 @@ export default function App() {
           <NavMenu>
             <a href="/" rel="home" />
             <a href="/setupguide">Slider Setup Guide</a>
-
-
+            <a href="/collectionSlider">Collection slider</a>
           </NavMenu>
           <Routes pages={pages} />
         </QueryProvider>
