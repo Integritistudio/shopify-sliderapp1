@@ -18,6 +18,19 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
     setCurrentIndex((prev) => Math.max(prev - 1, 0))
   }
 
+  const handleSearchProductClick = (productHandle) => {
+    if (!productHandle) {
+      console.warn("Product handle is missing, cannot navigate to product page.")
+      return
+    }
+    // Construct the Shopify product URL.
+    // This assumes your Shopify store URL is accessible or can be dynamically determined.
+    // For a typical Shopify store, the format is /products/{product-handle}
+    // You might need to prepend your actual shop domain if this is for an external embed.
+    const productUrl = `/products/${productHandle}`
+    window.open(productUrl, "_blank") // Open in a new tab
+  }
+
   return (
     <div
       style={{
@@ -278,7 +291,7 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
                         }}
                       >
                         <img
-                          src={product.image || "/placeholder.svg"}
+                          src={product.image || "/placeholder.svg?height=300&width=400&text=No Image"}
                           alt={product.title}
                           style={{
                             position: "absolute",
@@ -309,17 +322,6 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
                           justifyContent: "space-between",
                         }}
                       >
-                        {/* Vendor */}
-                        <p
-                          style={{
-                            margin: "0 0 4px 0",
-                            fontSize: "12px",
-                            color: "#637381",
-                          }}
-                        >
-                          {product.vendor}
-                        </p>
-
                         {/* Product Title */}
                         <p
                           style={{
@@ -329,7 +331,21 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
                             color: "#637381",
                           }}
                         >
-                          ({product.productNumber}) {product.title}
+                          {product.title}
+                        </p>
+
+                        {/* Product Description */}
+                        <p
+                          style={{
+                            margin: "0 0 8px 0",
+                            fontSize: "12px",
+                            color: "#637381",
+                            maxHeight: "3em", // Limit description height
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {product.description || "No description available."}
                         </p>
 
                         {/* Price */}
@@ -352,16 +368,6 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
                               {product.originalPrice}
                             </span>
                           )}
-                          {product.originalPrice && (
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                color: "#637381",
-                              }}
-                            >
-                              From
-                            </span>
-                          )}
                           <span
                             style={{
                               color: "#000000",
@@ -374,33 +380,37 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
                         </div>
 
                         {/* Color Options */}
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "6px",
-                            marginBottom: "16px",
-                          }}
-                        >
-                          {product.colors.map((color, index) => (
-                            <div
-                              key={index}
-                              style={{
-                                width: "16px",
-                                height: "16px",
-                                borderRadius: "50%",
-                                backgroundColor: color === "transparent" ? "#f0f0f0" : color,
-                                border:
-                                  color === "#ffffff" || color === "#f5f5dc" || color === "transparent"
-                                    ? "1px solid #c9cccf"
-                                    : "1px solid transparent",
-                                cursor: "pointer",
-                              }}
-                            />
-                          ))}
-                        </div>
+                        {product.colors && product.colors.length > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              marginBottom: "16px",
+                            }}
+                          >
+                            {product.colors.map((color, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  width: "16px",
+                                  height: "16px",
+                                  borderRadius: "50%",
+                                  backgroundColor: color === "transparent" ? "#f0f0f0" : color,
+                                  border:
+                                    color === "#ffffff" || color === "#f5f5dc" || color === "transparent"
+                                      ? "1px solid #c9cccf"
+                                      : "1px solid transparent",
+                                  cursor: "pointer",
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
 
                         {/* Search Product Button */}
                         <button
+                          onClick={() => handleSearchProductClick(product.handle)}
+                          disabled={!product.handle} // Disable if handle is missing
                           style={{
                             width: "100%",
                             padding: "10px 16px",
@@ -410,20 +420,25 @@ const CollectionSlider = ({ collection, onDelete, onCopyCode }) => {
                             fontSize: "13px",
                             fontWeight: "500",
                             borderRadius: "3px",
-                            cursor: "pointer",
+                            cursor: !product.handle ? "not-allowed" : "pointer", // Change cursor
+                            opacity: !product.handle ? 0.5 : 1, // Reduce opacity
                             transition: "all 0.2s ease",
                             textTransform: "uppercase",
                             letterSpacing: "0.5px",
                           }}
                           onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = "#000000"
-                            e.target.style.color = "#ffffff"
-                            e.target.style.borderColor = "#000000"
+                            if (product.handle) {
+                              e.target.style.backgroundColor = "#000000"
+                              e.target.style.color = "#ffffff"
+                              e.target.style.borderColor = "#000000"
+                            }
                           }}
                           onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = "transparent"
-                            e.target.style.color = "#637381"
-                            e.target.style.borderColor = "#c9cccf"
+                            if (product.handle) {
+                              e.target.style.backgroundColor = "transparent"
+                              e.target.style.color = "#637381"
+                              e.target.style.borderColor = "#c9cccf"
+                            }
                           }}
                         >
                           SEARCH PRODUCT

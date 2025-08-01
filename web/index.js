@@ -15,6 +15,7 @@ import collectionsRoutes from "./routes/collections.js"
 import webhookRoutes from "./routes/webhooks.js"
 import { requestLogger, errorHandler, notFoundHandler, handleOptions } from "./utils/index.js"
 import { extractShop } from "./middleware/auth.js"
+import collectionSliderRoutes from "./routes/collection-slider.js";
 
 const PORT = Number.parseInt(process.env.BACKEND_PORT || process.env.PORT || "3000", 10)
 const STATIC_PATH =
@@ -50,6 +51,7 @@ app.use("/api", sliderRoutes)
 app.use("/api", slideRoutes)
 app.use("/api", collectionsRoutes)
 app.use("/api", webhookRoutes)
+app.use("/api", collectionSliderRoutes);
 
 app.use(shopify.cspHeaders())
 app.use(serveStatic(STATIC_PATH, { index: false }))

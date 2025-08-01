@@ -3,7 +3,7 @@
 client_id = "ea3d6ff27bb1df8307d68076a65158c8"
 name = "abdullahdev3"
 handle = "abdullahdev3-7"
-application_url = "https://annie-approx-wonder-breath.trycloudflare.com"
+application_url = "https://similar-facial-evening-demographic.trycloudflare.com"
 embedded = true
 
 [build]
@@ -19,9 +19,9 @@ scopes = "read_products,write_products"
 
 [auth]
 redirect_urls = [
-  "https://annie-approx-wonder-breath.trycloudflare.com/auth/callback",
-  "https://annie-approx-wonder-breath.trycloudflare.com/auth/shopify/callback",
-  "https://annie-approx-wonder-breath.trycloudflare.com/api/auth/callback"
+  "https://similar-facial-evening-demographic.trycloudflare.com/auth/callback",
+  "https://similar-facial-evening-demographic.trycloudflare.com/auth/shopify/callback",
+  "https://similar-facial-evening-demographic.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

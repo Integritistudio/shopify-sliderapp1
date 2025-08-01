@@ -5,15 +5,13 @@ const router = express.Router()
 
 // Helper function to extract product details from variants
 const extractProductDetails = (product) => {
-  // Add this console.log to see the raw product object before transformation
-  console.log("Product object received by extractProductDetails:", JSON.stringify(product, null, 2));
-
   let originalPrice = null
   let salePrice = "N/A"
   let onSale = false
   let colors = []
 
   if (product.variants && product.variants.length > 0) {
+    // Find the default/first variant for pricing
     const defaultVariant = product.variants[0]
     salePrice = defaultVariant.price ? `$${parseFloat(defaultVariant.price).toFixed(2)}` : "N/A"
     if (defaultVariant.compare_at_price) {
@@ -23,6 +21,7 @@ const extractProductDetails = (product) => {
       }
     }
 
+    // Extract colors from options
     product.options?.forEach(option => {
       if (option.name.toLowerCase() === 'color' || option.name.toLowerCase() === 'colour') {
         colors = option.values || []
@@ -36,6 +35,7 @@ const extractProductDetails = (product) => {
         onSale = true
       }
     }
+    // For GraphQL, colors would need to be fetched from product.options
     product.options?.forEach(option => {
       if (option.name.toLowerCase() === 'color' || option.name.toLowerCase() === 'colour') {
         colors = option.values.map(val => val.name) || []
@@ -52,7 +52,7 @@ const extractProductDetails = (product) => {
       : "", // Ensure description is not null
     image: product.images && product.images.length > 0 ? product.images[0].src : null,
     imageUrl: product.images && product.images.length > 0 ? product.images[0].src : null,
-    handle: product.handle, // This is the line that needs to be correct
+    handle: product.handle,
     vendor: product.vendor,
     productNumber: product.product_type,
     originalPrice,
@@ -468,9 +468,6 @@ router.get("/collections/:collectionId/products", async (req, res) => {
         }
       }
 
-      // Add this console.log to see the products array before transformation
-      console.log("Products array before transformation:", JSON.stringify(products, null, 2));
-
       if (products.length === 0) {
         console.log(`No products found for collection ${collectionId} using any method`)
         return res.json([])
@@ -583,7 +580,6 @@ router.get("/collections/debug", async (req, res) => {
   }
 })
 
+
+
 export default router
-
-
-
