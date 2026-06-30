@@ -5,6 +5,8 @@ type = "theme"
 name = "Dynamic Slider Extension"
 handle = "dynamic-slider"
 
+uid = "4d8fe7ae-cfb5-56e6-9859-a361145de6a12abb79be"
+
 [extensions.settings]
 
 [[extensions.settings.blocks]]

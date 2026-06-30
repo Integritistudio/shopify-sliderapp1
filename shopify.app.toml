@@ -3,7 +3,7 @@
 client_id = "cf7accda894ac7655919f84a7efd7911"
 name = "SlideEase"
 handle = "slideease"
-application_url = "https://generating-anchor-alien-calculate.trycloudflare.com"
+application_url = "https://slideease.integritistudio.us"
 embedded = true
 
 [build]
@@ -19,9 +19,9 @@ scopes = ""
 
 [auth]
 redirect_urls = [
-  "https://generating-anchor-alien-calculate.trycloudflare.com/auth/callback",
-  "https://generating-anchor-alien-calculate.trycloudflare.com/auth/shopify/callback",
-  "https://generating-anchor-alien-calculate.trycloudflare.com/api/auth/callback"
+  "https://slideease.integritistudio.us/auth/callback",
+  "https://slideease.integritistudio.us/auth/shopify/callback",
+  "https://slideease.integritistudio.us/api/auth/callback"
 ]
 
 [pos]
