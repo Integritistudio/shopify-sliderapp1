@@ -1,84 +1,64 @@
 "use client"
-import { Page, Card, Text, Stack, Button, Banner, Image, Badge } from "@shopify/polaris"
+
+import { Page, Card, Text, Stack, Banner } from "@shopify/polaris"
 
 export default function UserGuide() {
-  const sliderId = "slider_12345"
-
-
   const steps = [
     {
-      title: "Create Slider",
-      description: "Go to Sliders and click on create slider",
-      screenshot: "/assets/1-screenshot.PNG",
+      title: "Create a slider",
+      description: "Open SlideEase and click Create slider. Choose a name and preset (center, fade, autoplay, and more). A sample preview appears immediately.",
     },
     {
-      title: "Slider Settings",
-      description: "Add slider name, select slider type and click on create Slider",
-      screenshot: "/assets/2-screenshot.PNG",
+      title: "Add slides with Shopify images or video",
+      description:
+        "Open the slider editor, click Add slide, then Choose from Shopify Files — or drag-and-drop to upload. Switch to Video for YouTube, Vimeo, or Shopify videos. Pick product/collection CTAs with the resource picker.",
     },
     {
-      title: "Add slide to the slider",
-      description: 'Click "Add new slide" to add slide to the slider',
-      screenshot: "/assets/3-screenshot.PNG",
+      title: "Customize each slide",
+      description:
+        "Set heading, subheading, description, CTA text/URL, overlay, text colors, and alignment. Drag slides to reorder, hide slides, or open CTAs in a new tab.",
     },
     {
-      title: "Add data to slide ",
-      description: "Add the slide data like Image URL ,Title, Description ",
-      screenshot: "/assets/4-screenshot.PNG",
+      title: "Tune style and behavior",
+      description:
+        "Use the Style & behavior tab for height, corner radius, image fit, autoplay timing, arrows/dots, colors, and mobile overrides. Check the realistic mobile phone preview (swipe supported).",
     },
     {
-      title: "Slider Preview and get code",
-      description: "Assuming you have three slides, the slider will appear as shown. Click Get Code to copy its slider ID.",
-      screenshot: "/assets/5-screenshot.PNG",
+      title: "Publish and copy the ID",
+      description: "Set status to Published, open the Publish tab, and copy the numeric Slider ID.",
     },
     {
-      title: "Generate Slider Id",
-      description: "Click on Genrate Code button to get the slider id",
-      screenshot: "/assets/6-screenshot.PNG",
+      title: "Add the theme app block",
+      description:
+        "Online Store → Themes → Customize → Add section → Apps → SlideEase Slider. Paste the Slider ID, optionally set a heading and spacing, then save. Mark embed done on the Publish tab when finished.",
     },
-    {
-      title: "Copy Generated Slider ID",
-      description: "Click the **Copy** button to copy the slider ID.",
-      screenshot: "/assets/7-screenshot.PNG",
-    },
-    {
-      title: "Add slider section in theme customizer",
-      description: "Go to Online Store > Themes > Customize and add section SlideEase Slider From Apps",
-      screenshot: "/assets/8-screenshot.PNG",
-    },
-    {
-      title: "Add slider id in section block setting",
-      description: "Click on the SliderEase Slider block to enter the Slider ID.",
-      screenshot: "/assets/9-screenshot.PNG",
-    }
   ]
 
   return (
-    <Page title="SlideEase Setup Guide" subtitle="Follow these simple steps to add your slider to your Shopify store">
+    <Page title="SlideEase setup guide" subtitle="Build polished sliders with Shopify Files, CTAs, and live previews">
       <Stack vertical spacing="loose">
-        <Banner title="Quick Setup in 9 easy Steps" status="info">
+        <Banner title="Enhanced editor" status="info">
           <p>
-            This guide will walk you through creating your SlideEase slider. Each step includes visual
-            references to help you along the way.
+            SlideEase now supports multiple sliders, Shopify Files image picking, per-slide CTAs, advanced style options,
+            and a live sample preview before you publish.
           </p>
         </Banner>
 
         {steps.map((step, index) => (
-          <Card key={index} sectioned>
-            <Stack vertical spacing="base">
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Card key={step.title} sectioned>
+            <Stack vertical spacing="tight">
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
-                    backgroundColor: "#008060",
+                    backgroundColor: "#1a2f4a",
                     color: "white",
                     borderRadius: "50%",
-                    width: "32px",
-                    height: "32px",
+                    width: 32,
+                    height: 32,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     fontWeight: "bold",
-                    fontSize: "16px",
                   }}
                 >
                   {index + 1}
@@ -87,46 +67,20 @@ export default function UserGuide() {
                   {step.title}
                 </Text>
               </div>
-
-              <Text variant="bodyMd" color="subdued">
-                {step.description}
-              </Text>
-
-              {step.action && step.action}
-
-              <div
-                style={{
-                  border: "2px solid #e1e3e5",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  backgroundColor: "#fafbfb",
-                  marginTop: "16px",
-                }}
-              >
-                <Image
-                  source={step.screenshot}
-                  alt={`Step ${index + 1}: ${step.title}`}
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    borderRadius: "4px",
-                    border: "1px solid #e1e3e5",
-                  }}
-                />
-              </div>
+              <Text color="subdued">{step.description}</Text>
             </Stack>
           </Card>
         ))}
 
         <Card sectioned>
-          <Stack vertical spacing="base">
+          <Stack vertical spacing="tight">
             <Text variant="headingMd" as="h3">
-              Need Help?
+              Need help?
             </Text>
-            <Text variant="bodyMd">
-              If you encounter any issues during setup, don't hesitate to reach out to our support team at info@integriti.io.
+            <Text>
+              If files do not appear or uploads fail, reinstall the app so it can request{" "}
+              <strong>read_files</strong> and <strong>write_files</strong>. Contact support at info@integriti.io.
             </Text>
-
           </Stack>
         </Card>
       </Stack>

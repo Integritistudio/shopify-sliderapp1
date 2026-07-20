@@ -18,10 +18,11 @@ export default function App() {
       <BrowserRouter>
         <QueryProvider>
           <NavMenu>
-            <a href="/" rel="home" />
-            <a href="/setupguide">Slider Setup Guide</a>
-
-
+            <a href="/" rel="home">
+              Sliders
+            </a>
+            <a href="/brand-kit">Brand kit</a>
+            <a href="/setupguide">Setup guide</a>
           </NavMenu>
           <Routes pages={pages} />
         </QueryProvider>

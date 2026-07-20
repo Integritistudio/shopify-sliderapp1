@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Card, Stack, Text, Button, Badge, Collapsible, Icon } from "@shopify/polaris"
 import { ChevronDownMinor, ChevronUpMinor } from "@shopify/polaris-icons"
 import { useToast } from "../contexts/toast-context"
+import { getSliderTypeInfo } from "../utils/sliderConfig"
 import DynamicSlickSlider from "./dynamic-slick-slider"
 import AddSlideModal from "./add-slide-modal"
 import EditSliderModal from "./edit-slider-modal"
@@ -84,23 +85,6 @@ export default function SliderSection({
       onDeleteSlider(slider.id)
     }
   }
-
-function getSliderTypeInfo(type) {
-  // Normalize the type value
-  const normalizedType = type?.toString().toLowerCase().trim();
-  
-  const types = {
-    center: { label: "Center Mode", color: "info" },
-    fade: { label: "Fade Transition", color: "success" },
-    lazy: { label: "Lazy Loading", color: "warning" },
-    autoplay: { label: "Autoplay", color: "highlight" },
-    infinite: { label: "Infinite Loop", color: "attention" },
-    variable: { label: "Variable Width", color: "new" },
-    vertical: { label: "Vertical", color: "info" },
-  }
-  
-  return types[normalizedType] || { label: `Type: ${type}`, color: "critical" }
-}
 
   const sliderTypeInfo = getSliderTypeInfo(slider.sliderType)
 

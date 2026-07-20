@@ -1,770 +1,774 @@
 ;(() => {
-  // Parse URL parameters
   const script = document.currentScript
+  if (!script) return
+
   const url = new URL(script.src)
   const sliderId = url.searchParams.get("id")
+  const shopFromScript = url.searchParams.get("shop")
+  const shopFromShopify =
+    (window.Shopify && (window.Shopify.shop || window.Shopify.permanent_domain)) || ""
+  const shop = (shopFromScript || shopFromShopify || "").replace(/^https?:\/\//, "").replace(/\/$/, "")
+  const uniqueId = `slideease-${sliderId}-${Math.random().toString(36).slice(2, 9)}`
+  const apiOrigin = url.origin
+  const apiUrl = `${apiOrigin}/api/public/slider/${encodeURIComponent(sliderId)}?shop=${encodeURIComponent(shop)}`
 
-  // Create unique ID for this slider instance
-  const uniqueId = `slider-${sliderId}-${Math.random().toString(36).substr(2, 9)}`
+  const CHEVRON_LEFT =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  const CHEVRON_RIGHT =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
-  // Use the same domain as the script source for API calls
-  const scriptDomain = url.origin
-  const apiUrl = `${scriptDomain}/api/public/slider/${sliderId}`
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  }
 
-  console.log(`Loading slider ${sliderId} with unique ID: ${uniqueId}`)
+  function safeUrl(value) {
+    if (!value) return ""
+    const trimmed = String(value).trim()
+    if (trimmed.startsWith("/")) return trimmed
+    try {
+      const parsed = new URL(trimmed)
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.toString()
+    } catch {
+      return ""
+    }
+    return ""
+  }
 
-  // Show loading state
-  renderLoadingSlider()
-
-  // Fetch and render slider
-  fetch(apiUrl)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      return response.json()
-    })
-    .then((data) => {
-      console.log("Slider data received:", data)
-
-      // Remove loading state
-      removeLoadingSlider()
-
-      // Check if we got an error response
-      if (data.error) {
-        console.error("API returned error:", data.error)
-        renderErrorSlider(data.error)
+  function trackEvent(type, slideId) {
+    try {
+      const body = JSON.stringify({
+        shop,
+        sliderId: Number(sliderId),
+        slideId: slideId != null ? Number(slideId) : null,
+        type,
+      })
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: "application/json" })
+        navigator.sendBeacon(`${apiOrigin}/api/public/events`, blob)
         return
       }
+      fetch(`${apiOrigin}/api/public/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {})
+    } catch {
+      // ignore analytics failures
+    }
+  }
 
-      if (data.slides && data.slides.length > 0) {
-        console.log(`Rendering slider with type: ${data.sliderType} and ${data.slides.length} slides`)
-        renderSlider(data)
-      } else {
-        console.warn("No slides found for slider:", sliderId)
-        renderEmptySlider()
+  function youtubeEmbed(url) {
+    try {
+      const u = new URL(url)
+      let id = u.searchParams.get("v")
+      if (!id && u.hostname.includes("youtu.be")) id = u.pathname.slice(1)
+      if (!id && u.pathname.includes("/embed/")) id = u.pathname.split("/embed/")[1]
+      return id ? `https://www.youtube.com/embed/${id}?rel=0` : ""
+    } catch {
+      return ""
+    }
+  }
+
+  function vimeoEmbed(url) {
+    try {
+      const match = String(url).match(/vimeo\.com\/(?:video\/)?(\d+)/)
+      return match ? `https://player.vimeo.com/video/${match[1]}` : ""
+    } catch {
+      return ""
+    }
+  }
+
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-slideease-src="${src}"]`)
+      if (existing) {
+        if (existing.dataset.loaded === "true") return resolve()
+        existing.addEventListener("load", () => resolve())
+        existing.addEventListener("error", reject)
+        return
       }
-    })
-    .catch((error) => {
-      console.error("Slider load error:", error)
-      removeLoadingSlider()
-      renderErrorSlider(error.message)
-    })
+      if (src.includes("jquery") && window.jQuery) return resolve()
+      if (src.includes("slick") && window.jQuery?.fn?.slick) return resolve()
 
-  function renderLoadingSlider() {
-    const loadingHTML = `
-      <div id="${uniqueId}-loading" style="
-        text-align: center;
-        padding: 2rem 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      ">
-        <div style="
-          background: white;
-          border-radius: 16px;
-          padding: 2rem;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          max-width: 600px;
-          margin: 0 auto;
-        ">
-          <div style="
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #008060;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem auto;
-          "></div>
-          <div style="color: #666; font-size: 1rem;">Loading slider...</div>
-        </div>
+      const el = document.createElement("script")
+      el.src = src
+      el.async = true
+      el.dataset.slideeaseSrc = src
+      el.onload = () => {
+        el.dataset.loaded = "true"
+        resolve()
+      }
+      el.onerror = reject
+      document.head.appendChild(el)
+    })
+  }
+
+  function loadCssOnce(href) {
+    if (document.querySelector(`link[data-slideease-href="${href}"]`)) return
+    const link = document.createElement("link")
+    link.rel = "stylesheet"
+    link.href = href
+    link.dataset.slideeaseHref = href
+    document.head.appendChild(link)
+  }
+
+  function insertAdjacent(html) {
+    script.insertAdjacentHTML("afterend", html)
+  }
+
+  function removeNode(id) {
+    document.getElementById(id)?.remove()
+  }
+
+  function renderLoading() {
+    insertAdjacent(`
+      <div id="${uniqueId}-loading" class="se-loading" aria-live="polite" aria-busy="true">
+        <div class="se-loading__bar"></div>
         <style>
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
+          .se-loading{width:100%;padding:clamp(2.5rem,8vw,4.5rem) 1rem;display:flex;justify-content:center;background:linear-gradient(180deg,#f8fafc,#eef2f7)}
+          .se-loading__bar{width:min(220px,50%);height:3px;border-radius:999px;background:linear-gradient(90deg,#cbd5e1,#1a2f4a,#cbd5e1);background-size:200% 100%;animation:seLoad 1.1s ease-in-out infinite}
+          @keyframes seLoad{0%{background-position:100% 0}100%{background-position:-100% 0}}
         </style>
       </div>
-    `
-    script.insertAdjacentHTML("afterend", loadingHTML)
+    `)
   }
 
-  function removeLoadingSlider() {
-    const loadingElement = document.getElementById(`${uniqueId}-loading`)
-    if (loadingElement) {
-      loadingElement.remove()
-    }
-  }
-
-  function renderSlider(sliderData) {
-    const { sliderType, slides } = sliderData
-    console.log(`Rendering Slick slider with ${slides.length} slides of type: ${sliderType}`)
-
- // Format the slider type for display (capitalize first letter and add spaces)
-    const formattedSliderType = sliderType
-      .replace(/-/g, ' ')
-      .replace(/(^\w|\s\w)/g, m => m.toUpperCase());
-
-    // Thumbnail HTML if needed
-    const thumbnailsHTML =
-      sliderType === "thumbnails"
-        ? `
-      <div class="slider-thumbnails-${uniqueId}" style="margin-top: 20px;">
-        ${slides
-          .map(
-            (slide, index) => `
-          <div>
-            <img src="${slide.imageUrl || "/placeholder.svg?height=80&width=120"}"
-                 alt="Thumbnail ${index + 1}"
-                 style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px;"
-                 onerror="this.src='/placeholder.svg?height=80&width=120'">
-          </div>
-        `,
-          )
-          .join("")}
+  function renderMessage(title, message) {
+    insertAdjacent(`
+      <div class="se-message" style="width:100%;max-width:640px;margin:1.5rem auto;padding:1.35rem 1.5rem;border:1px solid #e2e8f0;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+        <strong style="display:block;margin-bottom:0.35rem;color:#0f172a;font-size:0.95rem;">${escapeHtml(title)}</strong>
+        <span style="color:#64748b;font-size:0.9rem;line-height:1.45;">${escapeHtml(message)}</span>
       </div>
-    `
+    `)
+  }
+
+  function buildSlickConfig(settings) {
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+    const aliases = {
+      "multiple-items": "autoplay",
+      lazy: "autoplay",
+      spotlight: "center",
+      "carousel-3d": "coverflow",
+    }
+    const effect = aliases[settings.effect || settings.transition] || settings.effect || settings.transition || "slide"
+    const fadeEffects = [
+      "fade",
+      "thumbnails",
+      "cube",
+      "flip",
+      "zoom",
+      "ken-burns",
+      "cards-stack",
+      "slide-up",
+      "wipe",
+      "blur-reveal",
+      "split-panel",
+    ]
+    const centerEffects = ["center", "coverflow"]
+
+    const config = {
+      slidesToShow: Number(settings.slidesToShow) || 1,
+      slidesToScroll: Number(settings.slidesToScroll) || 1,
+      infinite: settings.infinite !== false,
+      dots: settings.dots !== false && effect !== "marquee",
+      arrows: false,
+      autoplay: prefersReduced ? false : Boolean(settings.autoplay) || effect === "marquee" || effect === "ken-burns",
+      autoplaySpeed: effect === "marquee" ? 0 : Number(settings.autoplaySpeed) || 3200,
+      pauseOnHover: settings.pauseOnHover !== false,
+      pauseOnFocus: true,
+      speed: prefersReduced ? 0 : effect === "marquee" ? 10000 : Number(settings.speed) || 650,
+      fade: fadeEffects.includes(effect) || Boolean(settings.fade),
+      cssEase: effect === "marquee" ? "linear" : "cubic-bezier(0.22, 1, 0.36, 1)",
+      adaptiveHeight: false,
+      centerMode: centerEffects.includes(effect) || Boolean(settings.centerMode),
+      centerPadding: effect === "coverflow" ? "8%" : settings.centerPadding || "12%",
+      vertical: effect === "vertical" || Boolean(settings.vertical),
+      variableWidth: effect === "variable-width" || Boolean(settings.variableWidth),
+      lazyLoad: settings.lazyLoad ? "ondemand" : null,
+      dotsClass: `slideease-dots slideease-dots-${uniqueId}`,
+      customPaging: () => '<button type="button"><span class="se-dot"></span></button>',
+      responsive: [
+        {
+          breakpoint: 900,
+          settings: {
+            slidesToShow: Math.min(Number(settings.slidesToShow) || 1, 2),
+            centerMode: centerEffects.includes(effect),
+            centerPadding: "6%",
+          },
+        },
+        {
+          breakpoint: 640,
+          settings: {
+            slidesToShow: 1,
+            centerMode: false,
+            vertical: false,
+            variableWidth: false,
+          },
+        },
+      ],
+    }
+
+    if (fadeEffects.includes(effect)) {
+      config.slidesToShow = 1
+      config.slidesToScroll = 1
+    }
+    if (centerEffects.includes(effect)) {
+      config.slidesToShow = Math.max(Number(settings.slidesToShow) || 3, 1)
+    }
+    if (effect === "marquee") {
+      config.arrows = false
+      config.dots = false
+      config.waitForAnimate = false
+    }
+    return { config, effect }
+  }
+
+  function renderMedia(slide, settings) {
+    const imageUrl = safeUrl(slide.imageUrl)
+    const videoUrl = safeUrl(slide.videoUrl)
+    const alt = escapeHtml(slide.imageAlt || slide.heading || slide.title || "Slide media")
+    const objectFit = escapeHtml(settings.objectFit || "contain")
+    const useLazy = Boolean(settings.lazyLoad)
+
+    if (slide.mediaType === "video" && videoUrl) {
+      const yt = youtubeEmbed(videoUrl)
+      const vim = vimeoEmbed(videoUrl)
+      if (yt || vim) {
+        return `<iframe class="se-media" src="${escapeHtml(yt || vim)}" title="${alt}" style="width:100%;height:100%;border:0;" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>`
+      }
+      return `<video class="se-media" src="${escapeHtml(videoUrl)}" poster="${escapeHtml(imageUrl)}" playsinline muted loop autoplay style="width:100%;height:100%;object-fit:${objectFit};display:block;"></video>`
+    }
+
+    if (!imageUrl) {
+      return `<div class="se-media se-media--empty" aria-hidden="true"></div>`
+    }
+    const imgAttrs = useLazy
+      ? `data-lazy="${escapeHtml(imageUrl)}" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="`
+      : `src="${escapeHtml(imageUrl)}"`
+    return `<img class="se-media" ${imgAttrs} alt="${alt}" decoding="async" style="width:100%;height:100%;object-fit:${objectFit};object-position:center;display:block;" />`
+  }
+
+  function renderSlide(slide, settings, effect) {
+    const heading = slide.heading || slide.title || ""
+    const subheading = slide.subheading || ""
+    const description = slide.description || ""
+    const overlayOpacity = Number(slide.overlayOpacity ?? settings.overlayOpacity ?? 0.35)
+    const overlayColor = slide.overlayColor || settings.overlayColor || "#0f172a"
+    const align = slide.textAlign || "center"
+    const justify = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center"
+    const ctaHref = safeUrl(slide.ctaUrl)
+    const targetAttrs = slide.ctaOpenInNewTab ? ` target="_blank" rel="noopener noreferrer"` : ""
+    const radius = Number(settings.borderRadius ?? 0)
+    const height = Math.max(Number(settings.height) || 560, 320)
+    const textColor = escapeHtml(slide.textColor || "#ffffff")
+    const btnBg = escapeHtml(slide.buttonBg || "#ffffff")
+    const btnText = escapeHtml(slide.buttonTextColor || "#0f172a")
+    const hasCopy = Boolean(heading || subheading || description || slide.ctaText)
+    const slidePad = ["center", "coverflow", "autoplay", "variable-width", "marquee"].includes(effect)
+      ? "0 10px"
+      : "0"
+    const splitPanels =
+      effect === "split-panel"
+        ? `<div class="se-split-panel se-split-panel--left"></div><div class="se-split-panel se-split-panel--right"></div>`
         : ""
 
-    // Create slider HTML with improved styling and fixed height
-    const sliderHTML = `
-      <div class="slider-container-${uniqueId}" style="
-        max-width: 1000px; 
-        margin: 2rem auto; 
-        padding: 1rem; 
-        position: relative;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      ">
-
-
-     <!-- Slider Header -->
-<div style="
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: -1rem -1rem 1.5rem -1rem;
-  padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #008060 0%, #004c3f 100%);
-  color: white;
-  border-radius: 8px 8px 0 0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-">
-  <h2 style="
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: white;
-    letter-spacing: 0.5px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    position: relative;
-    padding-left: 1.75rem;
-  ">
-    <span style="
-      position: absolute;
-      left: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 1.25rem;
-      height: 1.25rem;
-      background-color: rgba(255,255,255,0.2);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    ">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-        <path d="M3.27 6.96L12 12.01l8.73-5.05"></path>
-        <path d="M12 22.08V12"></path>
-      </svg>
-    </span>
-    ${formattedSliderType} Slider
-  </h2>
-  <div style="
-    display: flex;
-    gap: 0.5rem;
-  ">
-    <span style="
-      width: 8px;
-      height: 8px;
-      background-color: rgba(255,255,255,0.7);
-      border-radius: 50%;
-    "></span>
-    <span style="
-      width: 8px;
-      height: 8px;
-      background-color: rgba(255,255,255,0.7);
-      border-radius: 50%;
-    "></span>
-    <span style="
-      width: 8px;
-      height: 8px;
-      background-color: rgba(255,255,255,0.7);
-      border-radius: 50%;
-    "></span>
-  </div>
-</div>
-
-        <!-- Custom Navigation Buttons -->
-        <button class="custom-prev-${uniqueId}" style="
-          position: absolute;
-          left: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          z-index: 10;
-          background: rgba(255, 255, 255, 0.9);
-          border: none;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-          transition: all 0.3s ease;
-          font-size: 18px;
-          color: #333;
-        " onmouseover="this.style.background='rgba(255,255,255,1)'; this.style.transform='translateY(-50%) scale(1.1)'"
-           onmouseout="this.style.background='rgba(255,255,255,0.9)'; this.style.transform='translateY(-50%) scale(1)'">
-          &#8249;
-        </button>
-        
-        <button class="custom-next-${uniqueId}" style="
-          position: absolute;
-          right: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          z-index: 10;
-          background: rgba(255, 255, 255, 0.9);
-          border: none;
-          border-radius: 50%;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-          transition: all 0.3s ease;
-          font-size: 18px;
-          color: #333;
-        " onmouseover="this.style.background='rgba(255,255,255,1)'; this.style.transform='translateY(-50%) scale(1.1)'"
-           onmouseout="this.style.background='rgba(255,255,255,0.9)'; this.style.transform='translateY(-50%) scale(1)'">
-          &#8250;
-        </button>
-
-        <div id="${uniqueId}" class="${sliderType}">
-          ${slides
-            .map(
-              (slide, index) => `
-            <div>
-              <div style="padding: 2px 10px;">
-                <div style="
-                  background: white; 
-                  border-radius: 8px; 
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
-                  overflow: hidden;
-                  height: 400px;
-                ">
-                  <div style="
-                    width: 100%;
-                    height: 300px;
-                    position: relative;
-                    background-color: #f6f6f7;
-                    border-radius: 8px 8px 0 0;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    overflow: hidden;
-                  ">
-                    <img src="${slide.imageUrl || "/placeholder.svg?height=250&width=400"}"
-                         alt="${slide.title || `Slide ${index + 1}`}"
-                         style="
-                           width: 100%; 
-                           height: 100%; 
-                           object-fit: cover; 
-                           object-position: center; 
-                           border-radius: 8px 8px 0 0;
-                           display: block;
-                         "
-                         onerror="this.src='/placeholder.svg?height=250&width=400'">
-                  </div>
-                  <div style="
-                    padding: 1rem; 
-                    text-align: center;
-                    height: 100px;
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                  ">
-                    <h3 style="
-                      margin: 0 0 0.5rem 0; 
-                      font-size: 1.2rem; 
-                      color: #333;
-                      font-weight: 600;
-                      white-space: nowrap;
-                      overflow: hidden;
-                      text-overflow: ellipsis;
-                    ">${slide.title || `Slide ${index + 1}`}</h3>
-                    <p style="
-                      margin: 0; 
-                      color: #666; 
-                      font-size: 0.9rem;
-                      line-height: 1.4;
-                      display: -webkit-box;
-                      -webkit-line-clamp: 2;
-                      -webkit-box-orient: vertical;
-                      overflow: hidden;
-                    ">${slide.description || "No description available"}</p>
-                  </div>
-                </div>
-              </div>
+    return `
+      <div data-slideease-slide-id="${escapeHtml(slide.id)}">
+        <div style="padding:${slidePad};">
+          <article class="slideease-frame se-frame-${escapeHtml(effect || "fade")}" style="--se-height:${height}px;--se-radius:${radius}px;--se-overlay:${escapeHtml(overlayColor)};--se-overlay-opacity:${overlayOpacity};border-radius:${radius}px;">
+            <div class="se-media-wrap">${renderMedia(slide, settings)}</div>
+            <div class="se-overlay" aria-hidden="true">
+              <span class="se-overlay__tint" style="background:${escapeHtml(overlayColor)};opacity:${overlayOpacity};"></span>
+              <span class="se-overlay__grade"></span>
             </div>
-          `,
-            )
-            .join("")}
+            ${
+              hasCopy
+                ? `<div class="se-rise-content se-copy" style="align-items:${justify};text-align:${escapeHtml(align)};color:${textColor};">
+              ${subheading ? `<p class="se-eyebrow">${escapeHtml(subheading)}</p>` : ""}
+              ${heading ? `<h3 class="se-heading">${escapeHtml(heading)}</h3>` : ""}
+              ${description ? `<p class="se-desc">${escapeHtml(description)}</p>` : ""}
+              ${
+                slide.ctaText
+                  ? `<a class="slideease-cta se-cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs} style="--se-cta-bg:${btnBg};--se-cta-color:${btnText};">${escapeHtml(slide.ctaText)}</a>`
+                  : ""
+              }
+            </div>`
+                : ""
+            }
+            ${splitPanels}
+          </article>
         </div>
-        ${thumbnailsHTML}
       </div>
-      
-      <style>
-        /* Slider container styles */
-        .slider-container-${uniqueId} {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        
-        /* Hide default Slick arrows */
-        #${uniqueId}.slick-slider .slick-prev,
-        #${uniqueId}.slick-slider .slick-next {
-          display: none !important;
-        }
-        
-        /* Custom dots styling */
-        #${uniqueId}.slick-slider .slick-dots li button:before {
-          color: #008060;
-          font-size: 12px;
-        }
-        
-        #${uniqueId}.slick-slider .slick-dots li.slick-active button:before {
-          color: #004c3f;
-        }
-        
-        #${uniqueId}.slick-slider .slick-dots {
-          bottom: -45px;
-        }
-        
-        /* Custom button hover effects */
-        .custom-prev-${uniqueId}:hover,
-        .custom-next-${uniqueId}:hover {
-          background: rgba(255, 255, 255, 1) !important;
-          transform: translateY(-50%) scale(1.1) !important;
-        }
-        
-        .custom-prev-${uniqueId}:active,
-        .custom-next-${uniqueId}:active {
-          transform: translateY(-50%) scale(0.95) !important;
-        }
-        
-        /* Responsive button sizing */
-        @media (max-width: 768px) {
-          .custom-prev-${uniqueId},
-          .custom-next-${uniqueId} {
-            width: 35px !important;
-            height: 35px !important;
-            font-size: 16px !important;
-          }
-          
-          .slider-container-${uniqueId} {
-            padding: 0.5rem !important;
-          }
-        }
-        
-        @media (max-width: 480px) {
-          .custom-prev-${uniqueId},
-          .custom-next-${uniqueId} {
-            width: 30px !important;
-            height: 30px !important;
-            font-size: 14px !important;
-          }
-        }
-        
-        /* Smooth transitions for slides */
-        #${uniqueId} .slick-slide {
-          transition: transform 0.3s ease;
-        }
-        
-        /* Loading animation */
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      </style>
     `
-
-    // Insert slider HTML
-    script.insertAdjacentHTML("afterend", sliderHTML)
-
-    // Load dependencies and initialize carousel
-    loadCarouselDependencies(sliderData)
   }
 
-  function loadCarouselDependencies(sliderData) {
-    // Load jQuery if not present
-    if (typeof window.jQuery === "undefined") {
-      const jqueryScript = document.createElement("script")
-      jqueryScript.src = "https://code.jquery.com/jquery-3.6.0.min.js"
-      jqueryScript.onload = () => loadSlickCarousel(sliderData)
-      jqueryScript.onerror = () => {
-        console.error("Failed to load jQuery")
-        fallbackToSimpleSlider()
-      }
-      document.head.appendChild(jqueryScript)
-    } else {
-      loadSlickCarousel(sliderData)
-    }
-  }
-
-  function loadSlickCarousel(sliderData) {
-    // Load Slick CSS files
-    if (!document.querySelector('link[href*="slick.css"]')) {
-      const slickCSS = document.createElement("link")
-      slickCSS.rel = "stylesheet"
-      slickCSS.href = "https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"
-      slickCSS.onload = () => {
-        const slickThemeCSS = document.createElement("link")
-        slickThemeCSS.rel = "stylesheet"
-        slickThemeCSS.href = "https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css"
-        slickThemeCSS.onload = () => loadSlickJS(sliderData)
-        slickThemeCSS.onerror = () => {
-          console.error("Failed to load Slick theme CSS")
-          fallbackToSimpleSlider()
-        }
-        document.head.appendChild(slickThemeCSS)
-      }
-      slickCSS.onerror = () => {
-        console.error("Failed to load Slick CSS")
-        fallbackToSimpleSlider()
-      }
-      document.head.appendChild(slickCSS)
-    } else {
-      loadSlickJS(sliderData)
-    }
-  }
-
-  function loadSlickJS(sliderData) {
-    // Load Slick JS
-    if (typeof window.jQuery === "undefined" || typeof window.jQuery.fn.slick === "undefined") {
-      const slickScript = document.createElement("script")
-      slickScript.src = "https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"
-      slickScript.onload = () => initializeSlickCarousel(sliderData)
-      slickScript.onerror = () => {
-        console.error("Failed to load Slick carousel")
-        fallbackToSimpleSlider()
-      }
-      document.head.appendChild(slickScript)
-    } else {
-      initializeSlickCarousel(sliderData)
-    }
-  }
-
-  function initializeSlickCarousel(sliderData) {
-    const { sliderType } = sliderData
-    const sliderElement = document.getElementById(uniqueId)
-    const thumbnailElement = document.querySelector(`.slider-thumbnails-${uniqueId}`)
-    const prevButton = document.querySelector(`.custom-prev-${uniqueId}`)
-    const nextButton = document.querySelector(`.custom-next-${uniqueId}`)
-
-    if (!sliderElement) {
-      console.error("Slider element not found:", uniqueId)
+  function renderSlider(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      renderMessage("No slides available", "This slider does not have any visible slides yet.")
       return
     }
 
-    console.log("Initializing Slick carousel for:", uniqueId, "Type:", sliderType)
+    trackEvent("view", slides[0]?.id)
+    const { config: slickConfig, effect } = buildSlickConfig(settings)
+    const frameHeight = Math.max(Number(settings.height) || 560, 320)
+    const showArrows = settings.arrows !== false && effect !== "marquee"
+    const showProgress = Boolean(settings.autoplay) && effect !== "marquee" && slides.length > 1
+    const arrowBg = escapeHtml(settings.arrowBg || "rgba(15,23,42,0.55)")
+    const arrowColor = escapeHtml(settings.arrowColor || "#ffffff")
+    const dotColor = escapeHtml(settings.dotColor || "#1a2f4a")
+    const autoplayMs = Number(settings.autoplaySpeed) || 3200
 
-    // Wait for CSS to load
-    setTimeout(() => {
-      try {
-        const $slider = window.jQuery(sliderElement)
+    const thumbs = settings.thumbnails
+      ? `<div class="slideease-thumbs-${uniqueId} se-thumbs" aria-label="Slide thumbnails">${slides
+          .map(
+            (slide) => `
+            <div class="se-thumb">
+              <button type="button" class="se-thumb__btn" tabindex="-1">
+                <img src="${escapeHtml(safeUrl(slide.imageUrl))}" alt="" loading="lazy" />
+              </button>
+            </div>`,
+          )
+          .join("")}</div>`
+      : ""
 
-        // Type-specific configuration - disable default arrows
-        let slickConfig = {
-          arrows: false, // Disable default arrows for all types
+    insertAdjacent(`
+      <section class="slideease-container-${uniqueId} se-root" data-effect="${escapeHtml(effect)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;" aria-roledescription="carousel">
+        ${
+          showArrows
+            ? `
+          <button type="button" class="slideease-prev-${uniqueId} se-nav se-nav--prev" aria-label="Previous slide">${CHEVRON_LEFT}</button>
+          <button type="button" class="slideease-next-${uniqueId} se-nav se-nav--next" aria-label="Next slide">${CHEVRON_RIGHT}</button>
+        `
+            : ""
         }
+        <div id="${uniqueId}" class="slideease-slider-${uniqueId} se-slider">
+          ${slides.map((slide) => renderSlide(slide, settings, effect)).join("")}
+        </div>
+        ${showProgress ? `<div class="se-progress" aria-hidden="true"><span class="se-progress__bar"></span></div>` : ""}
+        ${thumbs}
+        <style>
+          .slideease-container-${uniqueId}.se-root {
+            --se-ease: cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a;
+            isolation: isolate;
+          }
+          .slideease-container-${uniqueId},
+          .slideease-container-${uniqueId} * { box-sizing: border-box; }
+          .slideease-container-${uniqueId} .se-slider,
+          .slideease-container-${uniqueId} .slick-list,
+          .slideease-container-${uniqueId} .slick-track { width: 100% !important; }
+          .slideease-container-${uniqueId} .slick-list { overflow: hidden; }
+          .slideease-container-${uniqueId} .slick-slide > div { height: 100%; }
+          .slideease-container-${uniqueId} .slick-prev,
+          .slideease-container-${uniqueId} .slick-next { display: none !important; }
 
-        switch (sliderType) {
-          case "center":
-            slickConfig = {
-              ...slickConfig,
-              centerMode: true,
-              centerPadding: "60px",
-              slidesToShow: 3,
-              dots: true,
-              infinite: true,
-              responsive: [
-                {
-                  breakpoint: 768,
-                  settings: {
-                    centerMode: true,
-                    centerPadding: "40px",
-                    slidesToShow: 3,
-                  },
-                },
-                {
-                  breakpoint: 480,
-                  settings: {
-                    centerMode: true,
-                    centerPadding: "40px",
-                    slidesToShow: 1,
-                  },
-                },
-              ],
+          .slideease-container-${uniqueId} .slideease-frame {
+            position: relative;
+            width: 100%;
+            height: var(--se-height);
+            min-height: 320px;
+            overflow: hidden;
+            background:
+              radial-gradient(120% 80% at 50% 20%, rgba(255,255,255,0.08), transparent 55%),
+              linear-gradient(145deg, #0b1220 0%, #1a2f4a 55%, #121826 100%);
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+          }
+          .slideease-container-${uniqueId} .se-media-wrap {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+          }
+          .slideease-container-${uniqueId} .se-media {
+            width: 100%;
+            height: 100%;
+            display: block;
+            transform: scale(1.01);
+            transition: transform 6s var(--se-ease);
+          }
+          .slideease-container-${uniqueId} .slick-current .se-media {
+            transform: scale(1);
+          }
+          .slideease-container-${uniqueId} .se-media--empty {
+            background: linear-gradient(135deg, #1a2f4a, #0f172a);
+          }
+
+          .slideease-container-${uniqueId} .se-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+          }
+          .slideease-container-${uniqueId} .se-overlay__tint {
+            position: absolute;
+            inset: 0;
+          }
+          .slideease-container-${uniqueId} .se-overlay__grade {
+            position: absolute;
+            inset: 0;
+            background:
+              linear-gradient(180deg, rgba(0,0,0,0.1) 0%, transparent 30%, transparent 52%, rgba(0,0,0,0.52) 100%),
+              linear-gradient(90deg, rgba(0,0,0,0.22), transparent 40%, transparent 60%, rgba(0,0,0,0.14));
+          }
+
+          .slideease-container-${uniqueId} .se-copy {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.55rem;
+            padding: clamp(1.25rem, 4.5vw, 3.25rem);
+            max-width: 100%;
+          }
+          .slideease-container-${uniqueId} .se-eyebrow {
+            margin: 0;
+            font-size: clamp(0.72rem, 1.1vw, 0.82rem);
+            font-weight: 650;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            opacity: 0.92;
+            text-shadow: 0 1px 10px rgba(0,0,0,0.35);
+          }
+          .slideease-container-${uniqueId} .se-heading {
+            margin: 0;
+            max-width: 16ch;
+            font-size: clamp(1.55rem, 4.2vw, 3rem);
+            font-weight: 750;
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            text-wrap: balance;
+            text-shadow: 0 2px 24px rgba(0,0,0,0.35);
+          }
+          .slideease-container-${uniqueId} .se-desc {
+            margin: 0.15rem 0 0.35rem;
+            max-width: 38rem;
+            font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+            line-height: 1.5;
+            opacity: 0.92;
+            text-shadow: 0 1px 12px rgba(0,0,0,0.3);
+          }
+          .slideease-container-${uniqueId} .se-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 0.35rem;
+            padding: 0.78rem 1.25rem;
+            border-radius: 999px;
+            background: var(--se-cta-bg);
+            color: var(--se-cta-color);
+            text-decoration: none;
+            font-weight: 650;
+            font-size: 0.9rem;
+            letter-spacing: 0.01em;
+            box-shadow: 0 10px 28px rgba(15,23,42,0.22);
+            transition: transform 0.22s var(--se-ease), box-shadow 0.22s ease, filter 0.22s ease;
+          }
+          .slideease-container-${uniqueId} .se-cta:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
+            box-shadow: 0 14px 34px rgba(15,23,42,0.28);
+          }
+          .slideease-container-${uniqueId} .se-cta:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: 3px;
+          }
+
+          .slideease-container-${uniqueId} .se-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 8;
+            width: 46px;
+            height: 46px;
+            border: 1px solid rgba(255,255,255,0.22);
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--se-arrow-color);
+            background: var(--se-arrow-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(15,23,42,0.22);
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s var(--se-ease), background 0.2s ease;
+          }
+          .slideease-container-${uniqueId}:hover .se-nav,
+          .slideease-container-${uniqueId}:focus-within .se-nav { opacity: 1; }
+          .slideease-container-${uniqueId} .se-nav--prev { left: clamp(10px, 1.6vw, 22px); }
+          .slideease-container-${uniqueId} .se-nav--next { right: clamp(10px, 1.6vw, 22px); }
+          .slideease-container-${uniqueId} .se-nav:hover { transform: translateY(-50%) scale(1.05); }
+          .slideease-container-${uniqueId} .se-nav:focus-visible {
+            opacity: 1;
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+          }
+
+          .slideease-container-${uniqueId} .slideease-dots-${uniqueId} {
+            position: absolute;
+            left: 50%;
+            bottom: 18px;
+            transform: translateX(-50%);
+            z-index: 7;
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            padding: 8px 10px;
+            list-style: none;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.28);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.14);
+          }
+          .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li {
+            margin: 0;
+            width: auto;
+            height: auto;
+          }
+          .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li button {
+            display: block;
+            width: auto;
+            height: auto;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+          }
+          .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li button:before { display: none; content: none; }
+          .slideease-container-${uniqueId} .se-dot {
+            display: block;
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.45);
+            transition: width 0.3s var(--se-ease), background 0.25s ease, transform 0.25s ease;
+          }
+          .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li.slick-active .se-dot {
+            width: 22px;
+            background: #fff;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
+          }
+
+          .slideease-container-${uniqueId} .se-progress {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 3px;
+            z-index: 9;
+            background: rgba(255,255,255,0.18);
+            overflow: hidden;
+          }
+          .slideease-container-${uniqueId} .se-progress__bar {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #fff, #cbd5e1);
+            transform-origin: left center;
+          }
+          .slideease-container-${uniqueId}.se-progress-run .se-progress__bar {
+            animation: seProgress var(--se-autoplay) linear forwards;
+          }
+          @keyframes seProgress { from { width: 0%; } to { width: 100%; } }
+
+          .slideease-container-${uniqueId} .se-thumbs {
+            margin-top: 14px;
+            padding: 0 4px;
+          }
+          .slideease-container-${uniqueId} .se-thumb { padding: 0 5px; }
+          .slideease-container-${uniqueId} .se-thumb__btn {
+            display: block;
+            width: 100%;
+            padding: 0;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #0f172a;
+            cursor: pointer;
+            opacity: 0.72;
+            transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+          }
+          .slideease-container-${uniqueId} .slick-current .se-thumb__btn,
+          .slideease-container-${uniqueId} .se-thumbs .slick-current .se-thumb__btn {
+            opacity: 1;
+            border-color: var(--se-dot);
+            transform: translateY(-1px);
+          }
+          .slideease-container-${uniqueId} .se-thumb__btn img {
+            width: 100%;
+            height: 68px;
+            object-fit: cover;
+            display: block;
+          }
+
+          @keyframes seCdnFade { from { opacity: 0.15; } to { opacity: 1; } }
+          @keyframes seCdnZoom { from { opacity: 0.2; transform: scale(1.12); } to { opacity: 1; transform: scale(1); } }
+          @keyframes seCdnFlip { from { opacity: 0; transform: perspective(1100px) rotateY(78deg); } to { opacity: 1; transform: perspective(1100px) rotateY(0); } }
+          @keyframes seCdnCube { from { opacity: 0.25; transform: perspective(1100px) rotateX(62deg); } to { opacity: 1; transform: perspective(1100px) rotateX(0); } }
+          @keyframes seCdnRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes seCdnKen { from { transform: scale(1); } to { transform: scale(1.12) translate(-1%, -0.8%); } }
+          @keyframes seCdnBlur { from { filter: blur(12px); opacity: 0.45; } to { filter: blur(0); opacity: 1; } }
+          @keyframes seCdnWipe { from { clip-path: polygon(0 0, 0 0, -18% 100%, 0 100%); } to { clip-path: polygon(0 0, 118% 0, 100% 100%, 0 100%); } }
+          @keyframes seCdnSplitL { from { transform: translateX(0); } to { transform: translateX(-102%); } }
+          @keyframes seCdnSplitR { from { transform: translateX(0); } to { transform: translateX(102%); } }
+          @keyframes seCopyIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+          .slideease-container-${uniqueId} .slick-current .se-frame-fade { animation: seCdnFade 0.7s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-zoom { animation: seCdnZoom 0.75s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-flip { animation: seCdnFlip 0.8s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-cube { animation: seCdnCube 0.85s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-blur-reveal { animation: seCdnBlur 0.9s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-wipe { animation: seCdnWipe 0.9s cubic-bezier(0.65,0,0.35,1); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-ken-burns .se-media { animation: seCdnKen 5.2s ease-out forwards; }
+          .slideease-container-${uniqueId} .slick-current .se-copy > * { animation: seCopyIn 0.65s var(--se-ease) both; }
+          .slideease-container-${uniqueId} .slick-current .se-copy > *:nth-child(2) { animation-delay: 0.07s; }
+          .slideease-container-${uniqueId} .slick-current .se-copy > *:nth-child(3) { animation-delay: 0.14s; }
+          .slideease-container-${uniqueId} .slick-current .se-copy > *:nth-child(4) { animation-delay: 0.2s; }
+          .slideease-container-${uniqueId} .slick-current .se-frame-slide-up .se-copy > * { animation-name: seCdnRise; }
+
+          .slideease-container-${uniqueId} .se-split-panel {
+            position: absolute; top: 0; bottom: 0; width: 52%; z-index: 4; pointer-events: none;
+            background: linear-gradient(135deg, #0b1220, #1a2f4a);
+          }
+          .slideease-container-${uniqueId} .se-split-panel--left { left: 0; }
+          .slideease-container-${uniqueId} .se-split-panel--right { right: 0; }
+          .slideease-container-${uniqueId} .slick-current .se-split-panel--left { animation: seCdnSplitL 0.8s cubic-bezier(0.65,0,0.35,1) forwards; }
+          .slideease-container-${uniqueId} .slick-current .se-split-panel--right { animation: seCdnSplitR 0.8s cubic-bezier(0.65,0,0.35,1) forwards; }
+
+          .slideease-container-${uniqueId}[data-effect="coverflow"] .slick-slide:not(.slick-center) .slideease-frame {
+            transform: scale(0.9) rotateY(12deg);
+            opacity: 0.72;
+            transition: transform 0.5s var(--se-ease), opacity 0.4s ease;
+          }
+          .slideease-container-${uniqueId}[data-effect="coverflow"] .slick-center .slideease-frame,
+          .slideease-container-${uniqueId}[data-effect="center"] .slick-center .slideease-frame {
+            transform: scale(1.02);
+            transition: transform 0.5s var(--se-ease);
+          }
+
+          @media (max-width: 768px) {
+            .slideease-container-${uniqueId} .slideease-frame {
+              height: max(300px, min(var(--se-height), 78vw));
+              min-height: 300px;
             }
-            break
+            .slideease-container-${uniqueId} .se-nav { opacity: 1; width: 40px; height: 40px; }
+            .slideease-container-${uniqueId} .se-heading { max-width: 100%; }
+            .slideease-container-${uniqueId} .slideease-dots-${uniqueId} { bottom: 12px; padding: 6px 8px; }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .slideease-container-${uniqueId} *,
+            .slideease-container-${uniqueId} .se-progress__bar { animation: none !important; transition: none !important; }
+          }
+        </style>
+      </section>
+    `)
 
-          case "multiple-items":
-            slickConfig = {
-              ...slickConfig,
-              infinite: true,
-              slidesToShow: 3,
-              slidesToScroll: 3,
-              dots: true,
-              responsive: [
-                {
-                  breakpoint: 1024,
-                  settings: {
-                    slidesToShow: 2,
-                    slidesToScroll: 2,
-                    infinite: true,
-                    dots: true,
-                  },
-                },
-                {
-                  breakpoint: 768,
-                  settings: {
-                    slidesToShow: 1,
-                    slidesToScroll: 1,
-                  },
-                },
-                {
-                  breakpoint: 480,
-                  settings: {
-                    slidesToShow: 1,
-                    slidesToScroll: 1,
-                  },
-                },
-              ],
-            }
-            break
+    const root = document.querySelector(`.slideease-container-${uniqueId}`)
 
-          case "fade":
-            slickConfig = {
-              ...slickConfig,
-              dots: true,
-              infinite: true,
-              speed: 500,
-              fade: true,
-              cssEase: "linear",
-              slidesToShow: 1,
-              slidesToScroll: 1,
-            }
-            break
+    document.querySelectorAll(`.slideease-container-${uniqueId} .slideease-cta`).forEach((el) => {
+      el.addEventListener("click", () => {
+        trackEvent("cta_click", el.getAttribute("data-slide-id"))
+      })
+    })
 
-          case "autoplay":
-            slickConfig = {
-              ...slickConfig,
-              slidesToShow: 3,
-              slidesToScroll: 1,
-              autoplay: true,
-              autoplaySpeed: 2000,
-              dots: true,
-              pauseOnHover: true,
-              responsive: [
-                {
-                  breakpoint: 768,
-                  settings: {
-                    slidesToShow: 2,
-                  },
-                },
-                {
-                  breakpoint: 480,
-                  settings: {
-                    slidesToShow: 1,
-                  },
-                },
-              ],
-            }
-            break
+    const restartProgress = () => {
+      if (!root || !showProgress) return
+      root.classList.remove("se-progress-run")
+      void root.offsetWidth
+      root.classList.add("se-progress-run")
+    }
 
-          case "lazy":
-            slickConfig = {
-              ...slickConfig,
-              lazyLoad: "ondemand",
-              slidesToShow: 3,
-              slidesToScroll: 1,
-              dots: true,
-              responsive: [
-                {
-                  breakpoint: 768,
-                  settings: {
-                    slidesToShow: 2,
-                  },
-                },
-                {
-                  breakpoint: 480,
-                  settings: {
-                    slidesToShow: 1,
-                  },
-                },
-              ],
-            }
-            break
-
-          case "variable-width":
-            slickConfig = {
-              ...slickConfig,
-              dots: true,
-              speed: 100,
-              slidesToShow: 1,
-              variableWidth: true,
-            }
-            break
-
-          case "vertical":
-            slickConfig = {
-              ...slickConfig,
-              dots: true,
-              vertical: true,
-              slidesToShow: 1,
-              slidesToScroll: 1,
-            }
-            break
-
-          case "thumbnails":
-            slickConfig = {
-              ...slickConfig,
-              slidesToShow: 1,
-              slidesToScroll: 1,
-              fade: true,
-              asNavFor: `.slider-thumbnails-${uniqueId}`,
-            }
-            break
-
-          default:
-            slickConfig = {
-              ...slickConfig,
-              centerMode: true,
-              centerPadding: "60px",
-              slidesToShow: 3,
-              dots: true,
-              infinite: true,
-              responsive: [
-                {
-                  breakpoint: 768,
-                  settings: {
-                    centerMode: true,
-                    centerPadding: "40px",
-                    slidesToShow: 3,
-                  },
-                },
-                {
-                  breakpoint: 480,
-                  settings: {
-                    centerMode: true,
-                    centerPadding: "40px",
-                    slidesToShow: 1,
-                  },
-                },
-              ],
-            }
-        }
-
-        console.log("Slick config:", slickConfig)
-
-        // Initialize Slick with custom configuration
+    Promise.resolve()
+      .then(() => loadScriptOnce("https://code.jquery.com/jquery-3.6.0.min.js"))
+      .then(() => {
+        loadCssOnce("https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css")
+        loadCssOnce("https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css")
+        return loadScriptOnce("https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js")
+      })
+      .then(() => {
+        const $slider = window.jQuery(`#${uniqueId}`)
+        $slider.attr("data-effect", effect)
         $slider.slick(slickConfig)
 
-        // Attach custom button click handlers
-        if (prevButton) {
-          prevButton.addEventListener("click", () => {
-            $slider.slick("slickPrev")
-          })
-        }
-
-        if (nextButton) {
-          nextButton.addEventListener("click", () => {
-            $slider.slick("slickNext")
-          })
-        }
-
-        // Initialize thumbnail navigation if needed
-        if (sliderType === "thumbnails" && thumbnailElement) {
-          window.jQuery(thumbnailElement).slick({
-            slidesToShow: 5,
+        if (settings.thumbnails) {
+          window.jQuery(`.slideease-thumbs-${uniqueId}`).slick({
+            slidesToShow: Math.min(6, slides.length),
             slidesToScroll: 1,
             asNavFor: `#${uniqueId}`,
             dots: false,
-            centerMode: true,
+            centerMode: slides.length > 4,
             focusOnSelect: true,
             arrows: false,
           })
         }
 
-        console.log("Slick carousel initialized successfully with custom buttons")
-      } catch (error) {
-        console.error("Error initializing Slick carousel:", error)
-        fallbackToSimpleSlider()
-      }
-    }, 500)
-  }
+        document.querySelector(`.slideease-prev-${uniqueId}`)?.addEventListener("click", () => $slider.slick("slickPrev"))
+        document.querySelector(`.slideease-next-${uniqueId}`)?.addEventListener("click", () => $slider.slick("slickNext"))
 
-  function fallbackToSimpleSlider() {
-    console.log("Falling back to simple slider")
-    const sliderElement = document.getElementById(uniqueId)
-    if (sliderElement) {
-      sliderElement.style.display = "flex"
-      sliderElement.style.overflowX = "auto"
-      sliderElement.style.scrollBehavior = "smooth"
-      sliderElement.style.gap = "1rem"
-      sliderElement.style.padding = "1rem 0"
-      sliderElement.style.scrollSnapType = "x mandatory"
+        restartProgress()
+        $slider.on("beforeChange", () => {
+          if (root) root.classList.remove("se-progress-run")
+        })
+        $slider.on("afterChange", (_e, _slick, current) => {
+          const slide = slides[current]
+          if (slide?.id) trackEvent("view", slide.id)
+          restartProgress()
+        })
 
-      const slides = sliderElement.querySelectorAll("div")
-      slides.forEach((slide) => {
-        slide.style.scrollSnapAlign = "center"
-        slide.style.flexShrink = "0"
-        slide.style.width = "300px"
+        document.addEventListener("shopify:section:unload", () => {
+          if ($slider.hasClass("slick-initialized")) $slider.slick("unslick")
+        })
       })
-    }
+      .catch(() => {
+        renderMessage("Slider unavailable", "Could not load slider dependencies.")
+      })
   }
 
-  function renderEmptySlider() {
-    const emptyHTML = `
-      <div id="${uniqueId}" style="
-        text-align: center;
-        padding: 3rem 2rem;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 16px;
-        margin: 2rem auto;
-        max-width: 600px;
-        color: #666;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      ">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">🎠</div>
-        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; color: #333;">No slides available</h2>
-        <p style="margin: 0; color: #666;">This slider doesn't have any slides yet.</p>
-      </div>
-    `
-    script.insertAdjacentHTML("afterend", emptyHTML)
+  if (!sliderId) {
+    renderMessage("Slider misconfigured", "Missing slider id.")
+    return
   }
 
-  function renderErrorSlider(errorMessage) {
-    const errorHTML = `
-      <div>
-        
-      </div>
-    `
-    script.insertAdjacentHTML("afterend", errorHTML)
+  if (!shop) {
+    renderMessage("Slider misconfigured", "Missing shop domain.")
+    return
   }
+
+  renderLoading()
+
+  fetch(apiUrl)
+    .then((response) => {
+      if (!response.ok) throw new Error("Slider not found")
+      return response.json()
+    })
+    .then((data) => {
+      removeNode(`${uniqueId}-loading`)
+      if (data.error) {
+        renderMessage("Slider unavailable", data.error)
+        return
+      }
+      renderSlider(data)
+    })
+    .catch(() => {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("Slider unavailable", "Unable to load this slider.")
+    })
 })()

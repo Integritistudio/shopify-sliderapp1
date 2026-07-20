@@ -16,7 +16,6 @@
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^7.1.2",
     "@shopify/app": "^3.48.0",
-    "@shopify/cli": "^3.48.0",
     "cors": "^2.8.5",
     "dotenv": "^17.1.0",
     "jquery": "^3.7.1",
@@ -28,5 +27,8 @@
     "extensions/*",
     "web",
     "web/frontend"
-  ]
+  ],
+  "devDependencies": {
+    "@shopify/cli": "^4.5.2"
+  }
 }

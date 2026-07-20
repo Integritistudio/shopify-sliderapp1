@@ -179,6 +179,220 @@ const migrations = {
       await queryInterface.removeColumn("Sliders", "shop")
     },
   },
+
+  "005-enhance-slider-settings": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Sliders")
+
+      if (!columns.settings) {
+        await queryInterface.addColumn("Sliders", "settings", {
+          type: DataTypes.JSONB,
+          allowNull: false,
+          defaultValue: {},
+        })
+      }
+
+      if (!columns.status) {
+        await queryInterface.addColumn("Sliders", "status", {
+          type: DataTypes.STRING,
+          allowNull: false,
+          defaultValue: "published",
+        })
+      }
+
+      if (!columns.sortOrder) {
+        await queryInterface.addColumn("Sliders", "sortOrder", {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 0,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Sliders")
+      if (columns.settings) await queryInterface.removeColumn("Sliders", "settings")
+      if (columns.status) await queryInterface.removeColumn("Sliders", "status")
+      if (columns.sortOrder) await queryInterface.removeColumn("Sliders", "sortOrder")
+    },
+  },
+
+  "006-enhance-slide-fields": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      const addIfMissing = async (name, definition) => {
+        if (!columns[name]) {
+          await queryInterface.addColumn("Slides", name, definition)
+        }
+      }
+
+      await addIfMissing("heading", { type: DataTypes.STRING, allowNull: true, defaultValue: "" })
+      await addIfMissing("subheading", { type: DataTypes.STRING, allowNull: true, defaultValue: "" })
+      await addIfMissing("ctaText", { type: DataTypes.STRING, allowNull: true, defaultValue: "" })
+      await addIfMissing("ctaUrl", { type: DataTypes.TEXT, allowNull: true, defaultValue: "" })
+      await addIfMissing("ctaStyle", { type: DataTypes.STRING, allowNull: false, defaultValue: "primary" })
+      await addIfMissing("textAlign", { type: DataTypes.STRING, allowNull: false, defaultValue: "center" })
+      await addIfMissing("overlayColor", { type: DataTypes.STRING, allowNull: false, defaultValue: "#000000" })
+      await addIfMissing("overlayOpacity", { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0.3 })
+      await addIfMissing("textColor", { type: DataTypes.STRING, allowNull: false, defaultValue: "#ffffff" })
+      await addIfMissing("buttonBg", { type: DataTypes.STRING, allowNull: false, defaultValue: "#008060" })
+      await addIfMissing("buttonTextColor", { type: DataTypes.STRING, allowNull: false, defaultValue: "#ffffff" })
+      await addIfMissing("imageAlt", { type: DataTypes.STRING, allowNull: true, defaultValue: "" })
+      await addIfMissing("shopifyFileId", { type: DataTypes.STRING, allowNull: true })
+      await addIfMissing("position", { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 })
+      await addIfMissing("isVisible", { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true })
+
+      // Widen imageUrl for long CDN URLs
+      try {
+        await queryInterface.changeColumn("Slides", "imageUrl", {
+          type: DataTypes.TEXT,
+          allowNull: false,
+        })
+      } catch (error) {
+        console.warn("Could not change imageUrl column type:", error.message)
+      }
+
+      try {
+        await queryInterface.addIndex("Slides", ["SliderId", "position"], {
+          name: "slides_slider_position_index",
+        })
+      } catch (error) {
+        if (!String(error.message).includes("already exists")) {
+          console.warn("Could not add slides position index:", error.message)
+        }
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      const removeIfExists = async (name) => {
+        if (columns[name]) await queryInterface.removeColumn("Slides", name)
+      }
+      try {
+        await queryInterface.removeIndex("Slides", "slides_slider_position_index")
+      } catch {
+        // ignore
+      }
+      for (const name of [
+        "heading",
+        "subheading",
+        "ctaText",
+        "ctaUrl",
+        "ctaStyle",
+        "textAlign",
+        "overlayColor",
+        "overlayOpacity",
+        "textColor",
+        "buttonBg",
+        "buttonTextColor",
+        "imageAlt",
+        "shopifyFileId",
+        "position",
+        "isVisible",
+      ]) {
+        await removeIfExists(name)
+      }
+    },
+  },
+
+  "007-cta-resource-and-video": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      const addIfMissing = async (name, definition) => {
+        if (!columns[name]) {
+          await queryInterface.addColumn("Slides", name, definition)
+        }
+      }
+
+      await addIfMissing("ctaResourceType", { type: DataTypes.STRING, allowNull: true })
+      await addIfMissing("ctaResourceId", { type: DataTypes.STRING, allowNull: true })
+      await addIfMissing("ctaOpenInNewTab", {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      })
+      await addIfMissing("mediaType", {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "image",
+      })
+      await addIfMissing("videoUrl", { type: DataTypes.TEXT, allowNull: true, defaultValue: "" })
+      await addIfMissing("videoProvider", { type: DataTypes.STRING, allowNull: true })
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      for (const name of [
+        "ctaResourceType",
+        "ctaResourceId",
+        "ctaOpenInNewTab",
+        "mediaType",
+        "videoUrl",
+        "videoProvider",
+      ]) {
+        if (columns[name]) await queryInterface.removeColumn("Slides", name)
+      }
+    },
+  },
+
+  "008-brand-kit-onboarding-analytics": {
+    up: async (queryInterface) => {
+      const tables = await queryInterface.showAllTables()
+      const normalized = tables.map((t) => (typeof t === "string" ? t : t.tableName || t.name))
+
+      if (!normalized.includes("BrandKits")) {
+        await queryInterface.createTable("BrandKits", {
+          id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+          shop: { type: DataTypes.STRING, allowNull: false, unique: true },
+          textColor: { type: DataTypes.STRING, allowNull: false, defaultValue: "#ffffff" },
+          buttonBg: { type: DataTypes.STRING, allowNull: false, defaultValue: "#008060" },
+          buttonTextColor: { type: DataTypes.STRING, allowNull: false, defaultValue: "#ffffff" },
+          overlayColor: { type: DataTypes.STRING, allowNull: false, defaultValue: "#000000" },
+          overlayOpacity: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0.35 },
+          borderRadius: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 12 },
+          fontNote: { type: DataTypes.STRING, allowNull: true, defaultValue: "" },
+          createdAt: { type: DataTypes.DATE, allowNull: false },
+          updatedAt: { type: DataTypes.DATE, allowNull: false },
+        })
+      }
+
+      if (!normalized.includes("ShopOnboardings")) {
+        await queryInterface.createTable("ShopOnboardings", {
+          id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+          shop: { type: DataTypes.STRING, allowNull: false, unique: true },
+          createdSlider: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+          addedSlide: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+          publishedSlider: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+          embeddedTheme: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+          dismissed: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+          createdAt: { type: DataTypes.DATE, allowNull: false },
+          updatedAt: { type: DataTypes.DATE, allowNull: false },
+        })
+      }
+
+      if (!normalized.includes("AnalyticsEvents")) {
+        await queryInterface.createTable("AnalyticsEvents", {
+          id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+          shop: { type: DataTypes.STRING, allowNull: false },
+          sliderId: { type: DataTypes.INTEGER, allowNull: false },
+          slideId: { type: DataTypes.INTEGER, allowNull: true },
+          eventType: { type: DataTypes.STRING, allowNull: false },
+          createdAt: { type: DataTypes.DATE, allowNull: false },
+        })
+        try {
+          await queryInterface.addIndex("AnalyticsEvents", ["shop", "sliderId", "eventType"], {
+            name: "analytics_shop_slider_type_index",
+          })
+        } catch (error) {
+          if (!String(error.message).includes("already exists")) {
+            console.warn("Could not add analytics index:", error.message)
+          }
+        }
+      }
+    },
+    down: async (queryInterface) => {
+      await queryInterface.dropTable("AnalyticsEvents")
+      await queryInterface.dropTable("ShopOnboardings")
+      await queryInterface.dropTable("BrandKits")
+    },
+  },
 }
 
 // Run pending migrations

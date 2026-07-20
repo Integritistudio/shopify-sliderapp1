@@ -1,7 +1,9 @@
 import Slider from "./Slider.js"
 import Slide from "./Slide.js"
+import BrandKit from "./BrandKit.js"
+import ShopOnboarding from "./ShopOnboarding.js"
+import AnalyticsEvent from "./AnalyticsEvent.js"
 
-// Define relationships
 Slider.hasMany(Slide, {
   foreignKey: "SliderId",
   onDelete: "CASCADE",
@@ -13,4 +15,4 @@ Slide.belongsTo(Slider, {
   as: "slider",
 })
 
-export { Slider, Slide }
+export { Slider, Slide, BrandKit, ShopOnboarding, AnalyticsEvent }

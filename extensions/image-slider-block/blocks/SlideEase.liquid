@@ -1,5 +1,20 @@
-
-<script src="https://slideease.integritistudio.us/slider-cdn.js?id={{ block.settings.slider_id }}"></script>
+{% if block.settings.enable_slider %}
+  <div
+    class="slideease-app-block"
+    data-slider-id="{{ block.settings.slider_id | escape }}"
+    style="width: 100%; max-width: 100%; margin-top: {{ block.settings.padding_top }}px; margin-bottom: {{ block.settings.padding_bottom }}px;"
+  >
+    {% if block.settings.heading != blank %}
+      <h2 class="slideease-heading" style="text-align: center; margin: 0 0 1rem; font-size: clamp(1.25rem, 2.5vw, 1.75rem); letter-spacing: -0.02em;">
+        {{ block.settings.heading | escape }}
+      </h2>
+    {% endif %}
+    <script
+      src="https://classes-sign-vehicle-minute.trycloudflare.com/slider-cdn.js?id={{ block.settings.slider_id | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&v=2"
+      defer
+    ></script>
+  </div>
+{% endif %}
 
 {% schema %}
 {
@@ -10,9 +25,40 @@
       "type": "text",
       "id": "slider_id",
       "label": "Slider ID",
-      "info": "Enter the numeric ID of the slider you want to display"
+      "info": "Paste the numeric Slider ID from the SlideEase app"
     },
-   
+    {
+      "type": "checkbox",
+      "id": "enable_slider",
+      "label": "Enable slider",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Optional heading",
+      "info": "Leave empty to hide the heading"
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "label": "Top spacing",
+      "default": 16
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "label": "Bottom spacing",
+      "default": 16
+    }
   ]
 }
 {% endschema %}

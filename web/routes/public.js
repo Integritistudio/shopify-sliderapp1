@@ -1,44 +1,118 @@
 import express from "express"
-import { Slider, Slide } from "../models/index.js"
+import { Slider, Slide, AnalyticsEvent } from "../models/index.js"
 import { corsHeaders } from "../middleware/cors.js"
+import { mergeSliderSettings, SLIDE_ATTRIBUTES } from "../utils/sliderDefaults.js"
+import { normalizeShopDomain } from "../utils/validation.js"
 
 const router = express.Router()
 
-// Public API endpoint for CDN script (no authentication required)
-router.get("/api/public/slider/:sliderId", corsHeaders, async (req, res) => {
+const rateBuckets = new Map()
+
+function rateLimitPublic(req, res, next) {
+  const key = `${req.ip}:${req.path}`
+  const now = Date.now()
+  const windowMs = 60_000
+  const max = 120
+  const bucket = rateBuckets.get(key) || { count: 0, start: now }
+  if (now - bucket.start > windowMs) {
+    bucket.count = 0
+    bucket.start = now
+  }
+  bucket.count += 1
+  rateBuckets.set(key, bucket)
+  if (bucket.count > max) {
+    return res.status(429).json({ error: "Too many requests" })
+  }
+  next()
+}
+
+router.get("/api/public/slider/:sliderId", corsHeaders, rateLimitPublic, async (req, res) => {
   try {
     const { sliderId } = req.params
-    console.log(`Public API: Fetching slider ${sliderId}`)
+    const shop = normalizeShopDomain(req.query.shop)
 
-    const slider = await Slider.findByPk(sliderId, {
+    if (!shop) {
+      return res.status(400).json({ error: "Missing required shop query parameter" })
+    }
+
+    const slider = await Slider.findOne({
+      where: {
+        id: sliderId,
+        shop,
+        status: "published",
+      },
       include: [
         {
           model: Slide,
           as: "slides",
-          attributes: ["id", "imageUrl", "title", "description"],
+          attributes: SLIDE_ATTRIBUTES,
           required: false,
         },
+      ],
+      order: [
+        [{ model: Slide, as: "slides" }, "position", "ASC"],
+        [{ model: Slide, as: "slides" }, "id", "ASC"],
       ],
     })
 
     if (!slider) {
-      console.log(`Slider ${sliderId} not found`)
       return res.status(404).json({ error: "Slider not found" })
     }
 
-    // Return only necessary data for the widget
-    const response = {
-      id: slider.id,
-      name: slider.name,
-      sliderType: slider.sliderType,
-      slides: slider.slides || [],
-    }
-
-    console.log(`Returning slider data:`, response)
-    res.json(response)
+    const data = slider.get({ plain: true })
+    res.json({
+      id: data.id,
+      name: data.name,
+      sliderType: data.sliderType,
+      settings: mergeSliderSettings(data.sliderType, data.settings || {}),
+      slides: (data.slides || []).filter((slide) => slide.isVisible !== false),
+    })
   } catch (error) {
     console.error("Error fetching public slider:", error)
-    res.status(500).json({ error: "Failed to fetch slider", details: error.message })
+    res.status(500).json({ error: "Failed to fetch slider" })
+  }
+})
+
+router.post("/api/public/events", corsHeaders, rateLimitPublic, async (req, res) => {
+  try {
+    const shop = normalizeShopDomain(req.body?.shop || req.query.shop)
+    const sliderId = Number.parseInt(req.body?.sliderId, 10)
+    const slideId = req.body?.slideId != null ? Number.parseInt(req.body.slideId, 10) : null
+    const eventType = String(req.body?.type || "").trim()
+
+    if (!shop || !sliderId || !["view", "cta_click"].includes(eventType)) {
+      return res.status(400).json({ error: "shop, sliderId, and type (view|cta_click) are required" })
+    }
+
+    const slider = await Slider.findOne({
+      where: { id: sliderId, shop, status: "published" },
+      attributes: ["id"],
+    })
+    if (!slider) {
+      return res.status(404).json({ error: "Slider not found" })
+    }
+
+    if (slideId != null && !Number.isNaN(slideId)) {
+      const slide = await Slide.findOne({
+        where: { id: slideId, SliderId: sliderId },
+        attributes: ["id"],
+      })
+      if (!slide) {
+        return res.status(404).json({ error: "Slide not found" })
+      }
+    }
+
+    await AnalyticsEvent.create({
+      shop,
+      sliderId,
+      slideId: Number.isFinite(slideId) ? slideId : null,
+      eventType,
+    })
+
+    res.status(204).end()
+  } catch (error) {
+    console.error("Error recording public event:", error)
+    res.status(500).json({ error: "Failed to record event" })
   }
 })
 

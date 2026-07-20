@@ -1,26 +1,23 @@
 {
-  "name": "Dynamic Slider Extension",
+  "name": "SlideEase Slider",
   "settings": {
-    "slider_block": {
-      "name": "Dynamic Slider",
-      "settings": {
-        "slider_id": {
-          "label": "Slider ID",
-          "info": "Enter the ID of the slider you want to display"
-        },
-        "slider_type": {
-          "label": "Slider Type",
-          "info": "Choose the type of slider animation"
-        },
-        "cdn_url": {
-          "label": "CDN Base URL",
-          "info": "The base URL for your slider CDN (without trailing slash)"
-        },
-        "enable_slider": {
-          "label": "Enable Slider",
-          "info": "Toggle to enable or disable this slider"
-        }
-      }
+    "slider_id": {
+      "label": "Slider ID",
+      "info": "Paste the numeric Slider ID from the SlideEase app"
+    },
+    "enable_slider": {
+      "label": "Enable slider",
+      "info": "Toggle to show or hide this slider block"
+    },
+    "heading": {
+      "label": "Optional heading",
+      "info": "Optional heading shown above the slider"
+    },
+    "padding_top": {
+      "label": "Top spacing"
+    },
+    "padding_bottom": {
+      "label": "Bottom spacing"
     }
   }
 }

@@ -1,512 +1,332 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Page, Stack, Heading, Button, Text, Badge, Spinner } from "@shopify/polaris"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { Page, Stack, Text, Spinner, TextField, Banner } from "@shopify/polaris"
 import { ToastProvider, useToast } from "../contexts/toast-context"
-import SliderSection from "../components/slider-section"
-import CreateSliderModal from "../components/create-slider-modal"
+import CreateSliderPanel from "../components/create-slider-panel"
+import OnboardingChecklist from "../components/onboarding-checklist"
+import { getSliderTypeInfo } from "../utils/sliderConfig"
+import {
+  IconPlus,
+  IconEdit,
+  IconCopy,
+  IconTrash,
+  IconClose,
+  IconPalette,
+  IconBook,
+  IconLayers,
+} from "../components/icons"
 
-function SliderPageContent() {
+function SlidersIndexContent() {
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const [sliders, setSliders] = useState([])
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [query, setQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [showCreate, setShowCreate] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [duplicatingId, setDuplicatingId] = useState(null)
+  const [metricsSummary, setMetricsSummary] = useState(null)
+
+  const fetchSliders = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch("/api/sliders")
+      if (!response.ok) throw new Error("Failed to fetch sliders")
+      const data = await response.json()
+      setSliders(Array.isArray(data) ? data : [])
+      fetch("/api/metrics/summary")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((m) => m && setMetricsSummary(m))
+        .catch(() => {})
+    } catch (err) {
+      setError(err.message)
+      showToast(err.message, { error: true })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     fetchSliders()
   }, [])
 
-  const fetchSliders = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return sliders.filter((slider) => {
+      if (statusFilter === "published" && slider.status !== "published") return false
+      if (statusFilter === "draft" && slider.status !== "draft") return false
+      if (!q) return true
+      return (
+        slider.name?.toLowerCase().includes(q) ||
+        String(slider.id).includes(q) ||
+        slider.sliderType?.toLowerCase().includes(q)
+      )
+    })
+  }, [sliders, query, statusFilter])
 
-      const response = await fetch("/api/sliders", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sliders: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      console.log("Fetched sliders data:", data)
-
-      const validatedSliders = data.map((slider) => ({
-        id: slider.id,
-        name: slider.name || "Unnamed Slider",
-        sliderType: slider.sliderType || "center",
-        isExpanded: Boolean(slider.isExpanded),
-        shop: slider.shop,
-        slides: Array.isArray(slider.slides)
-          ? slider.slides
-            .filter((slide) => slide && slide.id)
-            .map((slide) => ({
-              id: slide.id,
-              imageUrl: slide.imageUrl || "",
-              title: slide.title || "",
-              description: slide.description || "",
-              createdAt: slide.createdAt,
-            }))
-          : [],
-        createdAt: slider.createdAt,
-        updatedAt: slider.updatedAt,
-      }))
-
-      setSliders(validatedSliders)
-
-      if (validatedSliders.length === 0) {
-        showToast("No sliders found. Create your first slider to get started!")
-      }
-    } catch (err) {
-      console.error("Fetch error:", err)
-      setError(err.message)
-      showToast(`Error fetching sliders: ${err.message}`, { error: true })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const totalSlides = useMemo(
+    () => sliders.reduce((sum, s) => sum + (s.slides?.length || 0), 0),
+    [sliders],
+  )
 
   const createSlider = async (name, sliderType) => {
+    const response = await fetch("/api/sliders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        sliderType,
+        status: "draft",
+      }),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || "Failed to create slider")
+    }
+    const slider = await response.json()
+    showToast(`Slider "${slider.name}" created`)
+    setShowCreate(false)
+    navigate(`/sliders/${slider.id}`)
+  }
+
+  const duplicateSlider = async (slider) => {
     try {
-      if (!name || !name.trim()) {
-        throw new Error("Slider name is required")
-      }
-
-      const response = await fetch("/api/sliders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          sliderType: sliderType || "center",
-        }),
-      })
-
+      setDuplicatingId(slider.id)
+      const response = await fetch(`/api/sliders/${slider.id}/duplicate`, { method: "POST" })
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `Failed to create slider: ${response.status}`)
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to duplicate slider")
       }
-
-      const newSlider = await response.json()
-      console.log("Created new slider:", newSlider)
-
-      const formattedSlider = {
-        id: newSlider.id,
-        name: newSlider.name,
-        sliderType: newSlider.sliderType || "center",
-        isExpanded: newSlider.isExpanded || false,
-        shop: newSlider.shop,
-        slides: [],
-        createdAt: newSlider.createdAt,
-        updatedAt: newSlider.updatedAt,
-      }
-
-      setSliders((prev) => [...prev, formattedSlider])
-      setIsCreateModalOpen(false)
-      showToast(`Slider "${newSlider.name}" created successfully!`)
+      const copy = await response.json()
+      setSliders((prev) => [copy, ...prev])
+      showToast(`Duplicated as "${copy.name}"`)
+      navigate(`/sliders/${copy.id}`)
     } catch (err) {
-      console.error("Create slider error:", err)
-      showToast(`Failed to create slider: ${err.message}`, { error: true })
+      showToast(err.message, { error: true })
+    } finally {
+      setDuplicatingId(null)
     }
   }
 
-  const toggleSliderExpanded = async (sliderId) => {
+  const confirmDelete = async (slider) => {
     try {
-      const slider = sliders.find((s) => s.id === sliderId)
-      if (!slider) {
-        throw new Error("Slider not found")
-      }
-
-      const response = await fetch(`/api/sliders/${sliderId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ isExpanded: !slider.isExpanded }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to update slider")
-      }
-
-      const updatedSlider = await response.json()
-      setSliders((prev) =>
-        prev.map((slider) => (slider.id === sliderId ? { ...slider, isExpanded: updatedSlider.isExpanded } : slider)),
-      )
+      setDeleting(true)
+      const response = await fetch(`/api/sliders/${slider.id}`, { method: "DELETE" })
+      if (!response.ok) throw new Error("Failed to delete slider")
+      setSliders((prev) => prev.filter((s) => s.id !== slider.id))
+      showToast(`Deleted "${slider.name}"`)
+      setDeleteTargetId(null)
     } catch (err) {
-      console.error("Toggle expansion error:", err)
-      showToast(`Failed to update slider: ${err.message}`, { error: true })
+      showToast(err.message, { error: true })
+    } finally {
+      setDeleting(false)
     }
   }
 
-  const addSlideToSlider = async (sliderId, newSlide) => {
-    try {
-      if (!newSlide.imageUrl || !newSlide.title) {
-        throw new Error("Image URL and title are required")
-      }
-
-      const response = await fetch(`/api/sliders/${sliderId}/slides`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrl: newSlide.imageUrl.trim(),
-          title: newSlide.title.trim(),
-          description: newSlide.description?.trim() || "",
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to add slide")
-      }
-
-      const createdSlide = await response.json()
-      setSliders((prev) =>
-        prev.map((slider) =>
-          slider.id === sliderId
-            ? {
-              ...slider,
-              slides: [
-                ...slider.slides,
-                {
-                  id: createdSlide.id,
-                  imageUrl: createdSlide.imageUrl,
-                  title: createdSlide.title,
-                  description: createdSlide.description,
-                  createdAt: createdSlide.createdAt,
-                },
-              ],
-            }
-            : slider,
-        ),
-      )
-
-      showToast("Slide added successfully!")
-    } catch (err) {
-      console.error("Add slide error:", err)
-      showToast(`Failed to add slide: ${err.message}`, { error: true })
-      throw err
-    }
-  }
-
-  const updateSlideInSlider = async (updatedSlide) => {
-    try {
-      const slider = sliders.find((s) => s.slides && s.slides.some((slide) => slide.id === updatedSlide.id))
-
-      if (!slider) {
-        throw new Error("Slider not found for slide")
-      }
-
-      if (!updatedSlide.imageUrl || !updatedSlide.title) {
-        throw new Error("Image URL and title are required")
-      }
-
-      const response = await fetch(`/api/sliders/${slider.id}/slides/${updatedSlide.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrl: updatedSlide.imageUrl.trim(),
-          title: updatedSlide.title.trim(),
-          description: updatedSlide.description?.trim() || "",
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to update slide")
-      }
-
-      const updatedSlideData = await response.json()
-      setSliders((prev) =>
-        prev.map((sliderItem) =>
-          sliderItem.id === slider.id
-            ? {
-              ...sliderItem,
-              slides: sliderItem.slides.map((slide) =>
-                slide.id === updatedSlide.id
-                  ? {
-                    id: updatedSlideData.id,
-                    imageUrl: updatedSlideData.imageUrl,
-                    title: updatedSlideData.title,
-                    description: updatedSlideData.description,
-                    createdAt: slide.createdAt,
-                    updatedAt: updatedSlideData.updatedAt,
-                  }
-                  : slide,
-              ),
-            }
-            : sliderItem,
-        ),
-      )
-
-      showToast("Slide updated successfully!")
-    } catch (err) {
-      console.error("Update slide error:", err)
-      showToast(`Failed to update slide: ${err.message}`, { error: true })
-      throw err
-    }
-  }
-
-  const removeSlideFromSlider = async (sliderId, slideId) => {
-    try {
-      const response = await fetch(`/api/sliders/${sliderId}/slides/${slideId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to delete slide")
-      }
-
-      setSliders((prev) =>
-        prev.map((slider) =>
-          slider.id === sliderId
-            ? {
-              ...slider,
-              slides: slider.slides.filter((slide) => slide.id !== slideId),
-            }
-            : slider,
-        ),
-      )
-
-      showToast("Slide deleted successfully!")
-    } catch (err) {
-      console.error("Error deleting slide:", err)
-      showToast(`Failed to delete slide: ${err.message}`, { error: true })
-      throw err
-    }
-  }
-
-  const updateSliderName = async (sliderId, newName) => {
-    try {
-      if (!newName || !newName.trim()) {
-        throw new Error("Slider name cannot be empty")
-      }
-
-      const response = await fetch(`/api/sliders/${sliderId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: newName.trim() }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to update slider name")
-      }
-
-      const updatedSlider = await response.json()
-      setSliders((prev) =>
-        prev.map((slider) =>
-          slider.id === sliderId ? { ...slider, name: updatedSlider.name, updatedAt: updatedSlider.updatedAt } : slider,
-        ),
-      )
-
-      showToast("Slider name updated successfully!")
-    } catch (err) {
-      console.error("Update slider name error:", err)
-      showToast(`Failed to update slider name: ${err.message}`, { error: true })
-      throw err
-    }
-  }
-
-  const updateSliderType = async (sliderId, newType) => {
-    try {
-      const response = await fetch(`/api/sliders/${sliderId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ sliderType: newType }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to update slider type")
-      }
-
-      const updatedSlider = await response.json()
-      setSliders((prev) =>
-        prev.map((slider) =>
-          slider.id === sliderId
-            ? {
-              ...slider,
-              sliderType: updatedSlider.sliderType,
-              updatedAt: updatedSlider.updatedAt,
-            }
-            : slider,
-        ),
-      )
-
-      showToast(`Slider type changed to "${newType}"!`)
-    } catch (err) {
-      console.error("Update slider type error:", err)
-      showToast(`Failed to update slider type: ${err.message}`, { error: true })
-      throw err
-    }
-  }
-
-  const deleteSlider = async (sliderId) => {
-    try {
-      const slider = sliders.find((s) => s.id === sliderId)
-      if (!slider) {
-        throw new Error("Slider not found")
-      }
-
-      const response = await fetch(`/api/sliders/${sliderId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to delete slider")
-      }
-
-      setSliders((prev) => prev.filter((slider) => slider.id !== sliderId))
-      showToast(`Slider "${slider.name}" deleted successfully!`)
-    } catch (err) {
-      console.error("Delete slider error:", err)
-      showToast(`Failed to delete slider: ${err.message}`, { error: true })
-      throw err
-    }
-  }
-
-  const totalSlides = sliders.reduce((total, slider) => total + (slider.slides?.length || 0), 0)
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <Page>
-        <div style={{ textAlign: "center", padding: "4rem 2rem" }}>
-          <Stack vertical spacing="loose" alignment="center">
-            <Spinner size="large" />
-            <Text variant="headingMd" color="subdued">
-              Loading sliders...
-            </Text>
-          </Stack>
-        </div>
-      </Page>
-    )
-  }
-
-  if (error) {
-    return (
-      <Page>
-        <div style={{ textAlign: "center", padding: "4rem 2rem" }}>
-          <Stack vertical spacing="loose" alignment="center">
-            <div
-              style={{
-                padding: "2rem",
-                background: "#fff5f5",
-                border: "1px solid #fed7d7",
-                borderRadius: "8px",
-                maxWidth: "500px",
-              }}
-            >
-              <Stack vertical spacing="tight" alignment="center">
-                <Text variant="headingMd" color="critical">
-                  ⚠️ Error Loading Sliders
-                </Text>
-                <Text color="subdued">{error}</Text>
-                <Button onClick={fetchSliders} primary>
-                  Try Again
-                </Button>
-              </Stack>
-            </div>
-          </Stack>
+      <Page title="SlideEase">
+        <div style={{ textAlign: "center", padding: "4rem" }}>
+          <Spinner size="large" />
         </div>
       </Page>
     )
   }
 
   return (
-    <Page>
-      <div style={{ padding: "2rem", backgroundColor: "#f6f6f7", minHeight: "100vh" }}>
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <Stack vertical spacing="tight" alignment="center">
-            <Heading element="h1">🎠 Multi-Slider Manager</Heading>
-            <Text variant="headingMd" color="subdued">
-              Create and manage multiple sliders with ease
-            </Text>
-            <Stack alignment="center" spacing="tight">
-              <Badge status="success">
-                {sliders.length} Slider{sliders.length !== 1 ? "s" : ""}
-              </Badge>
-              <Badge status="info">
-                {totalSlides} Total Slide{totalSlides !== 1 ? "s" : ""}
-              </Badge>
-            </Stack>
-          </Stack>
-        </div>
+      <Page title="SlideEase">
+      <div className="se-page">
+        <Stack vertical spacing="loose">
+          <div className="se-hero">
+            <div className="se-hero__eyebrow">
+              <IconLayers size={12} />
+              SlideEase
+            </div>
+            <h1 className="se-hero__title">Storefront sliders, refined</h1>
+            <p className="se-hero__sub">
+              Design, preview, and publish — then embed in your theme with a single ID.
+            </p>
+            <div className="se-hero__stats">
+              <span className="se-stat">
+                {sliders.length} slider{sliders.length === 1 ? "" : "s"}
+              </span>
+              <span className="se-stat">{totalSlides} slides</span>
+              {metricsSummary ? (
+                <span className="se-stat">
+                  {metricsSummary.views} views · {metricsSummary.ctr}% CTR
+                </span>
+              ) : null}
+            </div>
+            <div className="se-hero__actions">
+              <button
+                type="button"
+                className="se-btn se-btn--primary"
+                onClick={() => setShowCreate((v) => !v)}
+              >
+                {showCreate ? <IconClose size={15} /> : <IconPlus size={15} />}
+                {showCreate ? "Close" : "Create slider"}
+              </button>
+              <button type="button" className="se-btn se-btn--secondary" onClick={() => navigate("/brand-kit")}>
+                <IconPalette size={15} />
+                Brand kit
+              </button>
+              <button type="button" className="se-btn se-btn--ghost" onClick={() => navigate("/setupguide")} style={{ color: "rgba(248,250,252,0.75)" }}>
+                <IconBook size={15} />
+                Setup
+              </button>
+            </div>
+          </div>
 
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <Button primary size="large" onClick={() => setIsCreateModalOpen(true)}>
-            ➕ Create New Slider
-          </Button>
-        </div>
+          {error && (
+            <Banner status="critical" title="Could not load sliders" action={{ content: "Retry", onAction: fetchSliders }}>
+              <p>{error}</p>
+            </Banner>
+          )}
 
-        {/* Fixed: Proper spacing between sliders */}
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <Stack vertical spacing="loose">
-            {sliders.map((slider) => (
-              <SliderSection
-                key={slider.id}
-                slider={slider}
-                onToggleExpanded={toggleSliderExpanded}
-                onAddSlide={addSlideToSlider}
-                onUpdateSlide={updateSlideInSlider}
-                onRemoveSlide={removeSlideFromSlider}
-                onUpdateSliderName={updateSliderName}
-                onUpdateSliderType={updateSliderType}
-                onDeleteSlider={deleteSlider}
-              />
-            ))}
+          <OnboardingChecklist sliders={sliders} />
 
-            {sliders.length === 0 && (
-              <div style={{ textAlign: "center", padding: "4rem 2rem" }}>
-                <div
-                  style={{
-                    background: "white",
-                    padding: "3rem",
-                    borderRadius: "12px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                    maxWidth: "500px",
-                    margin: "0 auto",
-                  }}
-                >
-                  <Stack vertical spacing="loose" alignment="center">
-                    <div style={{ fontSize: "4rem" }}>🎠</div>
-                    <Heading>No Sliders Yet</Heading>
-                    <Text color="subdued" variant="bodyMd">
-                      Create your first slider to get started! You can add beautiful image sliders to showcase your
-                      products and content.
-                    </Text>
-                    <Button primary onClick={() => setIsCreateModalOpen(true)}>
-                      Create Your First Slider
-                    </Button>
-                  </Stack>
+          {showCreate && (
+            <CreateSliderPanel onCancel={() => setShowCreate(false)} onCreateSlider={createSlider} />
+          )}
+
+          <div className="se-panel">
+            <div className="se-panel__body">
+              <div className="se-toolbar">
+                <div style={{ minWidth: 220, flex: "1 1 240px", maxWidth: 360 }}>
+                  <TextField
+                    label="Search sliders"
+                    labelHidden
+                    value={query}
+                    onChange={setQuery}
+                    placeholder="Search by name, ID, or type"
+                    clearButton
+                    onClearButtonClick={() => setQuery("")}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="se-chips">
+                  {[
+                    { id: "all", label: "All" },
+                    { id: "published", label: "Published" },
+                    { id: "draft", label: "Draft" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={`se-chip${statusFilter === chip.id ? " is-active" : ""}`}
+                      onClick={() => setStatusFilter(chip.id)}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
-          </Stack>
-        </div>
+            </div>
+          </div>
 
-        <CreateSliderModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreateSlider={createSlider}
-        />
+          {filtered.length === 0 ? (
+            <div className="se-empty">
+              <div className="se-empty__icon">
+                <IconLayers size={22} />
+              </div>
+              <Text variant="headingMd" as="h2">
+                {sliders.length ? "No matching sliders" : "Create your first slider"}
+              </Text>
+              <div style={{ margin: "0.5rem auto 1.15rem", maxWidth: 360 }}>
+                <Text color="subdued">
+                  {sliders.length
+                    ? "Try another search or status filter."
+                    : "Add images, CTAs, and style — then embed with one ID."}
+                </Text>
+              </div>
+              <button type="button" className="se-btn se-btn--primary" onClick={() => setShowCreate(true)}>
+                <IconPlus size={15} />
+                Create slider
+              </button>
+            </div>
+          ) : (
+            <Stack vertical spacing="tight">
+              {filtered.map((slider) => {
+                const typeInfo = getSliderTypeInfo(slider.sliderType)
+                const thumb = slider.slides?.find((s) => s.imageUrl)?.imageUrl
+                const confirming = deleteTargetId === slider.id
+                const isDraft = slider.status === "draft"
+                return (
+                  <div key={slider.id}>
+                    <div className="se-slider-card">
+                      <div className="se-thumb">{thumb ? <img src={thumb} alt="" /> : null}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <h2 className="se-slider-card__title">{slider.name}</h2>
+                        <div className="se-meta">
+                          <span className="se-pill">ID {slider.id}</span>
+                          <span className="se-pill">{typeInfo.label}</span>
+                          <span className={`se-pill ${isDraft ? "se-pill--draft" : "se-pill--live"}`}>
+                            {isDraft ? "Draft" : "Published"}
+                          </span>
+                          <span className="se-pill">{slider.slides?.length || 0} slides</span>
+                        </div>
+                      </div>
+                      <div className="se-actions">
+                        <button
+                          type="button"
+                          className="se-btn se-btn--primary se-btn--sm"
+                          onClick={() => navigate(`/sliders/${slider.id}`)}
+                        >
+                          <IconEdit size={14} />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="se-btn se-btn--secondary se-btn--sm"
+                          disabled={duplicatingId === slider.id}
+                          onClick={() => duplicateSlider(slider)}
+                        >
+                          {duplicatingId === slider.id ? <span className="se-btn__spin" /> : <IconCopy size={14} />}
+                          Duplicate
+                        </button>
+                        <button
+                          type="button"
+                          className="se-btn se-btn--danger se-btn--sm"
+                          onClick={() => setDeleteTargetId(confirming ? null : slider.id)}
+                        >
+                          <IconTrash size={14} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    {confirming && (
+                      <div className="se-danger-bar">
+                        <Text>
+                          Delete <strong>{slider.name}</strong>? This cannot be undone.
+                        </Text>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button type="button" className="se-btn se-btn--secondary se-btn--sm" onClick={() => setDeleteTargetId(null)}>
+                            Keep
+                          </button>
+                          <button
+                            type="button"
+                            className="se-btn se-btn--danger-solid se-btn--sm"
+                            disabled={deleting}
+                            onClick={() => confirmDelete(slider)}
+                          >
+                            {deleting ? <span className="se-btn__spin" /> : <IconTrash size={14} />}
+                            Confirm
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </Stack>
+          )}
+        </Stack>
       </div>
     </Page>
   )
@@ -515,7 +335,7 @@ function SliderPageContent() {
 export default function SliderPage() {
   return (
     <ToastProvider>
-      <SliderPageContent />
+      <SlidersIndexContent />
     </ToastProvider>
   )
 }

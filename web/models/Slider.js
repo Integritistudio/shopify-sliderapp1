@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize"
 import { sequelize } from "../config/database.js"
+import { settingsFromPreset } from "../utils/sliderDefaults.js"
 
-// Define Slider model with shop field
 const Slider = sequelize.define(
   "Slider",
   {
@@ -19,6 +19,21 @@ const Slider = sequelize.define(
       allowNull: false,
       defaultValue: "center",
     },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: settingsFromPreset("center"),
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "published",
+    },
+    sortOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     isExpanded: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
@@ -26,7 +41,7 @@ const Slider = sequelize.define(
     shop: {
       type: DataTypes.STRING,
       allowNull: false,
-      index: true, // Add index for better query performance
+      index: true,
     },
   },
   {
