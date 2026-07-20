@@ -42,17 +42,17 @@ export default function StyleSettingsForm({
       />
 
       <RangeSlider
-        label={`Height: ${settings.height || 420}px`}
-        value={settings.height || 420}
-        min={240}
-        max={720}
+        label={`Height: ${settings.height || 640}px`}
+        value={settings.height || 640}
+        min={320}
+        max={900}
         onChange={(value) => update("height", value)}
         disabled={disabled}
       />
 
       <RangeSlider
-        label={`Corner radius: ${settings.borderRadius ?? 12}px`}
-        value={settings.borderRadius ?? 12}
+        label={`Corner radius: ${settings.borderRadius ?? 0}px`}
+        value={settings.borderRadius ?? 0}
         min={0}
         max={40}
         onChange={(value) => update("borderRadius", value)}
@@ -65,7 +65,7 @@ export default function StyleSettingsForm({
           { label: "Cover", value: "cover" },
           { label: "Contain", value: "contain" },
         ]}
-        value={settings.objectFit || "contain"}
+        value={settings.objectFit || "cover"}
         onChange={(value) => update("objectFit", value)}
         disabled={disabled}
       />

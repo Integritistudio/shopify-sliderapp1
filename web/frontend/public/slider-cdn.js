@@ -39,6 +39,12 @@
     return ""
   }
 
+  function resolveFrameHeight(settings) {
+    const saved = Number(settings.height)
+    const preferred = Number.isFinite(saved) && saved > 0 ? saved : 640
+    return Math.min(Math.max(preferred, 420), 900)
+  }
+
   function trackEvent(type, slideId) {
     try {
       const body = JSON.stringify({
@@ -187,7 +193,7 @@
       cssEase: effect === "marquee" ? "linear" : "cubic-bezier(0.22, 1, 0.36, 1)",
       adaptiveHeight: false,
       centerMode: centerEffects.includes(effect) || Boolean(settings.centerMode),
-      centerPadding: effect === "coverflow" ? "8%" : settings.centerPadding || "12%",
+      centerPadding: effect === "coverflow" ? "6%" : settings.centerPadding || "10%",
       vertical: effect === "vertical" || Boolean(settings.vertical),
       variableWidth: effect === "variable-width" || Boolean(settings.variableWidth),
       lazyLoad: settings.lazyLoad ? "ondemand" : null,
@@ -199,7 +205,7 @@
           settings: {
             slidesToShow: Math.min(Number(settings.slidesToShow) || 1, 2),
             centerMode: centerEffects.includes(effect),
-            centerPadding: "6%",
+            centerPadding: "5%",
           },
         },
         {
@@ -233,7 +239,7 @@
     const imageUrl = safeUrl(slide.imageUrl)
     const videoUrl = safeUrl(slide.videoUrl)
     const alt = escapeHtml(slide.imageAlt || slide.heading || slide.title || "Slide media")
-    const objectFit = escapeHtml(settings.objectFit || "contain")
+    const objectFit = escapeHtml(settings.objectFit || "cover")
     const useLazy = Boolean(settings.lazyLoad)
 
     if (slide.mediaType === "video" && videoUrl) {
@@ -258,21 +264,19 @@
     const heading = slide.heading || slide.title || ""
     const subheading = slide.subheading || ""
     const description = slide.description || ""
-    const overlayOpacity = Number(slide.overlayOpacity ?? settings.overlayOpacity ?? 0.35)
+    const overlayOpacity = Number(slide.overlayOpacity ?? settings.overlayOpacity ?? 0.28)
     const overlayColor = slide.overlayColor || settings.overlayColor || "#0f172a"
     const align = slide.textAlign || "center"
     const justify = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center"
     const ctaHref = safeUrl(slide.ctaUrl)
     const targetAttrs = slide.ctaOpenInNewTab ? ` target="_blank" rel="noopener noreferrer"` : ""
     const radius = Number(settings.borderRadius ?? 0)
-    const height = Math.max(Number(settings.height) || 560, 320)
     const textColor = escapeHtml(slide.textColor || "#ffffff")
     const btnBg = escapeHtml(slide.buttonBg || "#ffffff")
     const btnText = escapeHtml(slide.buttonTextColor || "#0f172a")
     const hasCopy = Boolean(heading || subheading || description || slide.ctaText)
-    const slidePad = ["center", "coverflow", "autoplay", "variable-width", "marquee"].includes(effect)
-      ? "0 10px"
-      : "0"
+    const multiPad = ["center", "coverflow", "autoplay", "variable-width", "marquee"].includes(effect)
+    const slidePad = multiPad ? "0 12px" : "0"
     const splitPanels =
       effect === "split-panel"
         ? `<div class="se-split-panel se-split-panel--left"></div><div class="se-split-panel se-split-panel--right"></div>`
@@ -281,7 +285,7 @@
     return `
       <div data-slideease-slide-id="${escapeHtml(slide.id)}">
         <div style="padding:${slidePad};">
-          <article class="slideease-frame se-frame-${escapeHtml(effect || "fade")}" style="--se-height:${height}px;--se-radius:${radius}px;--se-overlay:${escapeHtml(overlayColor)};--se-overlay-opacity:${overlayOpacity};border-radius:${radius}px;">
+          <article class="slideease-frame se-frame-${escapeHtml(effect || "fade")}" style="--se-radius:${radius}px;border-radius:${radius}px;">
             <div class="se-media-wrap">${renderMedia(slide, settings)}</div>
             <div class="se-overlay" aria-hidden="true">
               <span class="se-overlay__tint" style="background:${escapeHtml(overlayColor)};opacity:${overlayOpacity};"></span>
@@ -289,15 +293,17 @@
             </div>
             ${
               hasCopy
-                ? `<div class="se-rise-content se-copy" style="align-items:${justify};text-align:${escapeHtml(align)};color:${textColor};">
-              ${subheading ? `<p class="se-eyebrow">${escapeHtml(subheading)}</p>` : ""}
-              ${heading ? `<h3 class="se-heading">${escapeHtml(heading)}</h3>` : ""}
-              ${description ? `<p class="se-desc">${escapeHtml(description)}</p>` : ""}
-              ${
-                slide.ctaText
-                  ? `<a class="slideease-cta se-cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs} style="--se-cta-bg:${btnBg};--se-cta-color:${btnText};">${escapeHtml(slide.ctaText)}</a>`
-                  : ""
-              }
+                ? `<div class="se-rise-content se-copy se-copy--${escapeHtml(align)}" style="align-items:${justify};text-align:${escapeHtml(align)};color:${textColor};">
+              <div class="se-copy-plate">
+                ${subheading ? `<p class="se-eyebrow">${escapeHtml(subheading)}</p>` : ""}
+                ${heading ? `<h3 class="se-heading">${escapeHtml(heading)}</h3>` : ""}
+                ${description ? `<p class="se-desc">${escapeHtml(description)}</p>` : ""}
+                ${
+                  slide.ctaText
+                    ? `<a class="slideease-cta se-cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs} style="--se-cta-bg:${btnBg};--se-cta-color:${btnText};">${escapeHtml(slide.ctaText)}</a>`
+                    : ""
+                }
+              </div>
             </div>`
                 : ""
             }
@@ -318,13 +324,16 @@
 
     trackEvent("view", slides[0]?.id)
     const { config: slickConfig, effect } = buildSlickConfig(settings)
-    const frameHeight = Math.max(Number(settings.height) || 560, 320)
+    const frameHeight = resolveFrameHeight(settings)
     const showArrows = settings.arrows !== false && effect !== "marquee"
     const showProgress = Boolean(settings.autoplay) && effect !== "marquee" && slides.length > 1
     const arrowBg = escapeHtml(settings.arrowBg || "rgba(15,23,42,0.55)")
     const arrowColor = escapeHtml(settings.arrowColor || "#ffffff")
     const dotColor = escapeHtml(settings.dotColor || "#1a2f4a")
     const autoplayMs = Number(settings.autoplaySpeed) || 3200
+    const isMulti =
+      ["center", "coverflow", "autoplay", "variable-width", "marquee"].includes(effect) ||
+      Number(settings.slidesToShow) > 1
 
     const thumbs = settings.thumbnails
       ? `<div class="slideease-thumbs-${uniqueId} se-thumbs" aria-label="Slide thumbnails">${slides
@@ -340,7 +349,7 @@
       : ""
 
     insertAdjacent(`
-      <section class="slideease-container-${uniqueId} se-root" data-effect="${escapeHtml(effect)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;" aria-roledescription="carousel">
+      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : " se-root--hero"}" data-effect="${escapeHtml(effect)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;" aria-roledescription="carousel">
         ${
           showArrows
             ? `
@@ -366,6 +375,12 @@
             color: #0f172a;
             isolation: isolate;
           }
+          .slideease-container-${uniqueId}.se-root--hero {
+            width: 100vw;
+            max-width: 100vw;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+          }
           .slideease-container-${uniqueId},
           .slideease-container-${uniqueId} * { box-sizing: border-box; }
           .slideease-container-${uniqueId} .se-slider,
@@ -379,13 +394,15 @@
           .slideease-container-${uniqueId} .slideease-frame {
             position: relative;
             width: 100%;
-            height: var(--se-height);
-            min-height: 320px;
+            height: clamp(420px, 58vw, var(--se-height));
+            min-height: 420px;
             overflow: hidden;
-            background:
-              radial-gradient(120% 80% at 50% 20%, rgba(255,255,255,0.08), transparent 55%),
-              linear-gradient(145deg, #0b1220 0%, #1a2f4a 55%, #121826 100%);
-            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+            background: #0b1220;
+          }
+          .slideease-container-${uniqueId}.se-root--multi .slideease-frame {
+            height: clamp(320px, 42vw, calc(var(--se-height) * 0.85));
+            min-height: 300px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
           }
           .slideease-container-${uniqueId} .se-media-wrap {
             position: absolute;
@@ -396,8 +413,8 @@
             width: 100%;
             height: 100%;
             display: block;
-            transform: scale(1.01);
-            transition: transform 6s var(--se-ease);
+            transform: scale(1.02);
+            transition: transform 7s var(--se-ease);
           }
           .slideease-container-${uniqueId} .slick-current .se-media {
             transform: scale(1);
@@ -420,8 +437,8 @@
             position: absolute;
             inset: 0;
             background:
-              linear-gradient(180deg, rgba(0,0,0,0.1) 0%, transparent 30%, transparent 52%, rgba(0,0,0,0.52) 100%),
-              linear-gradient(90deg, rgba(0,0,0,0.22), transparent 40%, transparent 60%, rgba(0,0,0,0.14));
+              linear-gradient(180deg, rgba(0,0,0,0.12) 0%, transparent 35%, transparent 48%, rgba(0,0,0,0.62) 100%),
+              linear-gradient(90deg, rgba(0,0,0,0.18), transparent 45%, transparent 55%, rgba(0,0,0,0.1));
           }
 
           .slideease-container-${uniqueId} .se-copy {
@@ -430,11 +447,33 @@
             z-index: 2;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            gap: 0.55rem;
-            padding: clamp(1.25rem, 4.5vw, 3.25rem);
+            justify-content: flex-end;
+            gap: 0;
+            padding: clamp(1.5rem, 4.5vw, 3.5rem);
+            padding-bottom: clamp(2.75rem, 6vw, 4.25rem);
             max-width: 100%;
+            pointer-events: none;
           }
+          .slideease-container-${uniqueId} .se-copy--left { justify-content: flex-end; }
+          .slideease-container-${uniqueId} .se-copy--right { justify-content: flex-end; }
+          .slideease-container-${uniqueId} .se-copy-plate {
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            max-width: min(36rem, 100%);
+            padding: clamp(1rem, 2.4vw, 1.45rem) clamp(1.1rem, 2.6vw, 1.6rem);
+            border-radius: 18px;
+            background: rgba(10, 16, 28, 0.42);
+            border: 1px solid rgba(255,255,255,0.14);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 18px 50px rgba(0,0,0,0.28);
+          }
+          .slideease-container-${uniqueId} .se-copy--center .se-copy-plate { margin: 0 auto; text-align: center; align-items: center; }
+          .slideease-container-${uniqueId} .se-copy--left .se-copy-plate { margin-right: auto; align-items: flex-start; }
+          .slideease-container-${uniqueId} .se-copy--right .se-copy-plate { margin-left: auto; align-items: flex-end; }
+
           .slideease-container-${uniqueId} .se-eyebrow {
             margin: 0;
             font-size: clamp(0.72rem, 1.1vw, 0.82rem);
@@ -442,46 +481,43 @@
             letter-spacing: 0.14em;
             text-transform: uppercase;
             opacity: 0.92;
-            text-shadow: 0 1px 10px rgba(0,0,0,0.35);
           }
           .slideease-container-${uniqueId} .se-heading {
             margin: 0;
-            max-width: 16ch;
-            font-size: clamp(1.55rem, 4.2vw, 3rem);
+            max-width: 18ch;
+            font-size: clamp(1.65rem, 4.4vw, 3.15rem);
             font-weight: 750;
-            letter-spacing: -0.03em;
-            line-height: 1.08;
+            letter-spacing: -0.035em;
+            line-height: 1.05;
             text-wrap: balance;
-            text-shadow: 0 2px 24px rgba(0,0,0,0.35);
           }
           .slideease-container-${uniqueId} .se-desc {
-            margin: 0.15rem 0 0.35rem;
-            max-width: 38rem;
-            font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+            margin: 0;
+            max-width: 34rem;
+            font-size: clamp(0.92rem, 1.5vw, 1.08rem);
             line-height: 1.5;
-            opacity: 0.92;
-            text-shadow: 0 1px 12px rgba(0,0,0,0.3);
+            opacity: 0.94;
           }
           .slideease-container-${uniqueId} .se-cta {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-top: 0.35rem;
-            padding: 0.78rem 1.25rem;
+            margin-top: 0.25rem;
+            padding: 0.82rem 1.35rem;
             border-radius: 999px;
             background: var(--se-cta-bg);
             color: var(--se-cta-color);
             text-decoration: none;
             font-weight: 650;
-            font-size: 0.9rem;
+            font-size: 0.92rem;
             letter-spacing: 0.01em;
-            box-shadow: 0 10px 28px rgba(15,23,42,0.22);
+            box-shadow: 0 12px 30px rgba(15,23,42,0.28);
             transition: transform 0.22s var(--se-ease), box-shadow 0.22s ease, filter 0.22s ease;
           }
           .slideease-container-${uniqueId} .se-cta:hover {
-            transform: translateY(-1px);
-            filter: brightness(1.03);
-            box-shadow: 0 14px 34px rgba(15,23,42,0.28);
+            transform: translateY(-2px);
+            filter: brightness(1.04);
+            box-shadow: 0 16px 36px rgba(15,23,42,0.34);
           }
           .slideease-container-${uniqueId} .se-cta:focus-visible {
             outline: 2px solid #fff;
@@ -493,8 +529,8 @@
             top: 50%;
             transform: translateY(-50%);
             z-index: 8;
-            width: 46px;
-            height: 46px;
+            width: 48px;
+            height: 48px;
             border: 1px solid rgba(255,255,255,0.22);
             border-radius: 999px;
             display: inline-flex;
@@ -503,17 +539,17 @@
             cursor: pointer;
             color: var(--se-arrow-color);
             background: var(--se-arrow-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(15,23,42,0.22);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 12px 32px rgba(15,23,42,0.24);
             opacity: 0;
             transition: opacity 0.25s ease, transform 0.25s var(--se-ease), background 0.2s ease;
           }
           .slideease-container-${uniqueId}:hover .se-nav,
           .slideease-container-${uniqueId}:focus-within .se-nav { opacity: 1; }
-          .slideease-container-${uniqueId} .se-nav--prev { left: clamp(10px, 1.6vw, 22px); }
-          .slideease-container-${uniqueId} .se-nav--next { right: clamp(10px, 1.6vw, 22px); }
-          .slideease-container-${uniqueId} .se-nav:hover { transform: translateY(-50%) scale(1.05); }
+          .slideease-container-${uniqueId} .se-nav--prev { left: clamp(12px, 1.8vw, 28px); }
+          .slideease-container-${uniqueId} .se-nav--next { right: clamp(12px, 1.8vw, 28px); }
+          .slideease-container-${uniqueId} .se-nav:hover { transform: translateY(-50%) scale(1.06); }
           .slideease-container-${uniqueId} .se-nav:focus-visible {
             opacity: 1;
             outline: 2px solid #fff;
@@ -530,12 +566,12 @@
             align-items: center;
             gap: 8px;
             margin: 0;
-            padding: 8px 10px;
+            padding: 8px 12px;
             list-style: none;
             border-radius: 999px;
-            background: rgba(15, 23, 42, 0.28);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(15, 23, 42, 0.32);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.14);
           }
           .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li {
@@ -559,12 +595,11 @@
             height: 8px;
             border-radius: 999px;
             background: rgba(255,255,255,0.45);
-            transition: width 0.3s var(--se-ease), background 0.25s ease, transform 0.25s ease;
+            transition: width 0.3s var(--se-ease), background 0.25s ease;
           }
           .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li.slick-active .se-dot {
-            width: 22px;
+            width: 24px;
             background: #fff;
-            box-shadow: 0 0 0 1px rgba(255,255,255,0.25);
           }
 
           .slideease-container-${uniqueId} .se-progress {
@@ -574,15 +609,14 @@
             bottom: 0;
             height: 3px;
             z-index: 9;
-            background: rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.16);
             overflow: hidden;
           }
           .slideease-container-${uniqueId} .se-progress__bar {
             display: block;
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #fff, #cbd5e1);
-            transform-origin: left center;
+            background: linear-gradient(90deg, #fff, #94a3b8);
           }
           .slideease-container-${uniqueId}.se-progress-run .se-progress__bar {
             animation: seProgress var(--se-autoplay) linear forwards;
@@ -590,8 +624,11 @@
           @keyframes seProgress { from { width: 0%; } to { width: 100%; } }
 
           .slideease-container-${uniqueId} .se-thumbs {
-            margin-top: 14px;
-            padding: 0 4px;
+            margin-top: 16px;
+            padding: 0 clamp(12px, 3vw, 28px);
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
           }
           .slideease-container-${uniqueId} .se-thumb { padding: 0 5px; }
           .slideease-container-${uniqueId} .se-thumb__btn {
@@ -599,50 +636,54 @@
             width: 100%;
             padding: 0;
             border: 2px solid transparent;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
             background: #0f172a;
             cursor: pointer;
-            opacity: 0.72;
+            opacity: 0.7;
             transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
           }
-          .slideease-container-${uniqueId} .slick-current .se-thumb__btn,
           .slideease-container-${uniqueId} .se-thumbs .slick-current .se-thumb__btn {
             opacity: 1;
-            border-color: var(--se-dot);
-            transform: translateY(-1px);
+            border-color: #fff;
+            transform: translateY(-2px);
           }
           .slideease-container-${uniqueId} .se-thumb__btn img {
             width: 100%;
-            height: 68px;
+            height: 72px;
             object-fit: cover;
             display: block;
           }
 
-          @keyframes seCdnFade { from { opacity: 0.15; } to { opacity: 1; } }
-          @keyframes seCdnZoom { from { opacity: 0.2; transform: scale(1.12); } to { opacity: 1; transform: scale(1); } }
-          @keyframes seCdnFlip { from { opacity: 0; transform: perspective(1100px) rotateY(78deg); } to { opacity: 1; transform: perspective(1100px) rotateY(0); } }
-          @keyframes seCdnCube { from { opacity: 0.25; transform: perspective(1100px) rotateX(62deg); } to { opacity: 1; transform: perspective(1100px) rotateX(0); } }
-          @keyframes seCdnRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
-          @keyframes seCdnKen { from { transform: scale(1); } to { transform: scale(1.12) translate(-1%, -0.8%); } }
-          @keyframes seCdnBlur { from { filter: blur(12px); opacity: 0.45; } to { filter: blur(0); opacity: 1; } }
-          @keyframes seCdnWipe { from { clip-path: polygon(0 0, 0 0, -18% 100%, 0 100%); } to { clip-path: polygon(0 0, 118% 0, 100% 100%, 0 100%); } }
+          /* Motion presets */
+          @keyframes seCdnFade { from { opacity: 0.12; } to { opacity: 1; } }
+          @keyframes seCdnSlide { from { opacity: 0.4; transform: translateX(36px); } to { opacity: 1; transform: translateX(0); } }
+          @keyframes seCdnZoom { from { opacity: 0.2; transform: scale(1.14); } to { opacity: 1; transform: scale(1); } }
+          @keyframes seCdnFlip { from { opacity: 0; transform: perspective(1200px) rotateY(82deg); } to { opacity: 1; transform: perspective(1200px) rotateY(0); } }
+          @keyframes seCdnCube { from { opacity: 0.2; transform: perspective(1200px) rotateX(68deg); } to { opacity: 1; transform: perspective(1200px) rotateX(0); } }
+          @keyframes seCdnRise { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes seCdnKen { from { transform: scale(1); } to { transform: scale(1.14) translate(-1.2%, -0.8%); } }
+          @keyframes seCdnBlur { from { filter: blur(16px) saturate(0.7); opacity: 0.4; transform: scale(1.04); } to { filter: blur(0) saturate(1); opacity: 1; transform: scale(1); } }
+          @keyframes seCdnWipe { from { clip-path: polygon(0 0, 0 0, -20% 100%, 0 100%); } to { clip-path: polygon(0 0, 120% 0, 100% 100%, 0 100%); } }
           @keyframes seCdnSplitL { from { transform: translateX(0); } to { transform: translateX(-102%); } }
           @keyframes seCdnSplitR { from { transform: translateX(0); } to { transform: translateX(102%); } }
-          @keyframes seCopyIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes seCdnParallax { from { transform: scale(1.16) translateX(-3%); } to { transform: scale(1.06) translateX(1%); } }
+          @keyframes seCopyIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-          .slideease-container-${uniqueId} .slick-current .se-frame-fade { animation: seCdnFade 0.7s var(--se-ease); }
-          .slideease-container-${uniqueId} .slick-current .se-frame-zoom { animation: seCdnZoom 0.75s var(--se-ease); }
-          .slideease-container-${uniqueId} .slick-current .se-frame-flip { animation: seCdnFlip 0.8s var(--se-ease); }
-          .slideease-container-${uniqueId} .slick-current .se-frame-cube { animation: seCdnCube 0.85s var(--se-ease); }
-          .slideease-container-${uniqueId} .slick-current .se-frame-blur-reveal { animation: seCdnBlur 0.9s var(--se-ease); }
-          .slideease-container-${uniqueId} .slick-current .se-frame-wipe { animation: seCdnWipe 0.9s cubic-bezier(0.65,0,0.35,1); }
-          .slideease-container-${uniqueId} .slick-current .se-frame-ken-burns .se-media { animation: seCdnKen 5.2s ease-out forwards; }
-          .slideease-container-${uniqueId} .slick-current .se-copy > * { animation: seCopyIn 0.65s var(--se-ease) both; }
-          .slideease-container-${uniqueId} .slick-current .se-copy > *:nth-child(2) { animation-delay: 0.07s; }
-          .slideease-container-${uniqueId} .slick-current .se-copy > *:nth-child(3) { animation-delay: 0.14s; }
-          .slideease-container-${uniqueId} .slick-current .se-copy > *:nth-child(4) { animation-delay: 0.2s; }
-          .slideease-container-${uniqueId} .slick-current .se-frame-slide-up .se-copy > * { animation-name: seCdnRise; }
+          .slideease-container-${uniqueId} .slick-current .se-frame-fade { animation: seCdnFade 0.75s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-slide { animation: seCdnSlide 0.65s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-zoom { animation: seCdnZoom 0.8s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-flip { animation: seCdnFlip 0.85s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-cube { animation: seCdnCube 0.9s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-blur-reveal { animation: seCdnBlur 0.95s var(--se-ease); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-wipe { animation: seCdnWipe 0.95s cubic-bezier(0.65,0,0.35,1); }
+          .slideease-container-${uniqueId} .slick-current .se-frame-ken-burns .se-media { animation: seCdnKen 5.5s ease-out forwards; }
+          .slideease-container-${uniqueId} .slick-current .se-frame-parallax .se-media { animation: seCdnParallax 0.95s var(--se-ease) forwards; }
+          .slideease-container-${uniqueId} .slick-current .se-copy-plate > * { animation: seCopyIn 0.7s var(--se-ease) both; }
+          .slideease-container-${uniqueId} .slick-current .se-copy-plate > *:nth-child(2) { animation-delay: 0.08s; }
+          .slideease-container-${uniqueId} .slick-current .se-copy-plate > *:nth-child(3) { animation-delay: 0.15s; }
+          .slideease-container-${uniqueId} .slick-current .se-copy-plate > *:nth-child(4) { animation-delay: 0.22s; }
+          .slideease-container-${uniqueId} .slick-current .se-frame-slide-up .se-copy-plate > * { animation-name: seCdnRise; }
 
           .slideease-container-${uniqueId} .se-split-panel {
             position: absolute; top: 0; bottom: 0; width: 52%; z-index: 4; pointer-events: none;
@@ -650,28 +691,55 @@
           }
           .slideease-container-${uniqueId} .se-split-panel--left { left: 0; }
           .slideease-container-${uniqueId} .se-split-panel--right { right: 0; }
-          .slideease-container-${uniqueId} .slick-current .se-split-panel--left { animation: seCdnSplitL 0.8s cubic-bezier(0.65,0,0.35,1) forwards; }
-          .slideease-container-${uniqueId} .slick-current .se-split-panel--right { animation: seCdnSplitR 0.8s cubic-bezier(0.65,0,0.35,1) forwards; }
+          .slideease-container-${uniqueId} .slick-current .se-split-panel--left { animation: seCdnSplitL 0.85s cubic-bezier(0.65,0,0.35,1) forwards; }
+          .slideease-container-${uniqueId} .slick-current .se-split-panel--right { animation: seCdnSplitR 0.85s cubic-bezier(0.65,0,0.35,1) forwards; }
 
+          .slideease-container-${uniqueId}[data-effect="coverflow"] {
+            perspective: 1400px;
+          }
           .slideease-container-${uniqueId}[data-effect="coverflow"] .slick-slide:not(.slick-center) .slideease-frame {
-            transform: scale(0.9) rotateY(12deg);
-            opacity: 0.72;
-            transition: transform 0.5s var(--se-ease), opacity 0.4s ease;
+            transform: scale(0.88) rotateY(16deg);
+            opacity: 0.68;
+            transition: transform 0.55s var(--se-ease), opacity 0.4s ease;
           }
           .slideease-container-${uniqueId}[data-effect="coverflow"] .slick-center .slideease-frame,
           .slideease-container-${uniqueId}[data-effect="center"] .slick-center .slideease-frame {
-            transform: scale(1.02);
-            transition: transform 0.5s var(--se-ease);
+            transform: scale(1.04);
+            transition: transform 0.55s var(--se-ease);
+            z-index: 2;
+          }
+          .slideease-container-${uniqueId}[data-effect="center"] .slick-slide:not(.slick-center) .slideease-frame {
+            opacity: 0.55;
+            transform: scale(0.92);
+            transition: transform 0.5s var(--se-ease), opacity 0.4s ease;
+          }
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .slideease-frame,
+          .slideease-container-${uniqueId}[data-effect="variable-width"] .slideease-frame {
+            border-radius: 14px;
+          }
+          .slideease-container-${uniqueId}[data-effect="cards-stack"] .slideease-frame {
+            box-shadow: 0 24px 60px rgba(15,23,42,0.28);
+          }
+          .slideease-container-${uniqueId}[data-effect="marquee"] .slideease-frame {
+            border-radius: 12px;
+          }
+          .slideease-container-${uniqueId}[data-effect="vertical"] .slick-list {
+            height: clamp(420px, 58vw, var(--se-height)) !important;
           }
 
           @media (max-width: 768px) {
             .slideease-container-${uniqueId} .slideease-frame {
-              height: max(300px, min(var(--se-height), 78vw));
-              min-height: 300px;
+              height: clamp(380px, 72vw, var(--se-height));
+              min-height: 360px;
             }
-            .slideease-container-${uniqueId} .se-nav { opacity: 1; width: 40px; height: 40px; }
-            .slideease-container-${uniqueId} .se-heading { max-width: 100%; }
-            .slideease-container-${uniqueId} .slideease-dots-${uniqueId} { bottom: 12px; padding: 6px 8px; }
+            .slideease-container-${uniqueId}.se-root--multi .slideease-frame {
+              height: clamp(280px, 68vw, 420px);
+              min-height: 260px;
+            }
+            .slideease-container-${uniqueId} .se-nav { opacity: 1; width: 42px; height: 42px; }
+            .slideease-container-${uniqueId} .se-heading { max-width: 100%; font-size: clamp(1.45rem, 7vw, 2.1rem); }
+            .slideease-container-${uniqueId} .se-copy { padding-bottom: 3.25rem; }
+            .slideease-container-${uniqueId} .slideease-dots-${uniqueId} { bottom: 12px; }
           }
           @media (prefers-reduced-motion: reduce) {
             .slideease-container-${uniqueId} *,

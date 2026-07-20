@@ -21,8 +21,9 @@ function SlideFrame({ slide, settings, compact, heightOverride, style = {}, medi
   const overlayColor = slide.overlayColor || settings.overlayColor || "#000000"
   const align = slide.textAlign || "center"
   const height =
-    heightOverride ?? (compact ? Math.min(Number(settings.height) || 360, 240) : Number(settings.height) || 360)
-  const radius = Number(settings.borderRadius ?? 14)
+    heightOverride ??
+    (compact ? Math.min(Number(settings.height) || 640, 260) : Math.min(Number(settings.height) || 640, 520))
+  const radius = Number(settings.borderRadius ?? 0)
 
   return (
     <div
@@ -386,7 +387,7 @@ export default function SliderPreview({
     if (compact) {
       return (
         <div style={{ position: "relative", touchAction: "pan-y" }} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
-          {renderSingleStage(Math.min(Number(mergedSettings.height) || 360, 220))}
+          {renderSingleStage(Math.min(Number(mergedSettings.height) || 640, 240))}
           <NavArrows onPrev={goPrev} onNext={goNext} settings={mergedSettings} show={showArrows} />
           <Dots slides={visibleSlides} index={index} setIndex={setIndex} color={mergedSettings.dotColor} />
         </div>
