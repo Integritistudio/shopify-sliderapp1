@@ -150,9 +150,9 @@ export default function SlideEditorPanel({
     <div
       id="slideease-slide-editor"
       style={{
-        border: "1px solid #c5d0de",
+        border: "1px solid #e2e5e9",
         borderRadius: 14,
-        background: "linear-gradient(180deg, #f3f6fa 0%, #ffffff 70%)",
+        background: "#ffffff",
         padding: 16,
         marginTop: 12,
       }}

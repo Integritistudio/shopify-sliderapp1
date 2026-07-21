@@ -50,7 +50,7 @@ export default function UserGuide() {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
-                    backgroundColor: "#1a2f4a",
+                    backgroundColor: "#ed8104",
                     color: "white",
                     borderRadius: "50%",
                     width: 32,

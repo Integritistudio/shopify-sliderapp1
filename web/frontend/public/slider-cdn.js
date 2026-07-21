@@ -132,6 +132,35 @@
     document.getElementById(id)?.remove()
   }
 
+  function applyFullBleed(el) {
+    if (!el) return { sync: () => {}, destroy: () => {} }
+
+    const sync = () => {
+      el.style.marginLeft = "0px"
+      el.style.width = "100%"
+      el.style.maxWidth = "100%"
+      void el.offsetWidth
+
+      const left = el.getBoundingClientRect().left
+      const vw = document.documentElement.clientWidth
+      el.style.marginLeft = `${-Math.round(left)}px`
+      el.style.width = `${vw}px`
+      el.style.maxWidth = `${vw}px`
+    }
+
+    sync()
+    requestAnimationFrame(sync)
+    window.addEventListener("resize", sync)
+    window.addEventListener("orientationchange", sync)
+    return {
+      sync,
+      destroy: () => {
+        window.removeEventListener("resize", sync)
+        window.removeEventListener("orientationchange", sync)
+      },
+    }
+  }
+
   function renderLoading() {
     insertAdjacent(`
       <div id="${uniqueId}-loading" class="se-loading" aria-live="polite" aria-busy="true">
@@ -262,8 +291,11 @@
 
   function renderSlide(slide, settings, effect) {
     const heading = slide.heading || slide.title || ""
-    const subheading = slide.subheading || ""
-    const description = slide.description || ""
+    const subheading = slide.subheading && slide.subheading !== heading ? slide.subheading : ""
+    const description =
+      slide.description && slide.description !== heading && slide.description !== subheading
+        ? slide.description
+        : ""
     const overlayOpacity = Number(slide.overlayOpacity ?? settings.overlayOpacity ?? 0.28)
     const overlayColor = slide.overlayColor || settings.overlayColor || "#0f172a"
     const align = slide.textAlign || "center"
@@ -272,8 +304,19 @@
     const targetAttrs = slide.ctaOpenInNewTab ? ` target="_blank" rel="noopener noreferrer"` : ""
     const radius = Number(settings.borderRadius ?? 0)
     const textColor = escapeHtml(slide.textColor || "#ffffff")
-    const btnBg = escapeHtml(slide.buttonBg || "#ffffff")
-    const btnText = escapeHtml(slide.buttonTextColor || "#0f172a")
+    const btnBg = escapeHtml(settings.ctaBackground || slide.buttonBg || "#1a2f4a")
+    const btnText = escapeHtml(settings.ctaTextColor || slide.buttonTextColor || "#ffffff")
+    const btnBorder = escapeHtml(settings.ctaBorderColor || "#ffffff")
+    const btnIconColor = escapeHtml(settings.ctaIconColor || btnText)
+    const btnBorderWidth = Math.min(Math.max(Number(settings.ctaBorderWidth ?? 1), 0), 6)
+    const btnRadius = Math.min(Math.max(Number(settings.ctaBorderRadius ?? 50), 0), 50)
+    const btnFontSize = Math.min(Math.max(Number(settings.ctaFontSize ?? 16), 12), 24)
+    const btnIcon = ["arrow", "chevron", "none"].includes(settings.ctaIcon) ? settings.ctaIcon : "arrow"
+    const btnIconPath = btnIcon === "chevron" ? "M7 4l6 6-6 6" : "M4 10h11m-4-4 4 4-4 4"
+    const btnIconMarkup =
+      btnIcon === "none"
+        ? ""
+        : `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${btnIconPath}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     const hasCopy = Boolean(heading || subheading || description || slide.ctaText)
     const multiPad = ["center", "coverflow", "autoplay", "variable-width", "marquee"].includes(effect)
     const slidePad = multiPad ? "0 12px" : "0"
@@ -300,7 +343,7 @@
                 ${description ? `<p class="se-desc">${escapeHtml(description)}</p>` : ""}
                 ${
                   slide.ctaText
-                    ? `<a class="slideease-cta se-cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs} style="--se-cta-bg:${btnBg};--se-cta-color:${btnText};">${escapeHtml(slide.ctaText)}</a>`
+                    ? `<a class="slideease-cta se-cta${btnIcon === "none" ? " se-cta--no-icon" : ""}" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs} style="--se-cta-bg:${btnBg};--se-cta-color:${btnText};--se-cta-border:${btnBorder};--se-cta-border-width:${btnBorderWidth}px;--se-cta-radius:${btnRadius}px;--se-cta-font-size:${btnFontSize}px;--se-cta-icon-color:${btnIconColor};"><span>${escapeHtml(slide.ctaText)}</span>${btnIconMarkup}</a>`
                     : ""
                 }
               </div>
@@ -366,6 +409,7 @@
         <style>
           .slideease-container-${uniqueId}.se-root {
             --se-ease: cubic-bezier(0.22, 1, 0.36, 1);
+            --se-render-height: clamp(420px, 58vw, var(--se-height));
             position: relative;
             width: 100%;
             max-width: 100%;
@@ -376,33 +420,49 @@
             isolation: isolate;
           }
           .slideease-container-${uniqueId}.se-root--hero {
-            width: 100vw;
-            max-width: 100vw;
-            margin-left: calc(50% - 50vw);
-            margin-right: calc(50% - 50vw);
+            width: 100%;
+            max-width: 100%;
+            margin-left: 0;
+            margin-right: 0;
+            overflow: hidden;
           }
           .slideease-container-${uniqueId},
           .slideease-container-${uniqueId} * { box-sizing: border-box; }
           .slideease-container-${uniqueId} .se-slider,
-          .slideease-container-${uniqueId} .slick-list,
-          .slideease-container-${uniqueId} .slick-track { width: 100% !important; }
+          .slideease-container-${uniqueId} .slick-list {
+            width: 100% !important;
+            max-width: 100%;
+          }
           .slideease-container-${uniqueId} .slick-list { overflow: hidden; }
+          .slideease-container-${uniqueId} .slick-track {
+            max-width: none;
+          }
           .slideease-container-${uniqueId} .slick-slide > div { height: 100%; }
           .slideease-container-${uniqueId} .slick-prev,
           .slideease-container-${uniqueId} .slick-next { display: none !important; }
+          .slideease-container-${uniqueId}.se-root--hero .se-slider,
+          .slideease-container-${uniqueId}.se-root--hero .slick-list,
+          .slideease-container-${uniqueId}.se-root--hero .slick-track,
+          .slideease-container-${uniqueId}.se-root--hero .slick-slide,
+          .slideease-container-${uniqueId}.se-root--hero .slick-slide > div,
+          .slideease-container-${uniqueId}.se-root--hero [data-slideease-slide-id],
+          .slideease-container-${uniqueId}.se-root--hero [data-slideease-slide-id] > div {
+            height: var(--se-render-height) !important;
+            min-height: var(--se-render-height) !important;
+          }
 
           .slideease-container-${uniqueId} .slideease-frame {
             position: relative;
             width: 100%;
-            height: clamp(420px, 58vw, var(--se-height));
-            min-height: 420px;
+            height: var(--se-render-height);
+            min-height: var(--se-render-height);
             overflow: hidden;
-            background: #0b1220;
+            background: #111827;
           }
           .slideease-container-${uniqueId}.se-root--multi .slideease-frame {
             height: clamp(320px, 42vw, calc(var(--se-height) * 0.85));
             min-height: 300px;
-            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
           }
           .slideease-container-${uniqueId} .se-media-wrap {
             position: absolute;
@@ -413,8 +473,8 @@
             width: 100%;
             height: 100%;
             display: block;
-            transform: scale(1.02);
-            transition: transform 7s var(--se-ease);
+            transform: scale(1.025);
+            transition: transform 7s var(--se-ease), filter 0.7s ease;
           }
           .slideease-container-${uniqueId} .slick-current .se-media {
             transform: scale(1);
@@ -437,8 +497,8 @@
             position: absolute;
             inset: 0;
             background:
-              linear-gradient(180deg, rgba(0,0,0,0.12) 0%, transparent 35%, transparent 48%, rgba(0,0,0,0.62) 100%),
-              linear-gradient(90deg, rgba(0,0,0,0.18), transparent 45%, transparent 55%, rgba(0,0,0,0.1));
+              linear-gradient(180deg, rgba(5,8,15,0.1) 0%, transparent 34%, rgba(5,8,15,0.1) 58%, rgba(5,8,15,0.72) 100%),
+              linear-gradient(90deg, rgba(5,8,15,0.28) 0%, transparent 48%, rgba(5,8,15,0.08) 100%);
           }
 
           .slideease-container-${uniqueId} .se-copy {
@@ -449,26 +509,31 @@
             flex-direction: column;
             justify-content: flex-end;
             gap: 0;
-            padding: clamp(1.5rem, 4.5vw, 3.5rem);
-            padding-bottom: clamp(2.75rem, 6vw, 4.25rem);
+            padding: clamp(1.25rem, 3.5vw, 3rem);
+            padding-bottom: clamp(3rem, 6vw, 4.5rem);
             max-width: 100%;
             pointer-events: none;
+            overflow: hidden;
           }
           .slideease-container-${uniqueId} .se-copy--left { justify-content: flex-end; }
           .slideease-container-${uniqueId} .se-copy--right { justify-content: flex-end; }
+          .slideease-container-${uniqueId} .se-copy--center {
+            justify-content: center;
+            padding-top: clamp(2rem, 5vw, 4rem);
+            padding-bottom: clamp(2.5rem, 6vw, 4.5rem);
+          }
           .slideease-container-${uniqueId} .se-copy-plate {
             pointer-events: auto;
             display: flex;
             flex-direction: column;
-            gap: 0.55rem;
-            max-width: min(36rem, 100%);
-            padding: clamp(1rem, 2.4vw, 1.45rem) clamp(1.1rem, 2.6vw, 1.6rem);
-            border-radius: 18px;
-            background: rgba(10, 16, 28, 0.42);
-            border: 1px solid rgba(255,255,255,0.14);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 18px 50px rgba(0,0,0,0.28);
+            gap: clamp(0.4rem, 1vw, 0.75rem);
+            max-width: min(46rem, 100%);
+            max-height: 100%;
+            min-height: 0;
+            padding: 0;
+            background: transparent;
+            filter: drop-shadow(0 3px 18px rgba(0,0,0,0.32));
+            overflow: hidden;
           }
           .slideease-container-${uniqueId} .se-copy--center .se-copy-plate { margin: 0 auto; text-align: center; align-items: center; }
           .slideease-container-${uniqueId} .se-copy--left .se-copy-plate { margin-right: auto; align-items: flex-start; }
@@ -476,48 +541,98 @@
 
           .slideease-container-${uniqueId} .se-eyebrow {
             margin: 0;
-            font-size: clamp(0.72rem, 1.1vw, 0.82rem);
-            font-weight: 650;
-            letter-spacing: 0.14em;
+            width: fit-content;
+            max-width: 100%;
+            padding: 0.42rem 0.72rem;
+            border: 1px solid rgba(255,255,255,0.36);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            font-size: clamp(0.68rem, 1vw, 0.76rem);
+            font-weight: 700;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
-            opacity: 0.92;
+            line-height: 1.2;
+            flex-shrink: 0;
           }
           .slideease-container-${uniqueId} .se-heading {
             margin: 0;
             max-width: 18ch;
-            font-size: clamp(1.65rem, 4.4vw, 3.15rem);
-            font-weight: 750;
-            letter-spacing: -0.035em;
+            color: inherit;
+            font-size: clamp(2.6rem, 5.6vw, 5rem);
+            font-weight: 780;
+            letter-spacing: -0.045em;
             line-height: 1.05;
             text-wrap: balance;
+            text-shadow: 0 2px 24px rgba(0,0,0,0.28);
+            flex-shrink: 1;
+            min-height: 0;
           }
           .slideease-container-${uniqueId} .se-desc {
             margin: 0;
-            max-width: 34rem;
-            font-size: clamp(0.92rem, 1.5vw, 1.08rem);
+            max-width: 38rem;
+            color: inherit;
+            font-size: clamp(1.1rem, 1.8vw, 1.35rem);
             line-height: 1.5;
-            opacity: 0.94;
+            opacity: 0.92;
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            flex-shrink: 1;
+            min-height: 0;
           }
           .slideease-container-${uniqueId} .se-cta {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-top: 0.25rem;
-            padding: 0.82rem 1.35rem;
-            border-radius: 999px;
+            min-height: 48px;
+            margin-top: 0.35rem;
+            padding: 0.8rem 0.9rem 0.8rem 1.4rem;
+            border: var(--se-cta-border-width) solid var(--se-cta-border);
+            border-radius: var(--se-cta-radius);
             background: var(--se-cta-bg);
             color: var(--se-cta-color);
             text-decoration: none;
-            font-weight: 650;
-            font-size: 0.92rem;
+            font-size: var(--se-cta-font-size);
+            font-weight: 750;
+            line-height: 1;
             letter-spacing: 0.01em;
-            box-shadow: 0 12px 30px rgba(15,23,42,0.28);
-            transition: transform 0.22s var(--se-ease), box-shadow 0.22s ease, filter 0.22s ease;
+            flex-shrink: 0;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.2),
+              0 14px 34px rgba(5,8,15,0.32);
+            transition:
+              transform 0.25s var(--se-ease),
+              box-shadow 0.25s ease,
+              filter 0.25s ease;
+          }
+          .slideease-container-${uniqueId} .se-cta span { padding-inline: 0.1rem 0.55rem; }
+          .slideease-container-${uniqueId} .se-cta--no-icon { padding-inline: 1.65rem; }
+          .slideease-container-${uniqueId} .se-cta--no-icon span { padding-inline: 0; }
+          .slideease-container-${uniqueId} .se-cta svg {
+            width: 34px;
+            height: 34px;
+            padding: 8px;
+            border-radius: 50%;
+            color: var(--se-cta-icon-color);
+            background: color-mix(in srgb, var(--se-cta-color), transparent 88%);
+            transition: transform 0.25s var(--se-ease), background 0.25s ease;
           }
           .slideease-container-${uniqueId} .se-cta:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.04);
-            box-shadow: 0 16px 36px rgba(15,23,42,0.34);
+            transform: translateY(-3px);
+            filter: brightness(1.08);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.24),
+              0 18px 42px rgba(5,8,15,0.38);
+          }
+          .slideease-container-${uniqueId} .se-cta:hover svg {
+            transform: translateX(3px);
+            background: color-mix(in srgb, var(--se-cta-color), transparent 82%);
+          }
+          .slideease-container-${uniqueId} .se-cta:active {
+            transform: translateY(-1px) scale(0.98);
           }
           .slideease-container-${uniqueId} .se-cta:focus-visible {
             outline: 2px solid #fff;
@@ -529,9 +644,9 @@
             top: 50%;
             transform: translateY(-50%);
             z-index: 8;
-            width: 48px;
-            height: 48px;
-            border: 1px solid rgba(255,255,255,0.22);
+            width: 50px;
+            height: 50px;
+            border: 1px solid rgba(255,255,255,0.32);
             border-radius: 999px;
             display: inline-flex;
             align-items: center;
@@ -539,16 +654,17 @@
             cursor: pointer;
             color: var(--se-arrow-color);
             background: var(--se-arrow-bg);
+            background: color-mix(in srgb, var(--se-arrow-bg), transparent 18%);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 12px 32px rgba(15,23,42,0.24);
-            opacity: 0;
+            box-shadow: 0 12px 32px rgba(5,8,15,0.2);
+            opacity: 0.82;
             transition: opacity 0.25s ease, transform 0.25s var(--se-ease), background 0.2s ease;
           }
           .slideease-container-${uniqueId}:hover .se-nav,
           .slideease-container-${uniqueId}:focus-within .se-nav { opacity: 1; }
-          .slideease-container-${uniqueId} .se-nav--prev { left: clamp(12px, 1.8vw, 28px); }
-          .slideease-container-${uniqueId} .se-nav--next { right: clamp(12px, 1.8vw, 28px); }
+          .slideease-container-${uniqueId} .se-nav--prev { left: clamp(14px, 2.4vw, 36px); }
+          .slideease-container-${uniqueId} .se-nav--next { right: clamp(14px, 2.4vw, 36px); }
           .slideease-container-${uniqueId} .se-nav:hover { transform: translateY(-50%) scale(1.06); }
           .slideease-container-${uniqueId} .se-nav:focus-visible {
             opacity: 1;
@@ -564,12 +680,12 @@
             z-index: 7;
             display: flex !important;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             margin: 0;
-            padding: 8px 12px;
+            padding: 7px 9px;
             list-style: none;
             border-radius: 999px;
-            background: rgba(15, 23, 42, 0.32);
+            background: rgba(5, 8, 15, 0.28);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.14);
@@ -591,14 +707,14 @@
           .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li button:before { display: none; content: none; }
           .slideease-container-${uniqueId} .se-dot {
             display: block;
-            width: 8px;
-            height: 8px;
+            width: 18px;
+            height: 3px;
             border-radius: 999px;
-            background: rgba(255,255,255,0.45);
+            background: rgba(255,255,255,0.42);
             transition: width 0.3s var(--se-ease), background 0.25s ease;
           }
           .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li.slick-active .se-dot {
-            width: 24px;
+            width: 38px;
             background: #fff;
           }
 
@@ -689,10 +805,10 @@
             position: absolute; top: 0; bottom: 0; width: 52%; z-index: 4; pointer-events: none;
             background: linear-gradient(135deg, #0b1220, #1a2f4a);
           }
-          .slideease-container-${uniqueId} .se-split-panel--left { left: 0; }
-          .slideease-container-${uniqueId} .se-split-panel--right { right: 0; }
-          .slideease-container-${uniqueId} .slick-current .se-split-panel--left { animation: seCdnSplitL 0.85s cubic-bezier(0.65,0,0.35,1) forwards; }
-          .slideease-container-${uniqueId} .slick-current .se-split-panel--right { animation: seCdnSplitR 0.85s cubic-bezier(0.65,0,0.35,1) forwards; }
+          .slideease-container-${uniqueId} .se-split-panel--left { left: 0; transform: translateX(-102%); }
+          .slideease-container-${uniqueId} .se-split-panel--right { right: 0; transform: translateX(102%); }
+          .slideease-container-${uniqueId} .slick-current .se-split-panel--left { animation: seCdnSplitL 0.85s cubic-bezier(0.65,0,0.35,1) both; }
+          .slideease-container-${uniqueId} .slick-current .se-split-panel--right { animation: seCdnSplitR 0.85s cubic-bezier(0.65,0,0.35,1) both; }
 
           .slideease-container-${uniqueId}[data-effect="coverflow"] {
             perspective: 1400px;
@@ -724,21 +840,38 @@
             border-radius: 12px;
           }
           .slideease-container-${uniqueId}[data-effect="vertical"] .slick-list {
-            height: clamp(420px, 58vw, var(--se-height)) !important;
+            height: var(--se-render-height) !important;
           }
 
           @media (max-width: 768px) {
+            .slideease-container-${uniqueId}.se-root {
+              --se-render-height: clamp(380px, 72vw, var(--se-height));
+            }
             .slideease-container-${uniqueId} .slideease-frame {
-              height: clamp(380px, 72vw, var(--se-height));
-              min-height: 360px;
+              height: var(--se-render-height);
+              min-height: var(--se-render-height);
             }
             .slideease-container-${uniqueId}.se-root--multi .slideease-frame {
               height: clamp(280px, 68vw, 420px);
               min-height: 260px;
             }
-            .slideease-container-${uniqueId} .se-nav { opacity: 1; width: 42px; height: 42px; }
-            .slideease-container-${uniqueId} .se-heading { max-width: 100%; font-size: clamp(1.45rem, 7vw, 2.1rem); }
-            .slideease-container-${uniqueId} .se-copy { padding-bottom: 3.25rem; }
+            .slideease-container-${uniqueId} .se-nav { opacity: 0.9; width: 42px; height: 42px; }
+            .slideease-container-${uniqueId} .se-heading { max-width: 100%; font-size: clamp(2.15rem, 9vw, 3.4rem); }
+            .slideease-container-${uniqueId} .se-copy {
+              padding: 1.25rem;
+              padding-bottom: 3.5rem;
+            }
+            .slideease-container-${uniqueId} .se-copy--center {
+              padding-top: 2.25rem;
+              padding-bottom: 3.25rem;
+            }
+            .slideease-container-${uniqueId} .se-copy-plate { gap: 0.45rem; }
+            .slideease-container-${uniqueId} .se-desc {
+              display: -webkit-box;
+              overflow: hidden;
+              -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical;
+            }
             .slideease-container-${uniqueId} .slideease-dots-${uniqueId} { bottom: 12px; }
           }
           @media (prefers-reduced-motion: reduce) {
@@ -750,6 +883,7 @@
     `)
 
     const root = document.querySelector(`.slideease-container-${uniqueId}`)
+    const fullBleed = !isMulti ? applyFullBleed(root) : { sync: () => {}, destroy: () => {} }
 
     document.querySelectorAll(`.slideease-container-${uniqueId} .slideease-cta`).forEach((el) => {
       el.addEventListener("click", () => {
@@ -775,6 +909,7 @@
         const $slider = window.jQuery(`#${uniqueId}`)
         $slider.attr("data-effect", effect)
         $slider.slick(slickConfig)
+        fullBleed.sync()
 
         if (settings.thumbnails) {
           window.jQuery(`.slideease-thumbs-${uniqueId}`).slick({
@@ -802,6 +937,7 @@
         })
 
         document.addEventListener("shopify:section:unload", () => {
+          fullBleed.destroy()
           if ($slider.hasClass("slick-initialized")) $slider.slick("unslick")
         })
       })

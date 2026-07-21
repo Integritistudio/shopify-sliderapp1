@@ -148,11 +148,11 @@ export default function MediaPickerInline({ onSelect, onClose, mediaType = "imag
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
         style={{
-          border: `2px dashed ${dragOver ? "#2c4a6e" : "#c9cccf"}`,
+          border: `2px dashed ${dragOver ? "#ed8104" : "#c9cccf"}`,
           borderRadius: 12,
           padding: "1rem",
           textAlign: "center",
-          background: dragOver ? "#f3f6fa" : "#fff",
+          background: dragOver ? "#fffaf3" : "#fff",
           marginBottom: 12,
         }}
       >

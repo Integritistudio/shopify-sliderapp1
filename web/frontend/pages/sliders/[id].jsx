@@ -281,11 +281,9 @@ function SliderEditorContent() {
 
   if (loading) {
     return (
-      <Page title="Loading slider">
-        <div style={{ textAlign: "center", padding: "4rem" }}>
-          <Spinner size="large" />
-        </div>
-      </Page>
+      <div style={{ textAlign: "center", padding: "4rem" }}>
+        <Spinner size="large" />
+      </div>
     )
   }
 
@@ -308,6 +306,7 @@ function SliderEditorContent() {
 
   return (
     <Page
+      fullWidth
       title={slider.name}
       subtitle={`${typeInfo.label} · ${status === "draft" ? "Draft" : "Published"}`}
       backAction={{ content: "Sliders", onAction: () => navigate("/") }}
@@ -421,15 +420,15 @@ function SliderEditorContent() {
         style={{
                           border:
                             dragOverId === slide.id
-                              ? "2px dashed #2c4a6e"
+                              ? "1px dashed #b7bcc5"
                               : selected
-                                ? "2px solid #2c4a6e"
+                                ? "1px solid #d8dce2"
                                 : "1px solid #e2e8f0",
                           borderRadius: 14,
                           padding: 14,
-                          background: selected ? "#f3f6fa" : "#fff",
+                          background: "#fff",
                           cursor: "grab",
-                          boxShadow: selected ? "0 8px 20px rgba(26,47,74,0.1)" : "none",
+                          boxShadow: "none",
                         }}
                       >
                         <div
@@ -504,7 +503,6 @@ function SliderEditorContent() {
                             </Button>
                             <Button
                               size="slim"
-                              primary={selected}
                               onClick={() => {
                                 setConfirmDeleteId(null)
                                 setPanelMode(selected ? null : slide.id)
@@ -611,7 +609,7 @@ function SliderEditorContent() {
                         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                         fontSize: 30,
                         fontWeight: 700,
-                        color: "#1a2f4a",
+                        color: "#170f49",
                         margin: "8px 0 14px",
                         userSelect: "all",
                         letterSpacing: "-0.02em",
@@ -672,9 +670,7 @@ function SliderEditorContent() {
               <Text variant="headingMd" as="h2">
                 Live preview
               </Text>
-              <Text color="subdued">{typeInfo.description}</Text>
             </div>
-            <Badge status={typeInfo.color}>{typeInfo.label}</Badge>
           </div>
           <div style={{ padding: "0.75rem 1.25rem 1.25rem" }}>
             <SliderPreview slides={slides} sliderType={sliderType} settings={settings} />

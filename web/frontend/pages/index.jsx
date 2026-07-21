@@ -30,7 +30,7 @@ function SlidersIndexContent() {
   const [deleteTargetId, setDeleteTargetId] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState(null)
-  const [metricsSummary, setMetricsSummary] = useState(null)
+  const [metricsSummary, setMetricsSummary] = useState({ views: 0, ctr: 0 })
 
   const fetchSliders = async () => {
     try {
@@ -131,7 +131,7 @@ function SlidersIndexContent() {
 
   if (loading) {
     return (
-      <Page title="SlideEase">
+      <Page fullWidth>
         <div style={{ textAlign: "center", padding: "4rem" }}>
           <Spinner size="large" />
         </div>
@@ -140,14 +140,10 @@ function SlidersIndexContent() {
   }
 
   return (
-      <Page title="SlideEase">
+      <Page fullWidth>
       <div className="se-page">
-        <Stack vertical spacing="loose">
+        <div className="se-dashboard-stack">
           <div className="se-hero">
-            <div className="se-hero__eyebrow">
-              <IconLayers size={12} />
-              SlideEase
-            </div>
             <h1 className="se-hero__title">Storefront sliders, refined</h1>
             <p className="se-hero__sub">
               Design, preview, and publish — then embed in your theme with a single ID.
@@ -157,11 +153,9 @@ function SlidersIndexContent() {
                 {sliders.length} slider{sliders.length === 1 ? "" : "s"}
               </span>
               <span className="se-stat">{totalSlides} slides</span>
-              {metricsSummary ? (
-                <span className="se-stat">
-                  {metricsSummary.views} views · {metricsSummary.ctr}% CTR
-                </span>
-              ) : null}
+              <span className="se-stat">
+                {metricsSummary.views} views · {metricsSummary.ctr}% CTR
+              </span>
             </div>
             <div className="se-hero__actions">
               <button
@@ -176,7 +170,7 @@ function SlidersIndexContent() {
                 <IconPalette size={15} />
                 Brand kit
               </button>
-              <button type="button" className="se-btn se-btn--ghost" onClick={() => navigate("/setupguide")} style={{ color: "rgba(248,250,252,0.75)" }}>
+              <button type="button" className="se-btn se-btn--ghost" onClick={() => navigate("/setupguide")}>
                 <IconBook size={15} />
                 Setup
               </button>
@@ -326,7 +320,13 @@ function SlidersIndexContent() {
               })}
             </Stack>
           )}
-        </Stack>
+        </div>
+      </div>
+      <div className="se-powered-by">
+        <span>Powered by</span>
+        <a href="https://www.integritistudio.com/" target="_blank" rel="noopener noreferrer">
+          Integriti Studio
+        </a>
       </div>
     </Page>
   )

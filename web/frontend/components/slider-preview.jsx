@@ -74,32 +74,75 @@ function SlideFrame({ slide, settings, compact, heightOverride, style = {}, medi
           zIndex: 1,
         }}
       >
+        {subheading ? (
+          <p
+            style={{
+              margin: "0 0 0.35rem",
+              fontSize: compact ? "0.7rem" : "0.8rem",
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              opacity: 0.95,
+            }}
+          >
+            {subheading}
+          </p>
+        ) : null}
         {heading ? (
-          <h3 style={{ margin: "0 0 0.3rem", fontSize: compact ? "1rem" : "1.5rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
+          <h3 style={{ margin: "0 0 0.4rem", fontSize: compact ? "1.4rem" : "2.35rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
             {heading}
           </h3>
         ) : null}
-        {subheading ? (
-          <p style={{ margin: "0 0 0.35rem", fontSize: compact ? "0.75rem" : "0.92rem", opacity: 0.95 }}>{subheading}</p>
-        ) : null}
-        {description && !compact ? (
-          <p style={{ margin: "0 0 0.8rem", maxWidth: "28rem", lineHeight: 1.4, fontSize: "0.88rem", opacity: 0.9 }}>
+        {description ? (
+          <p
+            style={{
+              margin: "0 0 0.8rem",
+              maxWidth: "28rem",
+              lineHeight: 1.4,
+              fontSize: compact ? "0.92rem" : "1.15rem",
+              opacity: 0.9,
+              display: "-webkit-box",
+              WebkitLineClamp: compact ? 2 : 4,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {description}
           </p>
         ) : null}
         {slide.ctaText ? (
           <span
             style={{
-              display: "inline-block",
-              padding: compact ? "0.4rem 0.7rem" : "0.6rem 1rem",
-              borderRadius: 8,
-              background: slide.buttonBg || "#1a2f4a",
-              color: slide.buttonTextColor || "#ffffff",
-              fontWeight: 650,
-              fontSize: compact ? "0.72rem" : "0.84rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: compact ? 5 : 8,
+              padding: compact ? "0.45rem 0.75rem" : "0.7rem 1.15rem",
+              border: `${settings.ctaBorderWidth ?? 1}px solid ${settings.ctaBorderColor || "#ffffff"}`,
+              borderRadius: settings.ctaBorderRadius ?? 50,
+              background: settings.ctaBackground || slide.buttonBg || "#1a2f4a",
+              color: settings.ctaTextColor || slide.buttonTextColor || "#ffffff",
+              fontWeight: 700,
+              fontSize: compact ? "0.75rem" : `${settings.ctaFontSize ?? 16}px`,
+              lineHeight: 1,
             }}
           >
             {slide.ctaText}
+            {settings.ctaIcon !== "none" ? (
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                style={{ width: compact ? 13 : 17, height: compact ? 13 : 17, color: settings.ctaIconColor || "#ffffff" }}
+              >
+                <path
+                  d={settings.ctaIcon === "chevron" ? "M7 4l6 6-6 6" : "M4 10h11m-4-4 4 4-4 4"}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : null}
           </span>
         ) : null}
       </div>
@@ -355,12 +398,12 @@ export default function SliderPreview({
     else goPrev()
   }
 
-  const renderSingleStage = (heightOverride) => {
+  const renderSingleStage = (heightOverride, forceCompact = false) => {
     const frame = (
       <SlideFrame
         slide={current}
         settings={mergedSettings}
-        compact={Boolean(heightOverride)}
+        compact={forceCompact || compact}
         heightOverride={heightOverride}
         contentClassName={effect === "slide-up" ? "se-rise-content" : undefined}
       />
@@ -526,7 +569,7 @@ export default function SliderPreview({
                   height: 52,
                   borderRadius: 8,
                   overflow: "hidden",
-                  border: i === index ? "2px solid #2c4a6e" : "2px solid transparent",
+                  border: i === index ? "2px solid #ed8104" : "2px solid transparent",
                   padding: 0,
                   cursor: "pointer",
                   opacity: i === index ? 1 : 0.7,

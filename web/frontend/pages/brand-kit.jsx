@@ -14,6 +14,63 @@ import {
 } from "@shopify/polaris"
 import { ToastProvider, useToast } from "../contexts/toast-context"
 
+function pickerValue(value, fallback) {
+  const color = String(value || "").trim()
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    return `#${color
+      .slice(1)
+      .split("")
+      .map((part) => part + part)
+      .join("")}`
+  }
+  return fallback
+}
+
+function BrandColorPicker({ label, value, fallback, onChange }) {
+  const color = pickerValue(value, fallback)
+
+  return (
+    <div>
+      <Text variant="bodyMd" as="p">
+        {label}
+      </Text>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginTop: 6,
+          padding: "6px 10px 6px 6px",
+          border: "1px solid #aeb4bc",
+          borderRadius: 8,
+          background: "#fff",
+          cursor: "pointer",
+        }}
+      >
+        <input
+          type="color"
+          value={color}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label={`${label} picker`}
+          style={{
+            width: 44,
+            height: 34,
+            padding: 2,
+            border: 0,
+            borderRadius: 6,
+            background: "transparent",
+            cursor: "pointer",
+          }}
+        />
+        <span style={{ color: "#4a5568", fontFamily: "monospace", fontSize: 14 }}>
+          {color.toUpperCase()}
+        </span>
+      </label>
+    </div>
+  )
+}
+
 function BrandKitContent() {
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -57,7 +114,7 @@ function BrandKitContent() {
 
   if (loading || !form) {
     return (
-      <Page title="Brand kit" backAction={{ content: "Sliders", onAction: () => navigate("/") }}>
+      <Page fullWidth title="Brand kit" backAction={{ content: "Sliders", onAction: () => navigate("/") }}>
         <div style={{ textAlign: "center", padding: "3rem" }}>
           <Spinner size="large" />
         </div>
@@ -67,6 +124,7 @@ function BrandKitContent() {
 
   return (
     <Page
+      fullWidth
       title="Brand kit"
       subtitle="Default colors for new slides"
       backAction={{ content: "Sliders", onAction: () => navigate("/") }}
@@ -75,7 +133,6 @@ function BrandKitContent() {
       <div className="se-page">
       <Stack vertical>
         <div className="se-hero" style={{ padding: "1.25rem 1.4rem" }}>
-          <div className="se-hero__eyebrow">Brand kit</div>
           <h1 className="se-hero__title" style={{ fontSize: "1.45rem" }}>
             Your default look
           </h1>
@@ -87,14 +144,30 @@ function BrandKitContent() {
           <div className="se-panel__body">
           <FormLayout>
             <FormLayout.Group>
-              <TextField label="Text color" value={form.textColor} onChange={(v) => update("textColor", v)} />
-              <TextField label="Button background" value={form.buttonBg} onChange={(v) => update("buttonBg", v)} />
-              <TextField
+              <BrandColorPicker
+                label="Text color"
+                value={form.textColor}
+                fallback="#ffffff"
+                onChange={(v) => update("textColor", v)}
+              />
+              <BrandColorPicker
+                label="Button background"
+                value={form.buttonBg}
+                fallback="#1a2f4a"
+                onChange={(v) => update("buttonBg", v)}
+              />
+              <BrandColorPicker
                 label="Button text"
                 value={form.buttonTextColor}
+                fallback="#ffffff"
                 onChange={(v) => update("buttonTextColor", v)}
               />
-              <TextField label="Overlay color" value={form.overlayColor} onChange={(v) => update("overlayColor", v)} />
+              <BrandColorPicker
+                label="Overlay color"
+                value={form.overlayColor}
+                fallback="#000000"
+                onChange={(v) => update("overlayColor", v)}
+              />
             </FormLayout.Group>
             <RangeSlider
               label={`Overlay opacity: ${Number(form.overlayOpacity || 0).toFixed(2)}`}
