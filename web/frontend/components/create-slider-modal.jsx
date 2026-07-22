@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Modal, FormLayout, TextField, Select, Card, Stack, Text } from "@shopify/polaris"
+import { Modal, FormLayout, TextField, Card, Stack, Text } from "@shopify/polaris"
 import { useToast } from "../contexts/toast-context"
 import { SLIDER_TYPES, settingsFromPreset } from "../utils/sliderConfig"
 import SliderPreview from "./slider-preview"
+import SeSelect from "./se-select"
 
 export default function CreateSliderModal({ isOpen, onClose, onCreateSlider }) {
   const { showToast } = useToast()
@@ -65,7 +66,7 @@ export default function CreateSliderModal({ isOpen, onClose, onCreateSlider }) {
             disabled={isSubmitting}
           />
 
-          <Select
+          <SeSelect
             label="Slider preset"
             options={SLIDER_TYPES.map((option) => ({ label: option.label, value: option.value }))}
             value={sliderType}

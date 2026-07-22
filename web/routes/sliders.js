@@ -6,9 +6,12 @@ import {
   settingsFromPreset,
   SLIDE_ATTRIBUTES,
   DEFAULT_SLIDE_FIELDS,
+  PRODUCT_SLIDER_TYPES,
+  SLIDE_HARD_LIMIT,
 } from "../utils/sliderDefaults.js"
 import { sanitizePlainText } from "../utils/validation.js"
 import { getTemplateById } from "../utils/templates.js"
+import { fetchCollectionProducts, fetchProductsByIds } from "./collections.js"
 
 const router = express.Router()
 
@@ -24,6 +27,51 @@ function serializeSlider(slider) {
       description: slide.description || "",
     })),
   }
+}
+
+async function replaceWithProductSlides(slider, products, { showPrice = true } = {}) {
+  await Slide.destroy({ where: { SliderId: slider.id } })
+  if (!products.length) return
+  await Slide.bulkCreate(
+    products.map((product, index) => ({
+      ...DEFAULT_SLIDE_FIELDS,
+      imageUrl: product.imageUrl || "",
+      title: product.title,
+      heading: product.title,
+      description: showPrice ? product.price || "" : "",
+      ctaText: "Shop now",
+      ctaUrl: product.url,
+      ctaResourceType: "product",
+      ctaResourceId: product.id,
+      variantId: product.variantId || null,
+      subheading: product.handle || "",
+      imageAlt: product.imageAlt || product.title,
+      textAlign: "center",
+      textColor: "#170f49",
+      overlayOpacity: 0,
+      position: index,
+      isVisible: true,
+      SliderId: slider.id,
+    })),
+  )
+}
+
+async function loadSerializedSlider(id, shop) {
+  return Slider.findOne({
+    where: { id, shop },
+    include: [
+      {
+        model: Slide,
+        as: "slides",
+        attributes: SLIDE_ATTRIBUTES,
+        required: false,
+      },
+    ],
+    order: [
+      [{ model: Slide, as: "slides" }, "position", "ASC"],
+      [{ model: Slide, as: "slides" }, "id", "ASC"],
+    ],
+  })
 }
 
 async function markOnboarding(shop, patch) {
@@ -319,6 +367,117 @@ router.post("/sliders/:id/duplicate", async (req, res) => {
   } catch (error) {
     console.error("Error duplicating slider:", error)
     res.status(500).json({ error: "Failed to duplicate slider" })
+  }
+})
+
+router.post("/sliders/:id/sync-collection", async (req, res) => {
+  try {
+    const shop = req.shop
+    const session = res.locals.shopify.session
+    const slider = await Slider.findOne({ where: { id: req.params.id, shop } })
+    if (!slider) {
+      return res.status(404).json({ error: "Slider not found" })
+    }
+
+    if (!PRODUCT_SLIDER_TYPES.includes(slider.sliderType)) {
+      return res.status(400).json({ error: "Collection sync is only available for Product slider types" })
+    }
+
+    const settings = mergeSliderSettings(slider.sliderType, {
+      ...(slider.settings || {}),
+      ...(req.body?.settings || {}),
+    })
+
+    const collectionId = req.body?.collectionId || settings.collectionId
+    if (!collectionId) {
+      return res.status(400).json({ error: "Select a collection before syncing" })
+    }
+
+    const limit = Math.min(
+      Math.max(Number(req.body?.productLimit ?? settings.productLimit ?? 8), 1),
+      Math.min(SLIDE_HARD_LIMIT, 50),
+    )
+    const showPrice = req.body?.showPrice ?? settings.showPrice !== false
+    if (req.body?.sectionHeading !== undefined) {
+      settings.sectionHeading = String(req.body.sectionHeading || "").slice(0, 120)
+    }
+
+    const { products, handle, title } = await fetchCollectionProducts(session, collectionId, limit)
+
+    settings.collectionId = collectionId
+    settings.collectionHandle = handle
+    settings.productLimit = limit
+    settings.showPrice = Boolean(showPrice)
+    slider.settings = settings
+    await slider.save()
+
+    await replaceWithProductSlides(slider, products, { showPrice })
+    await markOnboarding(shop, { addedSlide: products.length > 0 })
+
+    const updated = await loadSerializedSlider(slider.id, shop)
+    res.json({
+      ...serializeSlider(updated),
+      syncMeta: {
+        collectionTitle: title,
+        productCount: products.length,
+      },
+    })
+  } catch (error) {
+    console.error("Error syncing collection:", error)
+    res.status(error.status || 500).json({
+      error: error.message || "Failed to sync collection",
+    })
+  }
+})
+
+router.post("/sliders/:id/sync-products", async (req, res) => {
+  try {
+    const shop = req.shop
+    const session = res.locals.shopify.session
+    const slider = await Slider.findOne({ where: { id: req.params.id, shop } })
+    if (!slider) {
+      return res.status(404).json({ error: "Slider not found" })
+    }
+
+    if (!PRODUCT_SLIDER_TYPES.includes(slider.sliderType)) {
+      return res.status(400).json({ error: "Product sync is only available for Product slider types" })
+    }
+
+    const productIds = req.body?.productIds || []
+    if (!Array.isArray(productIds) || !productIds.length) {
+      return res.status(400).json({ error: "Select at least one product" })
+    }
+
+    const settings = mergeSliderSettings(slider.sliderType, {
+      ...(slider.settings || {}),
+      ...(req.body?.settings || {}),
+    })
+    const showPrice = req.body?.showPrice ?? settings.showPrice !== false
+    if (req.body?.sectionHeading !== undefined) {
+      settings.sectionHeading = String(req.body.sectionHeading || "").slice(0, 120)
+    }
+    settings.showPrice = Boolean(showPrice)
+    settings.collectionId = null
+    settings.collectionHandle = null
+    slider.settings = settings
+    await slider.save()
+
+    const products = await fetchProductsByIds(session, productIds)
+    await replaceWithProductSlides(slider, products, { showPrice })
+    await markOnboarding(shop, { addedSlide: products.length > 0 })
+
+    const updated = await loadSerializedSlider(slider.id, shop)
+    res.json({
+      ...serializeSlider(updated),
+      syncMeta: {
+        productCount: products.length,
+      },
+    })
+  } catch (error) {
+    console.error("Error syncing products:", error)
+    res.status(error.status || 500).json({
+      error: error.message || "Failed to sync products",
+    })
   }
 })
 

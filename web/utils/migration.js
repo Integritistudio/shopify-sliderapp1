@@ -393,6 +393,25 @@ const migrations = {
       await queryInterface.dropTable("BrandKits")
     },
   },
+
+  "009-slide-variant-id": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (!columns.variantId) {
+        await queryInterface.addColumn("Slides", "variantId", {
+          type: DataTypes.STRING,
+          allowNull: true,
+          defaultValue: null,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (columns.variantId) {
+        await queryInterface.removeColumn("Slides", "variantId")
+      }
+    },
+  },
 }
 
 // Run pending migrations

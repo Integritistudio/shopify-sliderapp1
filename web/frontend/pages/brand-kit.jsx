@@ -115,7 +115,7 @@ function BrandKitContent() {
   if (loading || !form) {
     return (
       <Page fullWidth title="Brand kit" backAction={{ content: "Sliders", onAction: () => navigate("/") }}>
-        <div style={{ textAlign: "center", padding: "3rem" }}>
+        <div className="se-loading">
           <Spinner size="large" />
         </div>
       </Page>

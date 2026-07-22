@@ -16,6 +16,9 @@ import {
   IconPalette,
   IconBook,
   IconLayers,
+  IconAll,
+  IconPublished,
+  IconDraft,
 } from "../components/icons"
 
 function SlidersIndexContent() {
@@ -132,7 +135,7 @@ function SlidersIndexContent() {
   if (loading) {
     return (
       <Page fullWidth>
-        <div style={{ textAlign: "center", padding: "4rem" }}>
+        <div className="se-loading">
           <Spinner size="large" />
         </div>
       </Page>
@@ -204,21 +207,25 @@ function SlidersIndexContent() {
                     autoComplete="off"
                   />
                 </div>
-                <div className="se-chips">
+                <div className="se-actions">
                   {[
-                    { id: "all", label: "All" },
-                    { id: "published", label: "Published" },
-                    { id: "draft", label: "Draft" },
-                  ].map((chip) => (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      className={`se-chip${statusFilter === chip.id ? " is-active" : ""}`}
-                      onClick={() => setStatusFilter(chip.id)}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
+                    { id: "all", label: "All", Icon: IconAll },
+                    { id: "published", label: "Published", Icon: IconPublished },
+                    { id: "draft", label: "Draft", Icon: IconDraft },
+                  ].map((chip) => {
+                    const ChipIcon = chip.Icon
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        className={`se-btn se-btn--sm ${statusFilter === chip.id ? "se-btn--primary" : "se-btn--secondary"}`}
+                        onClick={() => setStatusFilter(chip.id)}
+                      >
+                        <ChipIcon size={17} />
+                        {chip.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -272,7 +279,7 @@ function SlidersIndexContent() {
                           className="se-btn se-btn--primary se-btn--sm"
                           onClick={() => navigate(`/sliders/${slider.id}`)}
                         >
-                          <IconEdit size={14} />
+                          <IconEdit size={17} />
                           Edit
                         </button>
                         <button
@@ -281,7 +288,7 @@ function SlidersIndexContent() {
                           disabled={duplicatingId === slider.id}
                           onClick={() => duplicateSlider(slider)}
                         >
-                          {duplicatingId === slider.id ? <span className="se-btn__spin" /> : <IconCopy size={14} />}
+                          {duplicatingId === slider.id ? <span className="se-btn__spin" /> : <IconCopy size={17} />}
                           Duplicate
                         </button>
                         <button
@@ -289,7 +296,7 @@ function SlidersIndexContent() {
                           className="se-btn se-btn--danger se-btn--sm"
                           onClick={() => setDeleteTargetId(confirming ? null : slider.id)}
                         >
-                          <IconTrash size={14} />
+                          <IconTrash size={17} />
                           Delete
                         </button>
                       </div>
@@ -309,7 +316,7 @@ function SlidersIndexContent() {
                             disabled={deleting}
                             onClick={() => confirmDelete(slider)}
                           >
-                            {deleting ? <span className="se-btn__spin" /> : <IconTrash size={14} />}
+                            {deleting ? <span className="se-btn__spin" /> : <IconTrash size={17} />}
                             Confirm
                           </button>
                         </div>
@@ -321,12 +328,6 @@ function SlidersIndexContent() {
             </Stack>
           )}
         </div>
-      </div>
-      <div className="se-powered-by">
-        <span>Powered by</span>
-        <a href="https://www.integritistudio.com/" target="_blank" rel="noopener noreferrer">
-          Integriti Studio
-        </a>
       </div>
     </Page>
   )

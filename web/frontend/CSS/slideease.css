@@ -25,10 +25,26 @@
   --se-radius-sm: 12px;
   --se-shadow: 0 18px 48px rgba(23, 15, 73, 0.08);
   --se-shadow-sm: 0 6px 20px rgba(23, 15, 73, 0.06);
-  --p-color-border-interactive: #ed8104;
-  --p-color-border-interactive-focus: #ed8104;
-  --p-color-focused: #ed8104;
+  --p-color-border-interactive: #c9ccd1;
+  --p-color-border-interactive-focus: #c9ccd1;
+  --p-color-focused: #c9ccd1;
   --p-color-bg-primary: #ed8104;
+  --se-field-border: #c9ccd1;
+  --se-field-radius: 8px;
+  --se-field-height: 2.25rem;
+
+  /* Info banners / highlights → white + black */
+  --p-color-bg-fill-info: #170f49;
+  --p-color-bg-surface-info: #ffffff;
+  --p-color-bg-fill-info-secondary: #f8f8f8;
+  --p-color-border-info: #170f49;
+  --p-color-text-info: #170f49;
+  --p-color-text-info-on-bg-fill: #ffffff;
+  --p-color-icon-info: #170f49;
+  --p-icon-highlight: #170f49;
+  --p-banner-background: #ffffff;
+  --p-banner-border: #170f49;
+  --p-text: #170f49;
 }
 
 /* App scrollbar */
@@ -110,6 +126,78 @@ html::-webkit-scrollbar-thumb:hover,
   fill: var(--se-accent-deep) !important;
 }
 
+/* Toast — white bg, orange text */
+.se-toast-stack {
+  position: fixed;
+  z-index: 1200;
+  left: 50%;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(420px, calc(100vw - 2rem));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.se-toast {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--se-line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: var(--se-shadow-sm);
+}
+
+.se-toast__text {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #000000;
+}
+
+.se-toast__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #000000;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  opacity: 0.7;
+}
+
+.se-toast__close:hover {
+  opacity: 1;
+}
+
+.se-toast--error,
+.se-toast--error .se-toast__text,
+.se-toast--error .se-toast__close {
+  color: var(--se-danger);
+}
+
+.Polaris-Button:focus,
+.Polaris-Button:focus-visible,
+.Polaris-Button--focusVisible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.Polaris-Button:focus::after,
+.Polaris-Button:focus-visible::after,
+.Polaris-Button--focusVisible::after {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 .Polaris-Button--pressed:not(.Polaris-Button--primary) {
   border-color: #d8dadd !important;
   background: #f7f7f8 !important;
@@ -125,39 +213,260 @@ html::-webkit-scrollbar-thumb:hover,
 
 .Polaris-Tabs__Tab--selected,
 .Polaris-Tabs__Tab[aria-selected="true"] {
-  color: var(--se-accent-deep) !important;
+  color: var(--se-ink) !important;
 }
 
 /* Underline only — do NOT style Title::after (that is the focus ring box) */
 .Polaris-Tabs__Tab--selected .Polaris-Tabs__Title::before,
 .Polaris-Tabs__Tab[aria-selected="true"] .Polaris-Tabs__Title::before {
-  background: var(--se-accent-deep) !important;
+  background: var(--se-ink) !important;
+}
+
+.Polaris-Tabs__Tab:focus,
+.Polaris-Tabs__Tab:focus-visible,
+.Polaris-Tabs__Tab--focused,
+.Polaris-Tabs__Tab:focus .Polaris-Tabs__Title::after,
+.Polaris-Tabs__Tab:focus-visible .Polaris-Tabs__Title::after,
+.Polaris-Tabs__Tab--focused .Polaris-Tabs__Title::after {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 input[type="range"] {
   accent-color: var(--se-accent-deep);
 }
 
-.Polaris-TextField__Input:focus ~ .Polaris-TextField__Backdrop,
-.Polaris-TextField--focus > .Polaris-TextField__Input ~ .Polaris-TextField__Backdrop,
-.Polaris-TextField:focus-within .Polaris-TextField__Backdrop {
-  border-color: var(--se-accent-deep) !important;
+/* =========================================================
+   Shared form fields — TextField + Select + menus
+   One border, one radius, one height. No double rings.
+   ========================================================= */
+.Polaris-TextField__Backdrop,
+.Polaris-Select__Backdrop {
+  border: 1px solid var(--se-field-border) !important;
+  border-radius: var(--se-field-radius) !important;
+  background: #fff !important;
   box-shadow: none !important;
+  outline: none !important;
 }
 
-.Polaris-TextField__Input:focus ~ .Polaris-TextField__Backdrop::after,
-.Polaris-TextField__Input:focus-visible ~ .Polaris-TextField__Backdrop::after,
-.Polaris-TextField--focus > .Polaris-TextField__Input ~ .Polaris-TextField__Backdrop::after,
-.Polaris-TextField--focus > .Polaris-TextField__VerticalContent ~ .Polaris-TextField__Backdrop::after {
+.Polaris-TextField__Backdrop::after,
+.Polaris-Select__Backdrop::after {
+  display: none !important;
+  content: none !important;
   border: 0 !important;
   outline: 0 !important;
   box-shadow: none !important;
 }
 
-.Polaris-TextField__Input:focus,
-.Polaris-TextField__Input:focus-visible {
+.Polaris-TextField__Input:focus ~ .Polaris-TextField__Backdrop,
+.Polaris-TextField--focus > .Polaris-TextField__Input ~ .Polaris-TextField__Backdrop,
+.Polaris-TextField:focus-within .Polaris-TextField__Backdrop,
+.Polaris-Select__Input:focus ~ .Polaris-Select__Backdrop,
+.Polaris-Select--focus .Polaris-Select__Backdrop,
+.Polaris-Select:focus-within .Polaris-Select__Backdrop {
+  border: 1px solid var(--se-field-border) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.Polaris-TextField__Input,
+.Polaris-Select__Input {
+  min-height: var(--se-field-height) !important;
+  border: 0 !important;
   outline: none !important;
   box-shadow: none !important;
+  background: transparent !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.Polaris-TextField__Input:focus,
+.Polaris-TextField__Input:focus-visible,
+.Polaris-Select__Input:focus,
+.Polaris-Select__Input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.Polaris-Select {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.Polaris-Select__Content {
+  min-height: var(--se-field-height) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+.Polaris-Select__InlineLabel,
+.Polaris-Select__SelectedOption,
+.Polaris-Select__Icon,
+.Polaris-Select__InputIcon {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.Polaris-Labelled__LabelWrapper,
+.Polaris-Labelled {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Dropdown / popover menus match the same border language */
+.Polaris-Popover__Content,
+.Polaris-Popover__Pane,
+.Polaris-PositionedOverlay > .Polaris-Popover {
+  border: 1px solid var(--se-field-border) !important;
+  border-radius: var(--se-field-radius) !important;
+  box-shadow: var(--se-shadow-sm) !important;
+  overflow: hidden;
+}
+
+.Polaris-Popover__ContentContainer {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.Polaris-OptionList-Option {
+  border-radius: 6px !important;
+}
+
+.Polaris-OptionList-Option--select,
+.Polaris-OptionList-Option--active,
+.Polaris-OptionList-Option:hover {
+  box-shadow: none !important;
+}
+
+/* Custom select — matches TextField; open menu is fully styled */
+.se-select {
+  position: relative;
+  width: 100%;
+}
+
+.se-select__label {
+  margin-bottom: 0.25rem;
+  color: var(--se-ink);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  line-height: 1.25;
+}
+
+.se-select__trigger {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: var(--se-field-height);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--se-field-border);
+  border-radius: var(--se-field-radius);
+  background: #fff;
+  color: var(--se-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 450;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.se-select__trigger:hover:not(:disabled) {
+  border-color: #b6bac0;
+  background: #fafafa;
+}
+
+.se-select.is-open .se-select__trigger,
+.se-select__trigger:focus,
+.se-select__trigger:focus-visible {
+  outline: none;
+  border-color: var(--se-field-border);
+  box-shadow: none;
+}
+
+.se-select__trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.se-select__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.se-select__chevron {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--se-muted);
+  transition: transform 0.15s ease;
+}
+
+.se-select.is-open .se-select__chevron {
+  transform: rotate(180deg);
+}
+
+.se-select__menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  max-height: min(280px, 50vh);
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  border: 1px solid var(--se-field-border);
+  border-radius: var(--se-field-radius);
+  background: #fff;
+  box-shadow: var(--se-shadow-sm);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.se-select__help {
+  margin-top: 0.35rem;
+  color: var(--se-muted);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.se-select__option {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--se-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 450;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.se-select__option:hover {
+  background: var(--se-soft);
+}
+
+.se-select__option.is-active {
+  background: #f3f4f6;
+  color: var(--se-ink);
+  font-weight: 450;
 }
 
 .Polaris-RangeSlider-SingleThumb__Input {
@@ -178,50 +487,66 @@ input[type="range"] {
   box-shadow: none !important;
 }
 
-.se-powered-by {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 1000;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.9rem;
-  border: 1px solid var(--se-line);
-  border-radius: 9px;
-  background: #ffffff;
-  color: var(--se-ink);
-  font-size: 0.84rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  box-shadow: none;
+/* Info banners — white bg + black border */
+.Polaris-Banner--statusInfo,
+.Polaris-Banner--statusInfo.Polaris-Banner--withinPage,
+.Polaris-Banner--statusInfo.Polaris-Banner--withinContentContainer {
+  --p-color-bg-surface-info: #ffffff;
+  --p-color-bg-fill-info: #170f49;
+  --p-color-border-info: #170f49;
+  --p-color-icon-info: #170f49;
+  --p-color-text-info: var(--se-ink);
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border: 1px solid #170f49 !important;
+  border-radius: var(--se-radius-sm) !important;
+  box-shadow: none !important;
 }
 
-.se-powered-by a {
-  color: var(--se-ink);
-  font-weight: 650;
-  text-decoration: none;
+.Polaris-Banner--statusInfo .Polaris-Banner__Heading,
+.Polaris-Banner--statusInfo .Polaris-Banner__Content,
+.Polaris-Banner--statusInfo .Polaris-Text,
+.Polaris-Banner--statusInfo p {
+  color: var(--se-ink) !important;
 }
 
-.se-powered-by a:hover {
-  color: var(--se-accent-deep);
+.Polaris-Banner--statusInfo .Polaris-Icon {
+  color: #170f49 !important;
 }
 
-/* Custom buttons */
+.Polaris-Banner--statusInfo .Polaris-Icon svg,
+.Polaris-Banner--statusInfo .Polaris-Icon svg *,
+.Polaris-Banner--statusInfo .Polaris-Banner__Ribbon svg,
+.Polaris-Banner--statusInfo .Polaris-Banner__Ribbon svg * {
+  fill: currentColor !important;
+  color: #170f49 !important;
+}
+
+.Polaris-Banner--statusInfo .Polaris-Banner__Ribbon {
+  background: transparent !important;
+  border-radius: 50% !important;
+}
+
+.Polaris-Banner--statusInfo .Polaris-Button,
+.Polaris-Banner--statusInfo .Polaris-Banner__Actions .Polaris-Button {
+  color: var(--se-ink) !important;
+}
+
+/* Custom buttons — match Polaris slim proportions (not colors) */
 .se-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  border-radius: 9px;
+  gap: 0.35rem;
+  min-height: 2rem;
+  border-radius: 6px;
   border: 1px solid transparent;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.84rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  letter-spacing: 0;
+  line-height: 1;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
   white-space: nowrap;
@@ -293,14 +618,21 @@ input[type="range"] {
 }
 
 .se-btn--sm {
-  padding: 0.35rem 0.65rem;
-  font-size: 0.78rem;
-  border-radius: 8px;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  border-radius: 6px;
+}
+
+.se-btn svg,
+.se-btn__spin {
+  flex-shrink: 0;
 }
 
 .se-btn__spin {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border: 1.5px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
@@ -318,6 +650,17 @@ input[type="range"] {
   max-width: 1440px;
   margin-inline: auto;
   padding-block: 0.75rem 2rem;
+}
+
+.se-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: calc(100vh - 7rem);
+  min-height: calc(100dvh - 7rem);
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
 .se-dashboard-stack {
@@ -422,7 +765,7 @@ input[type="range"] {
 }
 
 .se-panel__body {
-  padding: 1.1rem 1.2rem;
+  padding: 1rem 1.1rem;
 }
 
 .se-toolbar {
@@ -524,7 +867,7 @@ input[type="range"] {
   border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 500;
-  background: #f7f7f8;
+  background: #fff;
   color: var(--se-ink);
   border: 1px solid #dedfe2;
   box-shadow: none;
@@ -532,16 +875,26 @@ input[type="range"] {
 
 .se-pill--live,
 .se-pill--draft {
-  background: #f7f7f8;
+  background: #fff;
   color: var(--se-ink);
   border-color: #dedfe2;
 }
 
 .se-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  justify-content: flex-end;
+  --se-actions-width: 18.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: var(--se-actions-width);
+  flex-shrink: 0;
+  justify-content: stretch;
+  box-sizing: border-box;
+}
+
+.se-actions > .se-btn {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
 }
 
 .se-empty {
@@ -568,8 +921,8 @@ input[type="range"] {
 .se-create {
   border: 1px solid var(--se-line);
   border-radius: var(--se-radius);
-  background: linear-gradient(180deg, #ffffff 0%, var(--se-accent-wash) 100%);
-  box-shadow: var(--se-shadow);
+  background: #fff;
+  box-shadow: var(--se-shadow-sm);
   overflow: hidden;
 }
 
@@ -579,11 +932,16 @@ input[type="range"] {
   gap: 1rem;
   align-items: flex-start;
   padding: 1.2rem 1.3rem 0.85rem;
-  border-bottom: 1px solid rgba(237, 129, 4, 0.14);
+  border-bottom: 1px solid var(--se-line);
 }
 
 .se-create__body {
   padding: 1.1rem 1.3rem 1.3rem;
+}
+
+.se-create__preview {
+  scroll-margin-top: 1.5rem;
+  scroll-margin-bottom: 1.5rem;
 }
 
 .se-type-grid {
@@ -612,9 +970,9 @@ input[type="range"] {
 }
 
 .se-type-card.is-active {
-  border-color: var(--se-accent-mid);
-  background: linear-gradient(180deg, #fff 0%, var(--se-accent-soft) 160%);
-  box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.14);
+  border-color: var(--se-ink);
+  background: #fff;
+  box-shadow: none;
 }
 
 .se-type-card__label {
@@ -710,9 +1068,7 @@ input[type="range"] {
 .se-preview-wrap {
   border: 1px solid var(--se-line);
   border-radius: var(--se-radius);
-  background:
-    radial-gradient(480px 160px at 15% 0%, rgba(237, 129, 4, 0.09), transparent 70%),
-    #fff;
+  background: #fff;
   box-shadow: var(--se-shadow-sm);
   overflow: hidden;
 }
@@ -723,6 +1079,24 @@ input[type="range"] {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 1.2rem 0.35rem;
+}
+
+/* Device toggle + preview buttons: no orange focus ring */
+.se-preview-wrap .Polaris-Button:focus,
+.se-preview-wrap .Polaris-Button:focus-visible,
+.se-preview-wrap .Polaris-Button--focusVisible,
+.se-preview-wrap .Polaris-Button:focus::after,
+.se-preview-wrap .Polaris-Button:focus-visible::after,
+.se-preview-wrap .Polaris-Button--focusVisible::after {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.se-preview-wrap .Polaris-Button--pressed:not(.Polaris-Button--primary) {
+  border-color: #d8dadd !important;
+  background: #f7f7f8 !important;
+  color: var(--se-ink) !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 720px) {
@@ -737,10 +1111,10 @@ input[type="range"] {
 
   .se-actions {
     grid-column: 1 / -1;
-    justify-content: stretch;
+    width: 100%;
   }
 
   .se-actions > * {
-    flex: 1;
+    min-width: 0;
   }
 }

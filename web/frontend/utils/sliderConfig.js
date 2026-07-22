@@ -4,6 +4,76 @@
  */
 export const SLIDER_TYPES = [
   {
+    value: "hero-fullwidth",
+    label: "Full Bleed Hero",
+    description: "Edge-to-edge cinematic hero for campaign launches",
+    color: "highlight",
+    group: "Hero",
+  },
+  {
+    value: "hero-boxed",
+    label: "Boxed Hero",
+    description: "Contained hero frame with soft padding and radius",
+    color: "info",
+    group: "Hero",
+  },
+  {
+    value: "hero-video",
+    label: "Video Hero",
+    description: "Full-bleed video background with overlay copy and CTA",
+    color: "attention",
+    group: "Hero",
+  },
+  {
+    value: "product-carousel",
+    label: "Product Carousel",
+    description: "Multi-card product strip synced from a collection",
+    color: "success",
+    group: "Product",
+  },
+  {
+    value: "product-showcase",
+    label: "Product Showcase",
+    description: "Large featured product with soft side peeks",
+    color: "highlight",
+    group: "Product",
+  },
+  {
+    value: "collection-rail",
+    label: "Collection Rail",
+    description: "Compact product cards from one Shopify collection",
+    color: "info",
+    group: "Product",
+  },
+  {
+    value: "testimonials",
+    label: "Testimonials",
+    description: "Quote cards with avatar, author, and soft motion",
+    color: "new",
+    group: "Utility",
+  },
+  {
+    value: "logo-grid",
+    label: "Logo Grid",
+    description: "Brand logo strip for partners and press",
+    color: "info",
+    group: "Utility",
+  },
+  {
+    value: "stories",
+    label: "Story Rings",
+    description: "Instagram-style story circles with a focus frame",
+    color: "attention",
+    group: "Utility",
+  },
+  {
+    value: "announcement",
+    label: "Announcement Bar",
+    description: "Slim rotating bar for promos and shipping notes",
+    color: "warning",
+    group: "Utility",
+  },
+  {
     value: "fade",
     label: "Soft Crossfade",
     description: "Gentle dissolve from one frame to the next",
@@ -157,17 +227,45 @@ export const DEFAULT_SLIDER_SETTINGS = {
   ctaBackground: "#1a2f4a",
   ctaTextColor: "#ffffff",
   ctaBorderColor: "#ffffff",
+  ctaHoverBackground: "#243d5c",
+  ctaHoverTextColor: "#ffffff",
   ctaBorderWidth: 1,
   ctaBorderRadius: 50,
   ctaFontSize: 16,
+  ctaPadding: 12,
   ctaIcon: "arrow",
   ctaIconColor: "#ffffff",
+  ctaIconBg: "rgba(255,255,255,0.12)",
+  ctaIconSize: 34,
+  atcBackground: "#ffffff",
+  atcTextColor: "#170f49",
+  atcBorderColor: "#170f49",
+  atcHoverBackground: "#170f49",
+  atcHoverTextColor: "#ffffff",
+  atcBorderWidth: 1,
+  atcBorderRadius: 50,
+  atcFontSize: 14,
+  atcPadding: 10,
   pauseOnHover: true,
   showBranding: false,
   overlayEnabled: false,
   overlayColor: "#000000",
   overlayOpacity: 0.35,
   effect: "fade",
+  collectionId: null,
+  collectionHandle: null,
+  productLimit: 8,
+  showPrice: true,
+  showShopNow: true,
+  showAddToCart: true,
+  addToCartText: "Add to cart",
+  sectionHeading: "",
+  sectionHeadingFontSize: 28,
+  sectionHeadingGap: 16,
+  productTitleFontSize: 16,
+  productPriceFontSize: 14,
+  productContentGap: 8,
+  paginationGap: 16,
   mobile: {
     slidesToShow: 1,
     slidesToScroll: 1,
@@ -175,6 +273,11 @@ export const DEFAULT_SLIDER_SETTINGS = {
     dots: true,
   },
 }
+
+export const PRODUCT_SLIDER_TYPES = ["product-carousel", "product-showcase", "collection-rail"]
+export const HERO_SLIDER_TYPES = ["hero-fullwidth", "hero-boxed", "hero-video"]
+export const UTILITY_SLIDER_TYPES = ["testimonials", "logo-grid", "stories", "announcement"]
+export const SLIDER_TYPE_GROUPS = ["Hero", "Product", "Utility", "Classic", "Layout", "Motion"]
 
 /** Map legacy / alias types onto the curated catalog */
 const TYPE_ALIASES = {
@@ -193,6 +296,152 @@ export function settingsFromPreset(sliderType = "fade") {
   const base = { ...DEFAULT_SLIDER_SETTINGS, mobile: { ...DEFAULT_SLIDER_SETTINGS.mobile } }
 
   switch (type) {
+    case "hero-fullwidth":
+      return {
+        ...base,
+        effect: "hero-fullwidth",
+        transition: "fade",
+        height: 720,
+        borderRadius: 0,
+        slidesToShow: 1,
+        autoplay: true,
+        autoplaySpeed: 4500,
+        speed: 800,
+        overlayOpacity: 0.42,
+      }
+    case "hero-boxed":
+      return {
+        ...base,
+        effect: "hero-boxed",
+        transition: "fade",
+        height: 560,
+        borderRadius: 20,
+        slidesToShow: 1,
+        autoplay: true,
+        autoplaySpeed: 4200,
+        speed: 750,
+        overlayOpacity: 0.38,
+      }
+    case "hero-video":
+      return {
+        ...base,
+        effect: "hero-video",
+        transition: "fade",
+        height: 680,
+        borderRadius: 0,
+        slidesToShow: 1,
+        arrows: true,
+        dots: true,
+        autoplay: false,
+        speed: 700,
+        overlayOpacity: 0.45,
+      }
+    case "product-carousel":
+      return {
+        ...base,
+        effect: "product-carousel",
+        transition: "slide",
+        height: 420,
+        borderRadius: 14,
+        slidesToShow: 4,
+        slidesToScroll: 1,
+        autoplay: true,
+        autoplaySpeed: 3200,
+        speed: 600,
+        productLimit: 8,
+        showPrice: true,
+        sectionHeading: "Featured products",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
+    case "product-showcase":
+      return {
+        ...base,
+        effect: "product-showcase",
+        transition: "center",
+        height: 480,
+        borderRadius: 16,
+        slidesToShow: 3,
+        infinite: true,
+        speed: 700,
+        productLimit: 8,
+        showPrice: true,
+        sectionHeading: "Featured products",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
+    case "collection-rail":
+      return {
+        ...base,
+        effect: "collection-rail",
+        transition: "slide",
+        height: 360,
+        borderRadius: 12,
+        slidesToShow: 5,
+        slidesToScroll: 1,
+        autoplay: true,
+        autoplaySpeed: 2800,
+        speed: 550,
+        productLimit: 10,
+        showPrice: true,
+        sectionHeading: "Shop the collection",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: false },
+      }
+    case "testimonials":
+      return {
+        ...base,
+        effect: "testimonials",
+        transition: "fade",
+        height: 320,
+        borderRadius: 16,
+        slidesToShow: 1,
+        autoplay: true,
+        autoplaySpeed: 5000,
+        speed: 700,
+        arrows: true,
+        dots: true,
+      }
+    case "logo-grid":
+      return {
+        ...base,
+        effect: "logo-grid",
+        transition: "slide",
+        height: 140,
+        borderRadius: 0,
+        slidesToShow: 5,
+        autoplay: true,
+        autoplaySpeed: 0,
+        speed: 9000,
+        arrows: false,
+        dots: false,
+        infinite: true,
+        mobile: { slidesToShow: 3, slidesToScroll: 1, arrows: false, dots: false },
+      }
+    case "stories":
+      return {
+        ...base,
+        effect: "stories",
+        transition: "fade",
+        height: 520,
+        borderRadius: 18,
+        slidesToShow: 1,
+        autoplay: false,
+        speed: 650,
+        arrows: true,
+        dots: false,
+      }
+    case "announcement":
+      return {
+        ...base,
+        effect: "announcement",
+        transition: "fade",
+        height: 48,
+        borderRadius: 0,
+        slidesToShow: 1,
+        autoplay: true,
+        autoplaySpeed: 4000,
+        speed: 500,
+        arrows: false,
+        dots: false,
+      }
     case "slide":
       return { ...base, transition: "slide", effect: "slide", slidesToShow: 1, speed: 550 }
     case "center":
@@ -337,26 +586,47 @@ export function buildSlickConfig(settings, { thumbnailSelector } = {}) {
   if (merged.vertical || effect === "vertical") config.vertical = true
 
   if (
-    ["fade", "thumbnails", "cube", "flip", "zoom", "ken-burns", "cards-stack", "slide-up", "wipe", "blur-reveal", "split-panel"].includes(
-      effect,
-    )
+    [
+      "fade",
+      "thumbnails",
+      "cube",
+      "flip",
+      "zoom",
+      "ken-burns",
+      "cards-stack",
+      "slide-up",
+      "wipe",
+      "blur-reveal",
+      "split-panel",
+      "hero-fullwidth",
+      "hero-boxed",
+      "hero-video",
+      "testimonials",
+      "stories",
+      "announcement",
+    ].includes(effect)
   ) {
     config.fade = true
     config.slidesToShow = 1
     config.slidesToScroll = 1
   }
 
-  if (["center", "coverflow"].includes(effect) || merged.transition === "center") {
+  if (["center", "coverflow", "product-showcase"].includes(effect) || merged.transition === "center") {
     config.centerMode = true
-    config.centerPadding = effect === "coverflow" ? "10%" : "14%"
+    config.centerPadding = effect === "coverflow" ? "10%" : effect === "product-showcase" ? "12%" : "14%"
     config.slidesToShow = Math.max(Number(merged.slidesToShow) || 3, 1)
   }
 
-  if (effect === "marquee") {
+  if (["product-carousel", "collection-rail"].includes(effect)) {
+    config.slidesToShow = Math.max(Number(merged.slidesToShow) || (effect === "collection-rail" ? 5 : 4), 1)
+    config.slidesToScroll = 1
+  }
+
+  if (effect === "marquee" || effect === "logo-grid") {
     config.autoplay = !prefersReducedMotion
     config.autoplaySpeed = 0
     config.cssEase = "linear"
-    config.speed = 10000
+    config.speed = Number(merged.speed) || 9000
     config.arrows = false
     config.dots = false
     config.waitForAnimate = false
@@ -443,3 +713,166 @@ export const SAMPLE_SLIDES = [
     isVisible: true,
   },
 ]
+
+export const SAMPLE_SLIDES_BY_TYPE = {
+  "hero-fullwidth": SAMPLE_SLIDES,
+  "hero-boxed": SAMPLE_SLIDES,
+  "hero-video": [
+    {
+      ...SAMPLE_SLIDES[0],
+      id: "sample-video-1",
+      mediaType: "video",
+      videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      heading: "Move with the season",
+      subheading: "Video campaign",
+      description: "Full-bleed motion with a clear call to action.",
+    },
+    { ...SAMPLE_SLIDES[1], id: "sample-video-2", mediaType: "video", videoUrl: "" },
+  ],
+  "product-carousel": [
+    {
+      id: "p1",
+      imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80",
+      title: "Chrono Watch",
+      heading: "Chrono Watch",
+      description: "$189.00",
+      ctaText: "Shop now",
+      ctaUrl: "#",
+      isVisible: true,
+    },
+    {
+      id: "p2",
+      imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80",
+      title: "Studio Headphones",
+      heading: "Studio Headphones",
+      description: "$129.00",
+      ctaText: "Shop now",
+      ctaUrl: "#",
+      isVisible: true,
+    },
+    {
+      id: "p3",
+      imageUrl: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&q=80",
+      title: "Ace Sunglasses",
+      heading: "Ace Sunglasses",
+      description: "$79.00",
+      ctaText: "Shop now",
+      ctaUrl: "#",
+      isVisible: true,
+    },
+    {
+      id: "p4",
+      imageUrl: "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=800&q=80",
+      title: "City Sneaker",
+      heading: "City Sneaker",
+      description: "$98.00",
+      ctaText: "Shop now",
+      ctaUrl: "#",
+      isVisible: true,
+    },
+  ],
+  "product-showcase": null,
+  "collection-rail": null,
+  testimonials: [
+    {
+      id: "t1",
+      imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80",
+      heading: "Absolutely love the quality — shipping was fast and packaging felt premium.",
+      subheading: "Maya Chen",
+      description: "Verified buyer",
+      textAlign: "center",
+      textColor: "#170f49",
+      isVisible: true,
+    },
+    {
+      id: "t2",
+      imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
+      heading: "Our go-to brand for gifts. Every order gets compliments.",
+      subheading: "Jordan Lee",
+      description: "Repeat customer",
+      textAlign: "center",
+      textColor: "#170f49",
+      isVisible: true,
+    },
+  ],
+  "logo-grid": [
+    {
+      id: "l1",
+      imageUrl: "https://images.unsplash.com/photo-1611162617474-5b21e919e113?w=400&q=80",
+      heading: "Northwind",
+      title: "Northwind",
+      isVisible: true,
+    },
+    {
+      id: "l2",
+      imageUrl: "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=400&q=80",
+      heading: "Harbor",
+      title: "Harbor",
+      isVisible: true,
+    },
+    {
+      id: "l3",
+      imageUrl: "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=400&q=80",
+      heading: "Atlas",
+      title: "Atlas",
+      isVisible: true,
+    },
+    {
+      id: "l4",
+      imageUrl: "https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?w=400&q=80",
+      heading: "Summit",
+      title: "Summit",
+      isVisible: true,
+    },
+  ],
+  stories: [
+    {
+      id: "s1",
+      imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80",
+      heading: "New drop",
+      title: "New drop",
+      isVisible: true,
+    },
+    {
+      id: "s2",
+      imageUrl: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&q=80",
+      heading: "Behind scenes",
+      title: "Behind scenes",
+      isVisible: true,
+    },
+    {
+      id: "s3",
+      imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80",
+      heading: "Sale",
+      title: "Sale",
+      isVisible: true,
+    },
+  ],
+  announcement: [
+    {
+      id: "a1",
+      heading: "Free shipping on orders over $75 — this week only",
+      ctaText: "Shop",
+      ctaUrl: "#",
+      textColor: "#ffffff",
+      isVisible: true,
+    },
+    {
+      id: "a2",
+      heading: "New arrivals just landed — explore the edit",
+      ctaText: "Explore",
+      ctaUrl: "#",
+      textColor: "#ffffff",
+      isVisible: true,
+    },
+  ],
+}
+
+SAMPLE_SLIDES_BY_TYPE["product-showcase"] = SAMPLE_SLIDES_BY_TYPE["product-carousel"]
+SAMPLE_SLIDES_BY_TYPE["collection-rail"] = SAMPLE_SLIDES_BY_TYPE["product-carousel"]
+
+export function getSampleSlidesForType(sliderType) {
+  const resolved = resolveSliderType(sliderType)
+  return SAMPLE_SLIDES_BY_TYPE[resolved] || SAMPLE_SLIDES
+}
+

@@ -12,13 +12,13 @@ import {
   TextField,
   Tabs,
   Banner,
-  Select,
 } from "@shopify/polaris"
 import { ToastProvider, useToast } from "../../contexts/toast-context"
 import SliderPreview from "../../components/slider-preview"
 import StyleSettingsForm from "../../components/style-settings-form"
 import SlideEditorPanel from "../../components/slide-editor-panel"
-import { getSliderTypeInfo, mergeSliderSettings } from "../../utils/sliderConfig"
+import SeSelect from "../../components/se-select"
+import { getSliderTypeInfo, mergeSliderSettings, PRODUCT_SLIDER_TYPES } from "../../utils/sliderConfig"
 import { SLIDE_HARD_LIMIT, SLIDE_SOFT_LIMIT } from "../../utils/limits"
 
 function SliderEditorContent() {
@@ -114,6 +114,7 @@ function SliderEditorContent() {
   const typeInfo = getSliderTypeInfo(sliderType)
   const softLimitHit = slides.length >= SLIDE_SOFT_LIMIT
   const hardLimitHit = slides.length >= SLIDE_HARD_LIMIT
+  const isProductSlider = PRODUCT_SLIDER_TYPES.includes(sliderType)
 
   const saveSliderMeta = async (overrides = {}) => {
     setSaving(true)
@@ -135,7 +136,7 @@ function SliderEditorContent() {
       }
       const updated = await response.json()
       setSlider((prev) => ({ ...prev, ...updated, slides: prev?.slides || [] }))
-      showToast("Slider settings saved")
+      showToast("Slider Settings Saved")
     } catch (err) {
       showToast(err.message, { error: true })
     } finally {
@@ -281,7 +282,7 @@ function SliderEditorContent() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "4rem" }}>
+      <div className="se-loading">
         <Spinner size="large" />
       </div>
     )
@@ -310,7 +311,7 @@ function SliderEditorContent() {
       title={slider.name}
       subtitle={`${typeInfo.label} · ${status === "draft" ? "Draft" : "Published"}`}
       backAction={{ content: "Sliders", onAction: () => navigate("/") }}
-      primaryAction={{ content: "Save settings", onAction: persistSettings, loading: saving }}
+      primaryAction={{ content: "Save settings", onAction: persistSettings, disabled: saving }}
     >
       <div className="se-page">
       <Stack vertical spacing="loose">
@@ -345,7 +346,7 @@ function SliderEditorContent() {
                 onBlur={() => saveSliderMeta({ name })}
                 autoComplete="off"
               />
-              <Select
+              <SeSelect
                 label="Status"
                 options={[
                   { label: "Published", value: "published" },
@@ -375,49 +376,73 @@ function SliderEditorContent() {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div>
                       <Text variant="headingSm" as="h3">
-                        Slides
+                        {isProductSlider ? "Products" : "Slides"}
                       </Text>
                       <Text variant="bodySm" color="subdued">
-                        Drag cards to reorder
+                        {isProductSlider
+                          ? "Managed from Style & behavior — pick products or sync a collection"
+                          : "Drag cards to reorder"}
                       </Text>
                     </div>
-                    <Button primary onClick={openAddSlide} disabled={hardLimitHit}>
-                      Add slide
-                    </Button>
+                    {isProductSlider ? (
+                      <Button onClick={() => setSelectedTab(1)}>Manage products</Button>
+                    ) : (
+                      <Button primary onClick={openAddSlide} disabled={hardLimitHit}>
+                        Add slide
+                      </Button>
+                    )}
                   </div>
+
+                  {isProductSlider && (
+                    <Banner status="info" title="Product data comes from Shopify">
+                      <p>
+                        Title, image, and price are pulled from your catalog. Use Style & behavior to select products or
+                        sync a collection, and set an optional section heading like “Featured products”.
+                      </p>
+                    </Banner>
+                  )}
 
                   {slides.length === 0 && panelMode === null && (
                     <div className="se-empty" style={{ padding: "2rem 1.25rem" }}>
                       <div className="se-empty__icon">+</div>
                       <Text variant="headingSm" as="h3">
-                        No slides yet
+                        {isProductSlider ? "No products yet" : "No slides yet"}
                       </Text>
                       <div style={{ margin: "0.5rem 0 1rem" }}>
                         <Text color="subdued">
-                          Add a slide with Shopify Files, CTAs, and overlays. Preview updates below.
+                          {isProductSlider
+                            ? "Open Style & behavior to select products or sync a collection."
+                            : "Add a slide with Shopify Files, CTAs, and overlays. Preview updates below."}
                         </Text>
                       </div>
-                      <Button primary onClick={openAddSlide}>
-                        Add your first slide
-                      </Button>
+                      {isProductSlider ? (
+                        <Button primary onClick={() => setSelectedTab(1)}>
+                          Select products
+                        </Button>
+                      ) : (
+                        <Button primary onClick={openAddSlide}>
+                          Add your first slide
+                        </Button>
+                      )}
                     </div>
                   )}
 
                   {slides.map((slide, index) => {
-                    const selected = String(panelMode) === String(slide.id)
+                    const selected = !isProductSlider && String(panelMode) === String(slide.id)
                     const confirming = confirmDeleteId === slide.id
                     return (
                       <div
                         key={slide.id}
-                        draggable
-                        onDragStart={() => onDragStart(slide.id)}
+                        draggable={!isProductSlider}
+                        onDragStart={() => !isProductSlider && onDragStart(slide.id)}
                         onDragOver={(e) => {
+                          if (isProductSlider) return
                           e.preventDefault()
                           setDragOverId(slide.id)
                         }}
                         onDragLeave={() => setDragOverId((prev) => (prev === slide.id ? null : prev))}
-                        onDrop={() => onDrop(slide.id)}
-        style={{
+                        onDrop={() => !isProductSlider && onDrop(slide.id)}
+                        style={{
                           border:
                             dragOverId === slide.id
                               ? "1px dashed #b7bcc5"
@@ -427,7 +452,7 @@ function SliderEditorContent() {
                           borderRadius: 14,
                           padding: 14,
                           background: "#fff",
-                          cursor: "grab",
+                          cursor: isProductSlider ? "default" : "grab",
                           boxShadow: "none",
                         }}
                       >
@@ -441,23 +466,25 @@ function SliderEditorContent() {
                           }}
                         >
                           <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
+                            {!isProductSlider && (
+                              <div
+                                style={{
+                                  width: 18,
+                                  color: "#94a3b8",
+                                  fontSize: 16,
+                                  lineHeight: 1,
+                                  userSelect: "none",
+                                }}
+                                title="Drag to reorder"
+                              >
+                                ⋮⋮
+                              </div>
+                            )}
                             <div
                               style={{
-                                width: 18,
-                                color: "#94a3b8",
-                                fontSize: 16,
-                                lineHeight: 1,
-                                userSelect: "none",
-                              }}
-                              title="Drag to reorder"
-                            >
-                              ⋮⋮
-                            </div>
-                            <div
-                              style={{
-                                width: 72,
-                                height: 54,
-                                borderRadius: 10,
+                                width: isProductSlider ? 64 : 72,
+                                height: isProductSlider ? 64 : 54,
+                                borderRadius: isProductSlider ? 10 : 10,
                                 overflow: "hidden",
                                 background: "#f1f5f9",
                                 flexShrink: 0,
@@ -477,58 +504,71 @@ function SliderEditorContent() {
                                 {slide.heading || slide.title}
                               </Text>
                               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                                <Badge status={slide.isVisible === false ? "warning" : "success"}>
-                                  {slide.isVisible === false ? "Hidden" : "Visible"}
-                                </Badge>
-                                {slide.mediaType === "video" && <Badge status="info">Video</Badge>}
-                                {slide.ctaText && <Badge>{slide.ctaText}</Badge>}
-                                <Text color="subdued">#{index + 1}</Text>
+                                {isProductSlider ? (
+                                  <>
+                                    {slide.description ? <Badge>{slide.description}</Badge> : null}
+                                    <Text color="subdued">#{index + 1}</Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Badge status={slide.isVisible === false ? "warning" : "success"}>
+                                      {slide.isVisible === false ? "Hidden" : "Visible"}
+                                    </Badge>
+                                    {slide.mediaType === "video" && <Badge status="info">Video</Badge>}
+                                    {slide.ctaText && <Badge>{slide.ctaText}</Badge>}
+                                    <Text color="subdued">#{index + 1}</Text>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
 
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            <Button size="slim" onClick={() => moveSlide(slide.id, -1)} disabled={index === 0}>
-                              Up
-                            </Button>
-                            <Button
-                              size="slim"
-                              onClick={() => moveSlide(slide.id, 1)}
-                              disabled={index === slides.length - 1}
-                            >
-                              Down
-                            </Button>
-                            <Button size="slim" onClick={() => toggleVisibility(slide)}>
-                              {slide.isVisible === false ? "Show" : "Hide"}
-                            </Button>
-                            <Button
-                              size="slim"
-                              onClick={() => {
-                                setConfirmDeleteId(null)
-                                setPanelMode(selected ? null : slide.id)
-                              }}
-                            >
-                              {selected ? "Close" : "Edit"}
-                            </Button>
+                            {!isProductSlider && (
+                              <>
+                                <Button size="slim" onClick={() => moveSlide(slide.id, -1)} disabled={index === 0}>
+                                  Up
+                                </Button>
+                                <Button
+                                  size="slim"
+                                  onClick={() => moveSlide(slide.id, 1)}
+                                  disabled={index === slides.length - 1}
+                                >
+                                  Down
+                                </Button>
+                                <Button size="slim" onClick={() => toggleVisibility(slide)}>
+                                  {slide.isVisible === false ? "Show" : "Hide"}
+                                </Button>
+                                <Button
+                                  size="slim"
+                                  onClick={() => {
+                                    setConfirmDeleteId(null)
+                                    setPanelMode(selected ? null : slide.id)
+                                  }}
+                                >
+                                  {selected ? "Close" : "Edit"}
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="slim"
                               destructive
                               onClick={() => setConfirmDeleteId(confirming ? null : slide.id)}
                             >
-                              Delete
+                              Remove
                             </Button>
                           </div>
                         </div>
 
                         {confirming && (
                           <div className="se-danger-bar">
-                            <Text>Delete this slide permanently?</Text>
+                            <Text>{isProductSlider ? "Remove this product from the slider?" : "Delete this slide permanently?"}</Text>
                             <div style={{ display: "flex", gap: 8 }}>
                               <Button size="slim" onClick={() => setConfirmDeleteId(null)}>
                                 Keep
                               </Button>
                               <Button size="slim" destructive onClick={() => removeSlide(slide.id)}>
-                                Confirm delete
+                                Confirm
                               </Button>
                             </div>
                           </div>
@@ -540,6 +580,7 @@ function SliderEditorContent() {
                             title="Edit slide"
                             initialSlide={slide}
                             brandKit={brandKit}
+                            sliderType={sliderType}
                             onCancel={() => setPanelMode(null)}
                             onSave={saveSlide}
                           />
@@ -548,31 +589,44 @@ function SliderEditorContent() {
                     )
                   })}
 
-                  <div ref={editorAnchorRef}>
-                    {panelMode === "create" && (
-                      <SlideEditorPanel
-                        key="create"
-                        title="Add slide"
-                        initialSlide={null}
-                        brandKit={brandKit}
-                        onCancel={() => setPanelMode(null)}
-                        onSave={saveSlide}
-                      />
-                    )}
-                  </div>
+                  {!isProductSlider && (
+                    <div ref={editorAnchorRef}>
+                      {panelMode === "create" && (
+                        <SlideEditorPanel
+                          key="create"
+                          title="Add slide"
+                          initialSlide={null}
+                          brandKit={brandKit}
+                          sliderType={sliderType}
+                          onCancel={() => setPanelMode(null)}
+                          onSave={saveSlide}
+                        />
+                      )}
+                    </div>
+                  )}
                 </Stack>
               )}
 
               {selectedTab === 1 && (
                 <Stack vertical>
                   <StyleSettingsForm
+                    sliderId={slider.id}
                     sliderType={sliderType}
                     settings={settings}
                     onTypeChange={handleTypeChange}
                     onSettingsChange={setSettings}
+                    onCollectionSynced={(data) => {
+                      setSlider((prev) => ({
+                        ...prev,
+                        ...data,
+                        slides: data.slides || [],
+                      }))
+                      setSettings(mergeSliderSettings(data.sliderType || sliderType, data.settings || {}))
+                      showToast(`Synced ${data.syncMeta?.productCount ?? 0} products`)
+                    }}
                     disabled={saving}
                   />
-                  <Button primary onClick={persistSettings} loading={saving}>
+                  <Button primary onClick={persistSettings} disabled={saving}>
                     Save style settings
                   </Button>
                 </Stack>
@@ -594,9 +648,9 @@ function SliderEditorContent() {
 
                   <div
                     style={{
-                      border: "1px solid #c5d0de",
-                      background: "linear-gradient(180deg, #f3f6fa 0%, #ffffff 100%)",
-                      borderRadius: 16,
+                      border: "1px solid #170f49",
+                      background: "#ffffff",
+                      borderRadius: 12,
                       padding: 22,
                       textAlign: "center",
                     }}
@@ -642,10 +696,10 @@ function SliderEditorContent() {
                       <div
                         key={item.label}
                         style={{
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 14,
+                          border: "1px solid #170f49",
+                          borderRadius: 12,
                           padding: 16,
-                          background: "linear-gradient(180deg, #f3f6fa 0%, #ffffff 100%)",
+                          background: "#ffffff",
                         }}
                       >
                         <Text variant="bodySm" color="subdued">

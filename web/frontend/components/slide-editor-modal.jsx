@@ -5,7 +5,6 @@ import {
   Modal,
   FormLayout,
   TextField,
-  Select,
   RangeSlider,
   Stack,
   Text,
@@ -13,6 +12,7 @@ import {
   Thumbnail,
 } from "@shopify/polaris"
 import MediaPickerModal from "./media-picker-modal"
+import SeSelect from "./se-select"
 
 const EMPTY_SLIDE = {
   imageUrl: "",
@@ -154,7 +154,7 @@ export default function SlideEditorModal({
               <TextField label="CTA URL" value={form.ctaUrl} onChange={(value) => update("ctaUrl", value)} placeholder="https:// or /collections/all" />
             </FormLayout.Group>
 
-            <Select
+            <SeSelect
               label="Text alignment"
               options={[
                 { label: "Left", value: "left" },
@@ -167,21 +167,17 @@ export default function SlideEditorModal({
 
             <FormLayout.Group>
               <TextField label="Text color" value={form.textColor} onChange={(value) => update("textColor", value)} />
-              <TextField label="Button background" value={form.buttonBg} onChange={(value) => update("buttonBg", value)} />
-              <TextField label="Button text color" value={form.buttonTextColor} onChange={(value) => update("buttonTextColor", value)} />
+              <TextField label="Overlay color" value={form.overlayColor} onChange={(value) => update("overlayColor", value)} />
             </FormLayout.Group>
 
-            <FormLayout.Group>
-              <TextField label="Overlay color" value={form.overlayColor} onChange={(value) => update("overlayColor", value)} />
-              <RangeSlider
-                label={`Overlay opacity: ${Number(form.overlayOpacity || 0).toFixed(2)}`}
-                value={Number(form.overlayOpacity || 0)}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(value) => update("overlayOpacity", value)}
-              />
-            </FormLayout.Group>
+            <RangeSlider
+              label={`Overlay opacity: ${Number(form.overlayOpacity || 0).toFixed(2)}`}
+              value={Number(form.overlayOpacity || 0)}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(value) => update("overlayOpacity", value)}
+            />
           </FormLayout>
         </Modal.Section>
       </Modal>

@@ -24,8 +24,12 @@ export function IconEdit({ size = 16 }) {
 export function IconCopy({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="5.5" y="5.5" width="7" height="8" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M10.5 5.5V4.2A1.2 1.2 0 009.3 3H4.2A1.2 1.2 0 003 4.2v5.1A1.2 1.2 0 004.2 10.5H5.5" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="5" y="5" width="8" height="9" rx="1.4" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M11 5V3.75A1.25 1.25 0 009.75 2.5H3.75A1.25 1.25 0 002.5 3.75v6A1.25 1.25 0 003.75 11H5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
     </svg>
   )
 }
@@ -80,6 +84,47 @@ export function IconCheck({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M3.5 8.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function IconAll({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="9" y="9" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  )
+}
+
+export function IconPublished({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M5.2 8.15l1.85 1.85 3.75-3.9"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function IconDraft({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 2.5h5.2L11.5 4.3V13a.75.75 0 01-.75.75h-6.5A.75.75 0 013.5 13V3.25A.75.75 0 014.5 2.5z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 2.6V4.5h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.75 7.5h4.5M5.75 10h3.25" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }

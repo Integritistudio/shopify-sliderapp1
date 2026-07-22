@@ -114,6 +114,11 @@ const Slide = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    variantId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
     position: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -9,7 +9,9 @@ const router = express.Router()
 router.get("/slider-cdn.js", corsHeaders, (req, res) => {
   try {
     console.log("Serving slider-cdn.js")
-    res.header("Content-Type", "application/javascript")
+    res.header("Content-Type", "application/javascript; charset=utf-8")
+    res.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+    res.header("Pragma", "no-cache")
 
     // ✅ Correct path - points to web/frontend/public/slider-cdn.js
     const scriptPath = join(process.cwd(), "frontend", "public", "slider-cdn.js")

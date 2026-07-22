@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import {
   FormLayout,
   TextField,
-  Select,
   RangeSlider,
   Text,
   Button,
@@ -14,6 +13,8 @@ import {
 } from "@shopify/polaris"
 import { useAppBridge } from "@shopify/app-bridge-react"
 import MediaPickerInline from "./media-picker-inline"
+import ColorField from "./color-field"
+import SeSelect from "./se-select"
 
 const EMPTY_SLIDE = {
   imageUrl: "",
@@ -54,12 +55,28 @@ export default function SlideEditorPanel({
   onCancel,
   title = "Edit slide",
   brandKit = null,
+  sliderType = "fade",
 }) {
   const shopify = useAppBridge()
   const [form, setForm] = useState(EMPTY_SLIDE)
   const [saving, setSaving] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [error, setError] = useState("")
+
+  const fieldLabels = {
+    testimonials: { heading: "Quote", subheading: "Author", description: "Role / detail", image: "Avatar image URL" },
+    "logo-grid": { heading: "Brand name", subheading: "Subheading", description: "Description", image: "Logo image URL" },
+    stories: { heading: "Story label", subheading: "Subheading", description: "Description", image: "Story media URL" },
+    announcement: { heading: "Announcement message", subheading: "Subheading", description: "Description", image: "Image URL" },
+    "product-carousel": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
+    "product-showcase": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
+    "collection-rail": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
+  }[sliderType] || {
+    heading: "Heading",
+    subheading: "Subheading",
+    description: "Description",
+    image: form.mediaType === "video" ? "Poster / fallback image URL" : "Image URL",
+  }
 
   useEffect(() => {
     const defaults = brandKit
@@ -262,7 +279,7 @@ export default function SlideEditorPanel({
         )}
 
         <TextField
-          label={form.mediaType === "video" ? "Poster / fallback image URL" : "Image URL"}
+          label={fieldLabels.image}
           value={form.imageUrl}
           onChange={(value) => update("imageUrl", value)}
           placeholder="https://cdn.shopify.com/..."
@@ -275,12 +292,12 @@ export default function SlideEditorPanel({
         </FormLayout.Group>
 
         <FormLayout.Group>
-          <TextField label="Heading" value={form.heading} onChange={(value) => update("heading", value)} />
-          <TextField label="Subheading" value={form.subheading} onChange={(value) => update("subheading", value)} />
+          <TextField label={fieldLabels.heading} value={form.heading} onChange={(value) => update("heading", value)} />
+          <TextField label={fieldLabels.subheading} value={form.subheading} onChange={(value) => update("subheading", value)} />
         </FormLayout.Group>
 
         <TextField
-          label="Description"
+          label={fieldLabels.description}
           value={form.description}
           onChange={(value) => update("description", value)}
           multiline={3}
@@ -342,7 +359,7 @@ export default function SlideEditorPanel({
           onChange={(value) => update("ctaOpenInNewTab", value)}
         />
 
-        <Select
+        <SeSelect
           label="Text alignment"
           options={[
             { label: "Left", value: "left" },
@@ -354,10 +371,18 @@ export default function SlideEditorPanel({
         />
 
         <FormLayout.Group condensed>
-          <TextField label="Text color" value={form.textColor} onChange={(value) => update("textColor", value)} />
-          <TextField label="Button background" value={form.buttonBg} onChange={(value) => update("buttonBg", value)} />
-          <TextField label="Button text" value={form.buttonTextColor} onChange={(value) => update("buttonTextColor", value)} />
-          <TextField label="Overlay color" value={form.overlayColor} onChange={(value) => update("overlayColor", value)} />
+          <ColorField
+            label="Text color"
+            value={form.textColor}
+            fallback="#ffffff"
+            onChange={(value) => update("textColor", value)}
+          />
+          <ColorField
+            label="Overlay color"
+            value={form.overlayColor}
+            fallback="#000000"
+            onChange={(value) => update("overlayColor", value)}
+          />
         </FormLayout.Group>
 
         <RangeSlider
@@ -370,8 +395,8 @@ export default function SlideEditorPanel({
         />
       </FormLayout>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <Button primary onClick={handleSave} loading={saving}>
+      <div style={{ display: "flex", gap: 8, marginTop: 16, alignItems: "center" }}>
+        <Button primary onClick={handleSave} disabled={saving}>
           Save slide
         </Button>
         <Button onClick={onCancel} disabled={saving}>

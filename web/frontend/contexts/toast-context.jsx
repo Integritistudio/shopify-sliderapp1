@@ -1,44 +1,53 @@
 "use client"
 
 import { createContext, useContext, useState } from "react"
-import { Toast, Frame } from "@shopify/polaris"
+
 const ToastContext = createContext()
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
 
-  const showToast = (message, options = {}) => {
-    const id = Date.now()
-    const toast = {
-      id,
-      content: message,
-      error: options.error || false,
-      duration: options.duration || 4000,
-      ...options,
-    }
-
-    setToasts((prev) => [...prev, toast])
-
-    // Auto dismiss
-    setTimeout(() => {
-      dismissToast(id)
-    }, toast.duration)
-  }
-
   const dismissToast = (id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }
 
-  const toastMarkup = toasts.map((toast) => (
-    <Toast key={toast.id} content={toast.content} onDismiss={() => dismissToast(toast.id)} error={toast.error} />
-  ))
+  const showToast = (message, options = {}) => {
+    const id = Date.now() + Math.random()
+    const duration = options.duration || 4000
+    setToasts((prev) => [
+      ...prev,
+      {
+        id,
+        content: String(message || ""),
+        error: Boolean(options.error),
+        duration,
+      },
+    ])
+    window.setTimeout(() => dismissToast(id), duration)
+  }
 
   return (
     <ToastContext.Provider value={{ showToast, dismissToast }}>
-      <Frame>
-        {children}
-        {toastMarkup}
-      </Frame>
+      {children}
+      <div className="se-toast-stack" aria-live="polite">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`se-toast${toast.error ? " se-toast--error" : ""}`}
+            role="status"
+          >
+            <span className="se-toast__text">{toast.content}</span>
+            <button
+              type="button"
+              className="se-toast__close"
+              aria-label="Dismiss"
+              onClick={() => dismissToast(toast.id)}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
     </ToastContext.Provider>
   )
 }

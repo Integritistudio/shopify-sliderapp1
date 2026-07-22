@@ -1,49 +1,16 @@
 {% if block.settings.enable_slider %}
-  {% style %}
-    #shopify-block-{{ block.id }},
-    #shopify-block-{{ block.id }} .slideease-app-block {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      height: auto;
-      min-height: 0;
-      margin-inline: 0;
-      padding-inline: 0;
-      overflow: visible;
-    }
-
-    #shopify-block-{{ block.id }} .slideease-heading {
-      width: min(100% - 2rem, 1200px);
-      margin: 0 auto 1.25rem;
-      color: rgb(var(--color-foreground, 18 18 18));
-      font: inherit;
-      font-size: clamp(1.5rem, 3vw, 2.5rem);
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -0.035em;
-      text-align: center;
-    }
-
-    #shopify-block-{{ block.id }} .slideease-app-block > .se-root {
-      display: block;
-      height: auto;
-      min-height: 0;
-      margin-block: 0;
-    }
-  {% endstyle %}
-
   <div
     class="slideease-app-block"
     data-slider-id="{{ block.settings.slider_id | escape }}"
-    style="margin-top: {{ block.settings.padding_top }}px; margin-bottom: {{ block.settings.padding_bottom }}px;"
+    style="width: 100%; max-width: 100%; margin-top: {{ block.settings.padding_top }}px; margin-bottom: {{ block.settings.padding_bottom }}px;"
   >
     {% if block.settings.heading != blank %}
-      <h2 class="slideease-heading">
+      <h2 class="slideease-heading" style="text-align: center; margin: 0 0 1rem; font-size: clamp(1.25rem, 2.5vw, 1.75rem); letter-spacing: -0.02em;">
         {{ block.settings.heading | escape }}
       </h2>
     {% endif %}
     <script
-      src="https://cement-qualify-entities-portable.trycloudflare.com/slider-cdn.js?id={{ block.settings.slider_id | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&v=12"
+      src="https://accessing-livecam-accuracy-maintained.trycloudflare.com/slider-cdn.js?id={{ block.settings.slider_id | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&v=17"
       defer
     ></script>
   </div>
