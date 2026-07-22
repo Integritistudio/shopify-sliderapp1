@@ -291,11 +291,8 @@
 
   function renderSlide(slide, settings, effect) {
     const heading = slide.heading || slide.title || ""
-    const subheading = slide.subheading && slide.subheading !== heading ? slide.subheading : ""
-    const description =
-      slide.description && slide.description !== heading && slide.description !== subheading
-        ? slide.description
-        : ""
+    const subheading = slide.subheading || ""
+    const description = slide.description || ""
     const overlayOpacity = Number(slide.overlayOpacity ?? settings.overlayOpacity ?? 0.28)
     const overlayColor = slide.overlayColor || settings.overlayColor || "#0f172a"
     const align = slide.textAlign || "center"
@@ -463,6 +460,28 @@
             height: clamp(320px, 42vw, calc(var(--se-height) * 0.85));
             min-height: 300px;
             box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+          }
+          .slideease-container-${uniqueId}.se-root--multi .se-copy {
+            padding: clamp(0.9rem, 2vw, 1.5rem);
+            padding-bottom: clamp(1.5rem, 3vw, 2.25rem);
+          }
+          .slideease-container-${uniqueId}.se-root--multi .se-eyebrow {
+            font-size: clamp(0.62rem, 0.9vw, 0.7rem);
+            padding: 0.32rem 0.58rem;
+            letter-spacing: 0.12em;
+          }
+          .slideease-container-${uniqueId}.se-root--multi .se-heading {
+            max-width: 100%;
+            font-size: clamp(1.35rem, 2.4vw, 2.1rem);
+            letter-spacing: -0.03em;
+          }
+          .slideease-container-${uniqueId}.se-root--multi .se-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1rem);
+            -webkit-line-clamp: 2;
+          }
+          .slideease-container-${uniqueId}.se-root--multi .se-copy-plate {
+            gap: 0.4rem;
+            max-width: 100%;
           }
           .slideease-container-${uniqueId} .se-media-wrap {
             position: absolute;
