@@ -31,6 +31,9 @@ function applySlideFields(slide, payload) {
     "ctaResourceType",
     "ctaResourceId",
     "ctaOpenInNewTab",
+    "cta2Text",
+    "cta2Url",
+    "cta2OpenInNewTab",
     "textAlign",
     "overlayColor",
     "overlayOpacity",
@@ -40,6 +43,7 @@ function applySlideFields(slide, payload) {
     "imageAlt",
     "shopifyFileId",
     "variantId",
+    "availableForSale",
     "mediaType",
     "videoUrl",
     "videoProvider",
@@ -49,13 +53,13 @@ function applySlideFields(slide, payload) {
 
   for (const field of fields) {
     if (payload[field] !== undefined) {
-      if (typeof payload[field] === "string" && ["title", "heading", "subheading", "ctaText", "imageAlt"].includes(field)) {
+      if (typeof payload[field] === "string" && ["title", "heading", "subheading", "ctaText", "cta2Text", "imageAlt"].includes(field)) {
         slide[field] = sanitizePlainText(payload[field], field === "title" ? 200 : 300)
       } else if (field === "description") {
         slide[field] = sanitizePlainText(payload[field], 2000)
       } else if (field === "overlayOpacity") {
         slide[field] = Number(payload[field])
-      } else if (field === "isVisible" || field === "ctaOpenInNewTab") {
+      } else if (field === "isVisible" || field === "ctaOpenInNewTab" || field === "cta2OpenInNewTab") {
         slide[field] = Boolean(payload[field])
       } else if (field === "position") {
         slide[field] = Number(payload[field]) || 0
@@ -110,6 +114,9 @@ router.post("/sliders/:sliderId/slides", async (req, res) => {
       ctaResourceType: payload.ctaResourceType || null,
       ctaResourceId: payload.ctaResourceId || null,
       ctaOpenInNewTab: Boolean(payload.ctaOpenInNewTab),
+      cta2Text: sanitizePlainText(payload.cta2Text || "", 80),
+      cta2Url: payload.cta2Url || "",
+      cta2OpenInNewTab: Boolean(payload.cta2OpenInNewTab),
       textAlign: payload.textAlign || "center",
       overlayColor: payload.overlayColor || "#000000",
       overlayOpacity: payload.overlayOpacity ?? 0.3,
@@ -119,6 +126,7 @@ router.post("/sliders/:sliderId/slides", async (req, res) => {
       imageAlt: sanitizePlainText(payload.imageAlt || payload.title || "", 200),
       shopifyFileId: payload.shopifyFileId || null,
       variantId: payload.variantId || null,
+      availableForSale: payload.availableForSale !== false,
       mediaType: payload.mediaType === "video" ? "video" : "image",
       videoUrl: payload.videoUrl || "",
       videoProvider: payload.videoProvider || null,

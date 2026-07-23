@@ -1065,6 +1065,50 @@ input[type="range"] {
   border-bottom: 1px solid var(--se-line);
 }
 
+/* Keep Slider name + Status on one visual baseline */
+.se-editor-top__meta {
+  display: grid;
+  grid-template-columns: 4fr 1fr;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 0.35rem;
+}
+
+.se-editor-top__meta > * {
+  min-width: 0;
+  width: 100%;
+}
+
+.se-editor-top__meta .Polaris-Labelled__LabelWrapper,
+.se-editor-top__meta .se-select__label {
+  margin: 0 0 4px !important;
+  min-height: 1.25rem;
+  display: flex;
+  align-items: flex-end;
+}
+
+.se-editor-top__meta .Polaris-Label,
+.se-editor-top__meta .Polaris-Label__Text {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.25rem !important;
+}
+
+.se-editor-top__meta .se-select__label {
+  font-size: 0.8125rem;
+  font-weight: 450;
+  line-height: 1.25rem;
+  color: var(--se-ink);
+}
+
+.se-editor-top__meta .Polaris-TextField,
+.se-editor-top__meta .Polaris-TextField__Input,
+.se-editor-top__meta .se-select__trigger {
+  min-height: var(--se-field-height) !important;
+  height: var(--se-field-height);
+  box-sizing: border-box;
+}
+
 .se-preview-wrap {
   border: 1px solid var(--se-line);
   border-radius: var(--se-radius);

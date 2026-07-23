@@ -40,6 +40,9 @@ export function pickSlidePayload(body = {}) {
     ctaResourceType: body.ctaResourceType,
     ctaResourceId: body.ctaResourceId,
     ctaOpenInNewTab: body.ctaOpenInNewTab,
+    cta2Text: body.cta2Text,
+    cta2Url: body.cta2Url,
+    cta2OpenInNewTab: body.cta2OpenInNewTab,
     textAlign: body.textAlign,
     overlayColor: body.overlayColor,
     overlayOpacity: body.overlayOpacity,
@@ -48,6 +51,8 @@ export function pickSlidePayload(body = {}) {
     buttonTextColor: body.buttonTextColor,
     imageAlt: body.imageAlt,
     shopifyFileId: body.shopifyFileId,
+    variantId: body.variantId,
+    availableForSale: body.availableForSale,
     mediaType: body.mediaType,
     videoUrl: body.videoUrl,
     videoProvider: body.videoProvider,
@@ -81,6 +86,12 @@ export function validateSlideInput(payload, { partial = false } = {}) {
   if (payload.ctaUrl !== undefined && payload.ctaUrl !== null && String(payload.ctaUrl).trim()) {
     if (!isValidHttpUrl(payload.ctaUrl) && !String(payload.ctaUrl).startsWith("/")) {
       errors.push("ctaUrl must be a valid http(s) URL or relative path")
+    }
+  }
+
+  if (payload.cta2Url !== undefined && payload.cta2Url !== null && String(payload.cta2Url).trim()) {
+    if (!isValidHttpUrl(payload.cta2Url) && !String(payload.cta2Url).startsWith("/")) {
+      errors.push("cta2Url must be a valid http(s) URL or relative path")
     }
   }
 

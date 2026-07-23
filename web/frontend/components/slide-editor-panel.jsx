@@ -11,10 +11,10 @@ import {
   Checkbox,
   ButtonGroup,
 } from "@shopify/polaris"
-import { useAppBridge } from "@shopify/app-bridge-react"
 import MediaPickerInline from "./media-picker-inline"
 import ColorField from "./color-field"
 import SeSelect from "./se-select"
+import { HERO_SLIDER_TYPES, HERO_CONTENT_POSITION_OPTIONS, resolveContentPlacement } from "../utils/sliderConfig"
 
 const EMPTY_SLIDE = {
   imageUrl: "",
@@ -28,7 +28,11 @@ const EMPTY_SLIDE = {
   ctaResourceType: null,
   ctaResourceId: null,
   ctaOpenInNewTab: false,
+  cta2Text: "",
+  cta2Url: "",
+  cta2OpenInNewTab: false,
   textAlign: "center",
+  contentPosition: null,
   overlayColor: "#000000",
   overlayOpacity: 0.35,
   textColor: "#ffffff",
@@ -56,12 +60,13 @@ export default function SlideEditorPanel({
   title = "Edit slide",
   brandKit = null,
   sliderType = "fade",
+  settings = {},
 }) {
-  const shopify = useAppBridge()
   const [form, setForm] = useState(EMPTY_SLIDE)
   const [saving, setSaving] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [error, setError] = useState("")
+  const [showSecondButton, setShowSecondButton] = useState(false)
 
   const fieldLabels = {
     testimonials: { heading: "Quote", subheading: "Author", description: "Role / detail", image: "Avatar image URL" },
@@ -89,44 +94,12 @@ export default function SlideEditorPanel({
         }
       : {}
     setForm({ ...EMPTY_SLIDE, ...defaults, ...(initialSlide || {}) })
+    setShowSecondButton(Boolean(initialSlide?.cta2Text?.trim()))
     setError("")
     setShowPicker(false)
   }, [initialSlide, brandKit])
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
-
-  const pickResource = async (type) => {
-    try {
-      if (!shopify?.resourcePicker) {
-        setError("Resource picker is unavailable in this session. Paste a storefront path instead.")
-        return
-      }
-      const result = await shopify.resourcePicker({
-        type,
-        multiple: false,
-        action: "select",
-      })
-      const resources = Array.isArray(result) ? result : result?.selection
-      if (!resources?.length) return
-      const resource = resources[0]
-      const handle = resource.handle
-      const path =
-        type === "product"
-          ? `/products/${handle}`
-          : type === "collection"
-            ? `/collections/${handle}`
-            : `/pages/${handle}`
-      setForm((prev) => ({
-        ...prev,
-        ctaUrl: path,
-        ctaResourceType: type,
-        ctaResourceId: resource.id || null,
-        ctaText: prev.ctaText || resource.title || "Shop now",
-      }))
-    } catch (err) {
-      setError(err.message || "Could not open resource picker")
-    }
-  }
 
   const handleSave = async () => {
     if (form.mediaType === "video") {
@@ -304,9 +277,9 @@ export default function SlideEditorPanel({
         />
 
         <FormLayout.Group>
-          <TextField label="CTA text" value={form.ctaText} onChange={(value) => update("ctaText", value)} placeholder="Shop now" />
+          <TextField label="Button text" value={form.ctaText} onChange={(value) => update("ctaText", value)} placeholder="Shop now" />
           <TextField
-            label="CTA URL"
+            label="Button URL"
             value={form.ctaUrl}
             onChange={(value) =>
               setForm((prev) => ({
@@ -317,58 +290,95 @@ export default function SlideEditorPanel({
               }))
             }
             placeholder="/collections/all"
-            helpText="Storefront path or absolute URL"
+            helpText=""
           />
         </FormLayout.Group>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button size="slim" onClick={() => pickResource("product")}>
-            Pick product
-          </Button>
-          <Button size="slim" onClick={() => pickResource("collection")}>
-            Pick collection
-          </Button>
-          <Button size="slim" onClick={() => pickResource("page")}>
-            Pick page
-          </Button>
-          <Button
-            size="slim"
-            onClick={() =>
-              setForm((prev) => ({
-                ...prev,
-                ctaUrl: "/pages/",
-                ctaResourceType: "page",
-                ctaResourceId: null,
-              }))
-            }
-          >
-            Page path helper
-          </Button>
-        </div>
-
-        {form.ctaResourceType && (
-          <Text variant="bodySm" color="subdued">
-            Linked {form.ctaResourceType}
-            {form.ctaResourceId ? ` · ${form.ctaResourceId}` : ""}
-          </Text>
-        )}
-
         <Checkbox
-          label="Open CTA in new tab"
+          label="Open button in new tab"
           checked={Boolean(form.ctaOpenInNewTab)}
           onChange={(value) => update("ctaOpenInNewTab", value)}
         />
 
-        <SeSelect
-          label="Text alignment"
-          options={[
-            { label: "Left", value: "left" },
-            { label: "Center", value: "center" },
-            { label: "Right", value: "right" },
-          ]}
-          value={form.textAlign}
-          onChange={(value) => update("textAlign", value)}
-        />
+        {!showSecondButton ? (
+          <Button
+            onClick={() => {
+              setShowSecondButton(true)
+              if (!form.cta2Text) update("cta2Text", "Learn more")
+            }}
+          >
+            Add second button
+          </Button>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <TextField
+                label="Second button text"
+                value={form.cta2Text}
+                onChange={(value) => update("cta2Text", value)}
+                placeholder="Learn more"
+                autoComplete="off"
+              />
+              <TextField
+                label="Second button URL"
+                value={form.cta2Url}
+                onChange={(value) => update("cta2Url", value)}
+                placeholder="/pages/about"
+                autoComplete="off"
+              />
+            </div>
+            <Checkbox
+              label="Open second button in new tab"
+              checked={Boolean(form.cta2OpenInNewTab)}
+              onChange={(value) => update("cta2OpenInNewTab", value)}
+            />
+            <div>
+              <Button
+                onClick={() => {
+                  setShowSecondButton(false)
+                  setForm((prev) => ({
+                    ...prev,
+                    cta2Text: "",
+                    cta2Url: "",
+                    cta2OpenInNewTab: false,
+                  }))
+                }}
+              >
+                Remove second button
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {HERO_SLIDER_TYPES.includes(sliderType) ? (
+          <SeSelect
+            label="Content placement"
+            options={HERO_CONTENT_POSITION_OPTIONS.map((option) => ({
+              label: option.label,
+              value: option.value,
+            }))}
+            value={resolveContentPlacement(form, settings)}
+            onChange={(value) =>
+              setForm((prev) => ({
+                ...prev,
+                contentPosition: value,
+                textAlign: value,
+              }))
+            }
+            helpText="Moves heading, subheading, description, and button together. Leave unset on new slides to follow Style settings."
+          />
+        ) : (
+          <SeSelect
+            label="Text alignment"
+            options={[
+              { label: "Left", value: "left" },
+              { label: "Center", value: "center" },
+              { label: "Right", value: "right" },
+            ]}
+            value={form.textAlign}
+            onChange={(value) => update("textAlign", value)}
+          />
+        )}
 
         <FormLayout.Group condensed>
           <ColorField

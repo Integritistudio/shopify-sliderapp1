@@ -18,10 +18,17 @@ export const SLIDER_TYPES = [
     group: "Hero",
   },
   {
-    value: "hero-video",
-    label: "Video Hero",
-    description: "Full-bleed video background with overlay copy and CTA",
-    color: "attention",
+    value: "autoplay",
+    label: "Auto Reel",
+    description: "Three-up strip that advances on its own",
+    color: "highlight",
+    group: "Hero",
+  },
+  {
+    value: "center",
+    label: "Peek Carousel",
+    description: "Hero in the middle with soft side peeks",
+    color: "info",
     group: "Hero",
   },
   {
@@ -74,137 +81,11 @@ export const SLIDER_TYPES = [
     group: "Utility",
   },
   {
-    value: "fade",
-    label: "Soft Crossfade",
-    description: "Gentle dissolve from one frame to the next",
-    color: "success",
-    group: "Classic",
-  },
-  {
-    value: "slide",
-    label: "Clean Sweep",
-    description: "Crisp horizontal slide with smooth easing",
-    color: "info",
-    group: "Classic",
-  },
-  {
-    value: "autoplay",
-    label: "Auto Reel",
-    description: "Three-up strip that advances on its own",
-    color: "highlight",
-    group: "Classic",
-  },
-  {
-    value: "center",
-    label: "Peek Carousel",
-    description: "Hero in the middle with soft side peeks",
-    color: "info",
-    group: "Classic",
-  },
-  {
-    value: "variable-width",
-    label: "Magazine Strip",
-    description: "Editorial mix of wide and narrow frames",
-    color: "new",
-    group: "Layout",
-  },
-  {
-    value: "vertical",
-    label: "Vertical Scroll",
-    description: "Frames move upward like a story feed",
-    color: "info",
-    group: "Layout",
-  },
-  {
-    value: "thumbnails",
-    label: "Gallery Thumbs",
-    description: "Main stage with a clickable thumbnail rail",
-    color: "info",
-    group: "Layout",
-  },
-  {
-    value: "coverflow",
-    label: "Coverflow",
-    description: "Tilted 3D shelves with depth perspective",
-    color: "highlight",
-    group: "Motion",
-  },
-  {
-    value: "cube",
-    label: "Cube Turn",
-    description: "Faces rotate like a turning cube",
-    color: "critical",
-    group: "Motion",
-  },
-  {
-    value: "flip",
-    label: "Mirror Flip",
-    description: "Card flips on the Y axis into place",
-    color: "warning",
-    group: "Motion",
-  },
-  {
-    value: "zoom",
-    label: "Instant Zoom",
-    description: "Punch-in entrance with a soft settle",
-    color: "success",
-    group: "Motion",
-  },
-  {
-    value: "ken-burns",
-    label: "Cinema Zoom",
-    description: "Slow living zoom across the image",
-    color: "highlight",
-    group: "Motion",
-  },
-  {
-    value: "parallax",
-    label: "Depth Drift",
-    description: "Background shifts slower than the frame",
-    color: "info",
-    group: "Motion",
-  },
-  {
-    value: "cards-stack",
-    label: "Deck Stack",
-    description: "Cards peel forward from a stacked deck",
-    color: "attention",
-    group: "Motion",
-  },
-  {
-    value: "slide-up",
-    label: "Caption Rise",
-    description: "Text and CTA rise in after the image",
-    color: "success",
-    group: "Motion",
-  },
-  {
     value: "marquee",
     label: "Infinite Ribbon",
     description: "Seamless looping ticker of frames",
     color: "highlight",
-    group: "Motion",
-  },
-  {
-    value: "wipe",
-    label: "Diagonal Wipe",
-    description: "Angled reveal that sweeps across the frame",
-    color: "attention",
-    group: "Motion",
-  },
-  {
-    value: "blur-reveal",
-    label: "Soft Focus",
-    description: "Blurry frame snaps into crisp focus",
-    color: "new",
-    group: "Motion",
-  },
-  {
-    value: "split-panel",
-    label: "Split Reveal",
-    description: "Two halves slide apart to unveil the slide",
-    color: "success",
-    group: "Motion",
+    group: "Utility",
   },
 ]
 
@@ -237,6 +118,14 @@ export const DEFAULT_SLIDER_SETTINGS = {
   ctaIconColor: "#ffffff",
   ctaIconBg: "rgba(255,255,255,0.12)",
   ctaIconSize: 34,
+  cta2Background: "transparent",
+  cta2TextColor: "#ffffff",
+  cta2BorderColor: "#ffffff",
+  cta2HoverBackground: "rgba(255,255,255,0.14)",
+  cta2HoverTextColor: "#ffffff",
+  cta2Icon: "none",
+  cta2IconColor: "#ffffff",
+  cta2IconBg: "rgba(255,255,255,0.12)",
   atcBackground: "#ffffff",
   atcTextColor: "#170f49",
   atcBorderColor: "#170f49",
@@ -244,21 +133,24 @@ export const DEFAULT_SLIDER_SETTINGS = {
   atcHoverTextColor: "#ffffff",
   atcBorderWidth: 1,
   atcBorderRadius: 50,
-  atcFontSize: 14,
-  atcPadding: 10,
+  atcFontSize: 16,
+  atcPadding: 12,
   pauseOnHover: true,
   showBranding: false,
   overlayEnabled: false,
   overlayColor: "#000000",
   overlayOpacity: 0.35,
   effect: "fade",
+  heroAnimation: "none",
   collectionId: null,
   collectionHandle: null,
   productLimit: 8,
   showPrice: true,
   showShopNow: true,
   showAddToCart: true,
+  showSoldOut: true,
   addToCartText: "Add to cart",
+  soldOutText: "Sold out",
   sectionHeading: "",
   sectionHeadingFontSize: 28,
   sectionHeadingGap: 16,
@@ -266,25 +158,82 @@ export const DEFAULT_SLIDER_SETTINGS = {
   productPriceFontSize: 14,
   productContentGap: 8,
   paginationGap: 16,
+  // Hero copy + chrome (ignored by product/utility presets)
+  headingFontSize: 42,
+  subheadingFontSize: 12,
+  descriptionFontSize: 16,
+  headingColor: "#ffffff",
+  subheadingColor: "#ffffff",
+  descriptionColor: "#ffffff",
+  copyGap: 10,
+  paginationOffset: 16,
+  dotsPosition: "center",
+  contentPosition: "bottom-center",
+  progressBar: false,
+  progressBarColor: "#ffffff",
   mobile: {
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: true,
     dots: true,
+    headingFontSize: 28,
+    subheadingFontSize: 11,
+    descriptionFontSize: 14,
+    ctaFontSize: 14,
   },
 }
 
 export const PRODUCT_SLIDER_TYPES = ["product-carousel", "product-showcase", "collection-rail"]
-export const HERO_SLIDER_TYPES = ["hero-fullwidth", "hero-boxed", "hero-video"]
-export const UTILITY_SLIDER_TYPES = ["testimonials", "logo-grid", "stories", "announcement"]
-export const SLIDER_TYPE_GROUPS = ["Hero", "Product", "Utility", "Classic", "Layout", "Motion"]
+export const HERO_SLIDER_TYPES = ["hero-fullwidth", "hero-boxed", "autoplay", "center"]
+export const UTILITY_SLIDER_TYPES = ["testimonials", "logo-grid", "stories", "announcement", "marquee"]
+export const SLIDER_TYPE_GROUPS = ["Hero", "Product", "Utility"]
+
+/** Entrance / layout animations available on Hero presets only */
+export const HERO_ANIMATION_OPTIONS = [
+  { value: "none", label: "Default" },
+  { value: "slide", label: "Clean Sweep" },
+  { value: "slide-up", label: "Caption Rise" },
+  { value: "wipe", label: "Diagonal Wipe" },
+  { value: "blur-reveal", label: "Soft Focus" },
+  { value: "split-panel", label: "Split Reveal" },
+  { value: "parallax", label: "Depth Drift" },
+]
+
+export const HERO_CONTENT_POSITION_OPTIONS = [
+  { value: "middle", label: "Center" },
+  { value: "bottom-center", label: "Bottom" },
+  { value: "bottom-left", label: "Bottom left" },
+  { value: "bottom-right", label: "Bottom right" },
+]
+
+const HERO_CONTENT_POSITIONS = HERO_CONTENT_POSITION_OPTIONS.map((option) => option.value)
+
+/** Resolve one placement for heading + subheading + description + CTA together */
+export function resolveContentPlacement(slide = {}, settings = {}) {
+  if (HERO_CONTENT_POSITIONS.includes(slide.contentPosition)) return slide.contentPosition
+  if (HERO_CONTENT_POSITIONS.includes(slide.textAlign)) return slide.textAlign
+  if (slide.textAlign === "left") return "bottom-left"
+  if (slide.textAlign === "right") return "bottom-right"
+  if (HERO_CONTENT_POSITIONS.includes(settings.contentPosition)) return settings.contentPosition
+  return "bottom-center"
+}
+
+export function contentPlacementStyle(placement = "bottom-center") {
+  const p = HERO_CONTENT_POSITIONS.includes(placement) ? placement : "bottom-center"
+  return {
+    placement: p,
+    justifyContent: p === "middle" ? "center" : "flex-end",
+    alignItems: p.includes("left") ? "flex-start" : p.includes("right") ? "flex-end" : "center",
+    textAlign: p.includes("left") ? "left" : p.includes("right") ? "right" : "center",
+  }
+}
 
 /** Map legacy / alias types onto the curated catalog */
 const TYPE_ALIASES = {
   "multiple-items": "autoplay",
   lazy: "autoplay",
   spotlight: "center",
-  "carousel-3d": "coverflow",
+  "carousel-3d": "center",
 }
 
 export function resolveSliderType(sliderType = "fade") {
@@ -389,15 +338,20 @@ export function settingsFromPreset(sliderType = "fade") {
       return {
         ...base,
         effect: "testimonials",
-        transition: "fade",
-        height: 320,
+        transition: "slide",
+        height: 280,
         borderRadius: 16,
-        slidesToShow: 1,
+        width: 1100,
+        slidesToShow: 3,
+        slidesToScroll: 3,
         autoplay: true,
         autoplaySpeed: 5000,
         speed: 700,
         arrows: true,
         dots: true,
+        arrowBg: "#ffffff",
+        arrowColor: "#170f49",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
       }
     case "logo-grid":
       return {
@@ -521,14 +475,34 @@ export function settingsFromPreset(sliderType = "fade") {
 
 export function mergeSliderSettings(sliderType, settings = {}) {
   const preset = settingsFromPreset(sliderType)
-  return {
+  const merged = {
     ...preset,
     ...settings,
     mobile: {
+      ...DEFAULT_SLIDER_SETTINGS.mobile,
       ...preset.mobile,
       ...(settings?.mobile || {}),
     },
   }
+  // Keep product button sizing equal (Shop now + Add to cart)
+  const sharedPad = Number(merged.ctaPadding ?? merged.atcPadding ?? 12)
+  const sharedFont = Number(merged.ctaFontSize ?? merged.atcFontSize ?? 16)
+  const sharedRadius = Number(merged.ctaBorderRadius ?? merged.atcBorderRadius ?? 50)
+  merged.ctaPadding = sharedPad
+  merged.atcPadding = sharedPad
+  merged.ctaFontSize = sharedFont
+  merged.atcFontSize = sharedFont
+  merged.ctaBorderRadius = sharedRadius
+  merged.atcBorderRadius = sharedRadius
+
+  // Layout-style hero animations
+  if (merged.heroAnimation === "thumbnails") {
+    merged.thumbnails = true
+  } else if (merged.heroAnimation && merged.heroAnimation !== "none") {
+    merged.thumbnails = false
+  }
+
+  return merged
 }
 
 export function getSliderTypeInfo(type) {
@@ -573,7 +547,7 @@ export function buildSlickConfig(settings, { thumbnailSelector } = {}) {
         settings: {
           slidesToShow: Number(merged.mobile?.slidesToShow) || 1,
           slidesToScroll: Number(merged.mobile?.slidesToScroll) || 1,
-          dots: merged.mobile?.dots !== false,
+          dots: merged.mobile?.dots !== false && merged.dots !== false,
           centerMode: false,
           vertical: false,
         },
@@ -601,7 +575,6 @@ export function buildSlickConfig(settings, { thumbnailSelector } = {}) {
       "hero-fullwidth",
       "hero-boxed",
       "hero-video",
-      "testimonials",
       "stories",
       "announcement",
     ].includes(effect)
@@ -609,6 +582,13 @@ export function buildSlickConfig(settings, { thumbnailSelector } = {}) {
     config.fade = true
     config.slidesToShow = 1
     config.slidesToScroll = 1
+  }
+
+  if (effect === "testimonials") {
+    const show = Math.min(Math.max(Number(merged.slidesToShow) || 3, 1), 3)
+    config.fade = false
+    config.slidesToShow = show
+    config.slidesToScroll = show
   }
 
   if (["center", "coverflow", "product-showcase"].includes(effect) || merged.transition === "center") {
@@ -790,6 +770,16 @@ export const SAMPLE_SLIDES_BY_TYPE = {
       heading: "Our go-to brand for gifts. Every order gets compliments.",
       subheading: "Jordan Lee",
       description: "Repeat customer",
+      textAlign: "center",
+      textColor: "#170f49",
+      isVisible: true,
+    },
+    {
+      id: "t3",
+      imageUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80",
+      heading: "Support was wonderful and the product exceeded every expectation.",
+      subheading: "Priya Shah",
+      description: "New customer",
       textAlign: "center",
       textColor: "#170f49",
       isVisible: true,

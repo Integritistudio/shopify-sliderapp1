@@ -55,12 +55,10 @@ const COLLECTION_PRODUCTS_QUERY = `
                 currencyCode
               }
             }
-            selectedOrFirstAvailableVariant {
-              id
-            }
-            variants(first: 1) {
+            variants(first: 25) {
               nodes {
                 id
+                availableForSale
               }
             }
           }
@@ -93,12 +91,10 @@ const PRODUCTS_BY_IDS_QUERY = `
             currencyCode
           }
         }
-        selectedOrFirstAvailableVariant {
-          id
-        }
-        variants(first: 1) {
+        variants(first: 25) {
           nodes {
             id
+            availableForSale
           }
         }
       }
@@ -129,8 +125,11 @@ function variantNumericId(gid) {
 function mapProduct(node) {
   const price = node.priceRangeV2?.minVariantPrice
   const compare = node.compareAtPriceRange?.minVariantCompareAtPrice
-  const variantGid =
-    node.selectedOrFirstAvailableVariant?.id || node.variants?.nodes?.[0]?.id || null
+  const variants = node.variants?.nodes || []
+  const preferred =
+    variants.find((variant) => variant?.availableForSale) || variants[0] || null
+  const availableForSale =
+    variants.length > 0 ? variants.some((variant) => variant?.availableForSale) : true
   return {
     id: node.id,
     title: node.title,
@@ -140,7 +139,8 @@ function mapProduct(node) {
     price: price ? formatMoney(price.amount, price.currencyCode) : "",
     compareAtPrice: compare ? formatMoney(compare.amount, compare.currencyCode) : "",
     url: `/products/${node.handle}`,
-    variantId: variantNumericId(variantGid),
+    variantId: variantNumericId(preferred?.id),
+    availableForSale,
   }
 }
 

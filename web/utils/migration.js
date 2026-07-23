@@ -412,6 +412,76 @@ const migrations = {
       }
     },
   },
+
+  "010-widen-slide-text-fields": {
+    up: async (queryInterface) => {
+      // Product sync can write titles/alt text longer than VARCHAR(255)
+      const widen = async (name, allowNull = true) => {
+        try {
+          await queryInterface.changeColumn("Slides", name, {
+            type: DataTypes.TEXT,
+            allowNull,
+          })
+        } catch (error) {
+          console.warn(`Could not widen Slides.${name}:`, error.message)
+        }
+      }
+
+      await widen("title", false)
+      await widen("heading", true)
+      await widen("subheading", true)
+      await widen("imageAlt", true)
+      await widen("ctaResourceId", true)
+      await widen("shopifyFileId", true)
+    },
+    down: async (queryInterface) => {
+      // Intentionally left as TEXT — narrowing risks truncating existing data
+    },
+  },
+
+  "011-slide-available-for-sale": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (!columns.availableForSale) {
+        await queryInterface.addColumn("Slides", "availableForSale", {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: true,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (columns.availableForSale) {
+        await queryInterface.removeColumn("Slides", "availableForSale")
+      }
+    },
+  },
+
+  "012-slide-secondary-cta": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      const addIfMissing = async (name, definition) => {
+        if (!columns[name]) {
+          await queryInterface.addColumn("Slides", name, definition)
+        }
+      }
+
+      await addIfMissing("cta2Text", { type: DataTypes.STRING, allowNull: true, defaultValue: "" })
+      await addIfMissing("cta2Url", { type: DataTypes.TEXT, allowNull: true, defaultValue: "" })
+      await addIfMissing("cta2OpenInNewTab", {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      })
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      for (const name of ["cta2Text", "cta2Url", "cta2OpenInNewTab"]) {
+        if (columns[name]) await queryInterface.removeColumn("Slides", name)
+      }
+    },
+  },
 }
 
 // Run pending migrations

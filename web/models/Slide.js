@@ -15,7 +15,7 @@ const Slide = sequelize.define(
       allowNull: false,
     },
     title: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     description: {
@@ -24,12 +24,12 @@ const Slide = sequelize.define(
       defaultValue: "",
     },
     heading: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: "",
     },
     subheading: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: "",
     },
@@ -53,10 +53,25 @@ const Slide = sequelize.define(
       allowNull: true,
     },
     ctaResourceId: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     ctaOpenInNewTab: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    cta2Text: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "",
+    },
+    cta2Url: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "",
+    },
+    cta2OpenInNewTab: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
@@ -106,18 +121,23 @@ const Slide = sequelize.define(
       defaultValue: "#ffffff",
     },
     imageAlt: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: "",
     },
     shopifyFileId: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     variantId: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    availableForSale: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     position: {
       type: DataTypes.INTEGER,

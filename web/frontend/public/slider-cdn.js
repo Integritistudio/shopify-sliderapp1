@@ -45,7 +45,7 @@
     const preferred = Number.isFinite(saved) && saved > 0 ? saved : 640
     if (effect === "announcement") return Math.min(Math.max(preferred, 36), 120)
     if (effect === "logo-grid") return Math.min(Math.max(preferred, 80), 240)
-    if (effect === "testimonials") return Math.min(Math.max(preferred, 240), 520)
+    if (effect === "testimonials") return Math.min(Math.max(preferred, 160), 520)
     return Math.min(Math.max(preferred, 320), 900)
   }
 
@@ -82,38 +82,77 @@
     return `${storeRoot()}cart/add.js`
   }
 
-  function publishCartUpdate(data) {
+  function getThemeCartUi() {
+    return (
+      document.querySelector("cart-drawer") ||
+      document.querySelector("cart-notification") ||
+      null
+    )
+  }
+
+  function getCartSectionsToRequest(cartUi) {
     try {
-      const count = Number(data?.item_count)
-      if (Number.isFinite(count)) {
-        document.querySelectorAll("[data-cart-count], .cart-count-bubble, .cart-count").forEach((el) => {
-          const span = el.matches("span") ? el : el.querySelector("span")
-          if (span) span.textContent = String(count)
-          else if (el.childElementCount === 0) el.textContent = String(count)
-          el.classList.toggle("hidden", count <= 0)
-        })
+      if (cartUi && typeof cartUi.getSectionsToRender === "function") {
+        const ids = cartUi
+          .getSectionsToRender()
+          .map((section) => section.id)
+          .filter(Boolean)
+        if (ids.length) return ids
       }
+    } catch {
+      // fall through to defaults
+    }
+    return ["cart-drawer", "cart-icon-bubble", "cart-notification"]
+  }
+
+  function updateCartCountBubbles(count) {
+    if (!Number.isFinite(count)) return
+    document.querySelectorAll("[data-cart-count], .cart-count-bubble, .cart-count").forEach((el) => {
+      const span = el.matches("span") ? el : el.querySelector("span")
+      if (span) span.textContent = String(count)
+      else if (el.childElementCount === 0) el.textContent = String(count)
+      el.classList.toggle("hidden", count <= 0)
+    })
+  }
+
+  function publishCartUpdate(parsedState) {
+    try {
+      const cartUi = getThemeCartUi()
+      const count = Number(parsedState?.item_count)
+      if (Number.isFinite(count)) updateCartCountBubbles(count)
+
       document.documentElement.dispatchEvent(
-        new CustomEvent("cart:updated", { bubbles: true, detail: { source: "slideease", cart: data } }),
+        new CustomEvent("cart:updated", { bubbles: true, detail: { source: "slideease", cart: parsedState } }),
       )
-      document.dispatchEvent(new CustomEvent("cart:refresh", { bubbles: true }))
-      document.dispatchEvent(new CustomEvent("ajaxProduct:added", { bubbles: true, detail: data }))
+      document.dispatchEvent(new CustomEvent("cart:refresh", { bubbles: true, detail: parsedState }))
+      document.dispatchEvent(new CustomEvent("ajaxProduct:added", { bubbles: true, detail: parsedState }))
       if (window.Shopify && typeof window.Shopify.onItemAdded === "function") {
-        window.Shopify.onItemAdded(data)
+        window.Shopify.onItemAdded(parsedState)
       }
-      const drawer = document.querySelector("cart-drawer")
-      if (drawer) {
-        if (typeof drawer.renderContents === "function" && data) {
-          try {
-            drawer.renderContents(data)
-          } catch {
-            /* ignore */
-          }
+
+      // PubSub used by Dawn / Horizon / Refresh
+      try {
+        if (typeof window.publish === "function" && window.PUB_SUB_EVENTS?.cartUpdate) {
+          window.publish(window.PUB_SUB_EVENTS.cartUpdate, {
+            source: "slideease",
+            cartData: parsedState,
+            productVariantId: parsedState?.variant_id || parsedState?.id,
+          })
         }
-        if (typeof drawer.open === "function") drawer.open()
+      } catch {
+        // optional
+      }
+
+      if (cartUi) {
+        cartUi.classList.remove("is-empty")
+        if (typeof cartUi.renderContents === "function" && parsedState?.sections) {
+          cartUi.renderContents(parsedState)
+          return
+        }
+        if (typeof cartUi.open === "function") cartUi.open()
         else {
-          drawer.classList.add("active", "is-open")
-          drawer.setAttribute("open", "")
+          cartUi.classList.add("active", "is-open")
+          cartUi.setAttribute("open", "")
         }
       }
     } catch {
@@ -134,9 +173,15 @@
     const id = Number(variantId)
     if (!Number.isFinite(id) || id <= 0) throw new Error("Missing variant")
 
+    const cartUi = getThemeCartUi()
+    const sections = getCartSectionsToRequest(cartUi)
+    const sectionsUrl = window.location.pathname || storeRoot()
+
     const formData = new FormData()
     formData.append("id", String(id))
     formData.append("quantity", String(quantity))
+    formData.append("sections", sections.join(","))
+    formData.append("sections_url", sectionsUrl)
 
     let response = await fetch(cartAddUrl(), {
       method: "POST",
@@ -152,7 +197,12 @@
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ id, quantity }),
+        body: JSON.stringify({
+          id,
+          quantity,
+          sections,
+          sections_url: sectionsUrl,
+        }),
         credentials: "same-origin",
       })
     }
@@ -161,6 +211,8 @@
       const form = new URLSearchParams()
       form.set("id", String(id))
       form.set("quantity", String(quantity))
+      form.set("sections", sections.join(","))
+      form.set("sections_url", sectionsUrl)
       response = await fetch(cartAddUrl(), {
         method: "POST",
         headers: {
@@ -173,7 +225,7 @@
     }
 
     const data = await response.json().catch(() => ({}))
-    if (!response.ok) {
+    if (!response.ok || data.status) {
       const message =
         data.description ||
         data.message ||
@@ -182,24 +234,27 @@
       throw new Error(message)
     }
 
-    const cart = (await fetchCart()) || data
-    try {
-      const sectionsRes = await fetch(`${storeRoot()}?sections=cart-icon-bubble,cart-drawer,cart-notification`, {
-        headers: { Accept: "application/json" },
-        credentials: "same-origin",
-      })
-      if (sectionsRes.ok) {
-        const sections = await sectionsRes.json()
-        Object.entries(sections || {}).forEach(([sectionId, html]) => {
-          if (!html) return
-          const el = document.getElementById(sectionId) || document.querySelector(`#shopify-section-${sectionId}`)
-          if (el) el.innerHTML = html
-        })
+    // If sections weren't returned (older themes), fetch them separately and attach
+    if (!data.sections || !Object.keys(data.sections).length) {
+      try {
+        const sectionsRes = await fetch(
+          `${storeRoot()}?sections=${encodeURIComponent(sections.join(","))}`,
+          { headers: { Accept: "application/json" }, credentials: "same-origin" },
+        )
+        if (sectionsRes.ok) {
+          data.sections = await sectionsRes.json()
+        }
+      } catch {
+        // optional
       }
-    } catch {
-      // optional
     }
-    publishCartUpdate({ ...data, item_count: cart?.item_count ?? data?.item_count })
+
+    const cart = await fetchCart()
+    if (cart && Number.isFinite(Number(cart.item_count))) {
+      data.item_count = cart.item_count
+    }
+
+    publishCartUpdate(data)
     return data
   }
 
@@ -209,24 +264,72 @@
   }
 
   async function resolveVariantId({ variantId, productHandle }) {
+    const handle = String(productHandle || "").trim()
+    if (handle) {
+      const productUrl = `${storeRoot()}products/${encodeURIComponent(handle)}.js`
+      const response = await fetch(productUrl, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      })
+      if (!response.ok) throw new Error("Product unavailable")
+      const product = await response.json()
+      const variants = product.variants || []
+      const availableVariant =
+        variants.find((item) => item?.available) ||
+        (product.available ? variants[0] : null)
+      if (!product.available || !availableVariant?.available) {
+        throw new Error("Sold out")
+      }
+      const id = String(availableVariant.id || "").replace(/\D/g, "")
+      if (!id) throw new Error("No variant found")
+      return id
+    }
+
     const direct = String(variantId || "").replace(/\D/g, "")
     if (direct) return direct
-    const handle = String(productHandle || "").trim()
-    if (!handle) throw new Error("Missing product")
-    const productUrl = `${storeRoot()}products/${encodeURIComponent(handle)}.js`
-    const response = await fetch(productUrl, {
-      headers: { Accept: "application/json" },
-      credentials: "same-origin",
-    })
-    if (!response.ok) throw new Error("Product unavailable")
-    const product = await response.json()
-    const variant =
-      (product.variants || []).find((item) => item?.available) ||
-      (product.variants || []).find((item) => item?.available !== false) ||
-      product.variants?.[0]
-    const id = String(variant?.id || "").replace(/\D/g, "")
-    if (!id) throw new Error("No variant found")
-    return id
+    throw new Error("Missing product")
+  }
+
+  function markAtcSoldOut(btn, label = "Sold out") {
+    if (!btn) return
+    btn.textContent = label
+    btn.disabled = true
+    btn.setAttribute("aria-disabled", "true")
+    btn.dataset.soldOut = "1"
+    btn.dataset.seBusy = "0"
+    btn.classList.add("se-product-card__atc--soldout")
+    btn.removeAttribute("data-variant-id")
+  }
+
+  async function refreshAtcAvailability(root, { soldOutLabel = "Sold out", showSoldOut = true } = {}) {
+    if (!root) return
+    const buttons = [...root.querySelectorAll(".se-product-card__atc:not([data-sold-out='1'])")]
+    await Promise.all(
+      buttons.map(async (btn) => {
+        const handle = String(btn.getAttribute("data-product-handle") || "").trim()
+        if (!handle) return
+        try {
+          const response = await fetch(`${storeRoot()}products/${encodeURIComponent(handle)}.js`, {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          })
+          if (!response.ok) return
+          const product = await response.json()
+          const variants = product.variants || []
+          const availableVariant = variants.find((item) => item?.available)
+          const available = Boolean(product.available) && Boolean(availableVariant)
+          if (!available) {
+            if (showSoldOut) markAtcSoldOut(btn, soldOutLabel)
+            else btn.remove()
+            return
+          }
+          const id = String(availableVariant.id || "").replace(/\D/g, "")
+          if (id) btn.setAttribute("data-variant-id", id)
+        } catch {
+          // keep synced state
+        }
+      }),
+    )
   }
 
   function youtubeEmbed(url) {
@@ -367,7 +470,6 @@
       "hero-fullwidth",
       "hero-boxed",
       "hero-video",
-      "testimonials",
       "stories",
       "announcement",
     ]
@@ -406,7 +508,12 @@
           settings: {
             slidesToShow: productStripEffects.includes(effect)
               ? Math.min(Number(settings.slidesToShow) || 4, 3)
-              : Math.min(Number(settings.slidesToShow) || 1, 2),
+              : effect === "testimonials"
+                ? Math.min(Number(settings.slidesToShow) || 3, 2)
+                : Math.min(Number(settings.slidesToShow) || 1, 2),
+            ...(effect === "testimonials"
+              ? { slidesToScroll: Math.min(Number(settings.slidesToShow) || 3, 2) }
+              : {}),
             centerMode: centerEffects.includes(effect),
             centerPadding: "5%",
           },
@@ -427,6 +534,12 @@
     if (fadeEffects.includes(effect)) {
       config.slidesToShow = 1
       config.slidesToScroll = 1
+    }
+    if (effect === "testimonials") {
+      const show = Math.min(Math.max(Number(settings.slidesToShow) || 3, 1), 3)
+      config.fade = false
+      config.slidesToShow = show
+      config.slidesToScroll = show
     }
     if (centerEffects.includes(effect)) {
       config.slidesToShow = Math.max(Number(settings.slidesToShow) || 3, 1)
@@ -475,12 +588,29 @@
     const description = slide.description || ""
     const overlayOpacity = Number(slide.overlayOpacity ?? settings.overlayOpacity ?? 0.28)
     const overlayColor = slide.overlayColor || settings.overlayColor || "#0f172a"
-    const align = slide.textAlign || "center"
-    const justify = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center"
+    const placementPositions = ["middle", "bottom-center", "bottom-left", "bottom-right"]
+    const placement = (() => {
+      if (placementPositions.includes(slide.contentPosition)) return slide.contentPosition
+      if (placementPositions.includes(slide.textAlign)) return slide.textAlign
+      if (slide.textAlign === "left") return "bottom-left"
+      if (slide.textAlign === "right") return "bottom-right"
+      if (placementPositions.includes(settings.contentPosition)) return settings.contentPosition
+      return "bottom-center"
+    })()
+    const align = placement.includes("left") ? "left" : placement.includes("right") ? "right" : "center"
+    const alignItems = placement.includes("left") ? "flex-start" : placement.includes("right") ? "flex-end" : "center"
+    const justifyContent = placement === "middle" ? "center" : "flex-end"
     const ctaHref = safeUrl(slide.ctaUrl)
+    const cta2Href = safeUrl(slide.cta2Url)
     const targetAttrs = slide.ctaOpenInNewTab ? ` target="_blank" rel="noopener noreferrer"` : ""
+    const target2Attrs = slide.cta2OpenInNewTab ? ` target="_blank" rel="noopener noreferrer"` : ""
+    const heroAnimEarly =
+      settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : ""
     const radius =
-      effect === "hero-fullwidth" || effect === "hero-video" || effect === "announcement"
+      effect === "hero-fullwidth" ||
+      effect === "hero-video" ||
+      effect === "announcement" ||
+      heroAnimEarly === "hero-video"
         ? 0
         : Number(settings.borderRadius ?? 0)
     const textColor = escapeHtml(slide.textColor || "#ffffff")
@@ -490,38 +620,68 @@
     const btnBorder = escapeHtml(settings.ctaBorderColor || "#ffffff")
     const btnIconColor = escapeHtml(settings.ctaIconColor || btnText)
     const btnIconBg = escapeHtml(settings.ctaIconBg || "rgba(255,255,255,0.12)")
+    const btn2Bg = escapeHtml(settings.cta2Background ?? "transparent")
+    const btn2HoverBg = escapeHtml(settings.cta2HoverBackground || "rgba(255,255,255,0.14)")
+    const btn2Text = escapeHtml(settings.cta2TextColor || settings.ctaTextColor || "#ffffff")
+    const btn2HoverText = escapeHtml(settings.cta2HoverTextColor || settings.cta2TextColor || btn2Text)
+    const btn2Border = escapeHtml(settings.cta2BorderColor || settings.ctaBorderColor || "#ffffff")
+    const btn2IconColor = escapeHtml(settings.cta2IconColor || btn2Text)
+    const btn2IconBg = escapeHtml(settings.cta2IconBg || "rgba(255,255,255,0.12)")
     const btnIconSize = Math.min(Math.max(Number(settings.ctaIconSize ?? 34), 20), 56)
     const btnIconPad = Math.round(btnIconSize * 0.235)
     const btnBorderWidth = Math.min(Math.max(Number(settings.ctaBorderWidth ?? 1), 0), 6)
     const btnRadius = Math.min(Math.max(Number(settings.ctaBorderRadius ?? 50), 0), 50)
     const btnFontSize = Math.min(Math.max(Number(settings.ctaFontSize ?? 16), 12), 24)
     const btnIcon = ["arrow", "chevron", "none"].includes(settings.ctaIcon) ? settings.ctaIcon : "arrow"
+    const btn2Icon = ["arrow", "chevron", "none"].includes(settings.cta2Icon) ? settings.cta2Icon : "none"
     const btnIconPath = btnIcon === "chevron" ? "M7 4l6 6-6 6" : "M4 10h11m-4-4 4 4-4 4"
+    const btn2IconPath = btn2Icon === "chevron" ? "M7 4l6 6-6 6" : "M4 10h11m-4-4 4 4-4 4"
     const btnIconMarkup =
       btnIcon === "none"
         ? ""
         : `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${btnIconPath}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+    const btn2IconMarkup =
+      btn2Icon === "none"
+        ? ""
+        : `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="${btn2IconPath}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     const ctaStyle = `--se-cta-bg:${btnBg};--se-cta-hover-bg:${btnHoverBg};--se-cta-color:${btnText};--se-cta-border:${btnBorder};--se-cta-border-width:${btnBorderWidth}px;--se-cta-radius:${btnRadius}px;--se-cta-font-size:${btnFontSize}px;--se-cta-icon-color:${btnIconColor};--se-cta-icon-bg:${btnIconBg};--se-cta-icon-size:${btnIconSize}px;--se-cta-icon-pad:${btnIconPad}px;`
-    const ctaHtml = slide.ctaText
+    const cta2Style = `${ctaStyle}--se-cta2-bg:${btn2Bg};--se-cta2-hover-bg:${btn2HoverBg};--se-cta2-color:${btn2Text};--se-cta2-hover-color:${btn2HoverText};--se-cta2-border:${btn2Border};--se-cta2-icon-color:${btn2IconColor};--se-cta2-icon-bg:${btn2IconBg};`
+    const primaryCta = slide.ctaText
       ? `<a class="slideease-cta se-cta${btnIcon === "none" ? " se-cta--no-icon" : ""}" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs} style="${ctaStyle}"><span>${escapeHtml(slide.ctaText)}</span>${btnIconMarkup}</a>`
       : ""
+    const secondaryCta = slide.cta2Text
+      ? `<a class="slideease-cta se-cta se-cta--secondary${btn2Icon === "none" ? " se-cta--no-icon" : ""}" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(cta2Href || "#")}"${target2Attrs} style="${cta2Style}"><span>${escapeHtml(slide.cta2Text)}</span>${btn2IconMarkup}</a>`
+      : ""
+    const ctaHtml =
+      primaryCta || secondaryCta ? `<div class="se-cta-row">${primaryCta}${secondaryCta}</div>` : ""
 
     if (["product-carousel", "product-showcase", "collection-rail"].includes(effect)) {
       const imageUrl = escapeHtml(safeUrl(slide.imageUrl) || "")
       const showPrice = settings.showPrice !== false
       const showShopNow = settings.showShopNow !== false
       const showAddToCart = settings.showAddToCart !== false
+      const showSoldOut = settings.showSoldOut !== false
       const shopLabel = escapeHtml(slide.ctaText || "Shop now")
+      const soldOutLabel = escapeHtml(settings.soldOutText || "Sold out")
       const atcLabel = escapeHtml(settings.addToCartText || "Add to cart")
       const variantId = String(slide.variantId || "").replace(/\D/g, "")
       const productHandle =
         productHandleFromUrl(slide.ctaUrl || ctaHref || "") ||
         String(slide.subheading || "").trim()
+      const isSoldOut = slide.availableForSale === false
       const actions = []
-      if (showAddToCart && (variantId || productHandle)) {
-        actions.push(
-          `<button type="button" class="se-product-card__atc" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(slide.id)}">${atcLabel}</button>`,
-        )
+      if (showAddToCart && (variantId || productHandle || isSoldOut)) {
+        if (isSoldOut) {
+          if (showSoldOut) {
+            actions.push(
+              `<button type="button" class="se-product-card__atc se-product-card__atc--soldout" disabled aria-disabled="true" data-sold-out="1" data-slide-id="${escapeHtml(slide.id)}">${soldOutLabel}</button>`,
+            )
+          }
+        } else {
+          actions.push(
+            `<button type="button" class="se-product-card__atc" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(slide.id)}" data-show-sold-out="${showSoldOut ? "1" : "0"}">${atcLabel}</button>`,
+          )
+        }
       }
       if (showShopNow) {
         actions.push(
@@ -552,17 +712,19 @@
       const avatar = escapeHtml(safeUrl(slide.imageUrl) || "")
       return `
         <div data-slideease-slide-id="${escapeHtml(slide.id)}">
-          <article class="se-testimonial se-frame-${escapeHtml(effect)}" style="--se-radius:${radius}px;border-radius:${radius}px;">
-            <div class="se-testimonial__quote">“</div>
-            <p class="se-testimonial__text">${escapeHtml(heading || "Customer quote")}</p>
-            <div class="se-testimonial__author">
-              ${avatar ? `<img src="${avatar}" alt="" class="se-testimonial__avatar" loading="lazy" />` : ""}
-              <div>
-                <strong>${escapeHtml(subheading || "Customer")}</strong>
-                ${description ? `<span>${escapeHtml(description)}</span>` : ""}
+          <div class="se-testimonial-pad">
+            <article class="se-testimonial se-frame-${escapeHtml(effect)}" style="--se-radius:${radius}px;border-radius:${radius}px;">
+              <div class="se-testimonial__quote">“</div>
+              <p class="se-testimonial__text">${escapeHtml(heading || "Customer quote")}</p>
+              <div class="se-testimonial__author">
+                ${avatar ? `<img src="${avatar}" alt="" class="se-testimonial__avatar" loading="lazy" />` : ""}
+                <div>
+                  <strong>${escapeHtml(subheading || "Customer")}</strong>
+                  ${description ? `<span>${escapeHtml(description)}</span>` : ""}
+                </div>
               </div>
-            </div>
-          </article>
+            </article>
+          </div>
         </div>
       `
     }
@@ -595,8 +757,16 @@
           <div class="se-announce se-frame-${escapeHtml(effect)}" style="background:${btnBg};color:${textColor || btnText};">
             <span class="se-announce__text">${escapeHtml(heading || "Announcement")}</span>
             ${
-              slide.ctaText
-                ? `<a class="slideease-cta se-announce__cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>${escapeHtml(slide.ctaText)}</a>`
+              slide.ctaText || slide.cta2Text
+                ? `<span class="se-announce__ctas">${
+                    slide.ctaText
+                      ? `<a class="slideease-cta se-announce__cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>${escapeHtml(slide.ctaText)}</a>`
+                      : ""
+                  }${
+                    slide.cta2Text
+                      ? `<a class="slideease-cta se-announce__cta se-announce__cta--secondary" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(cta2Href || "#")}"${target2Attrs}>${escapeHtml(slide.cta2Text)}</a>`
+                      : ""
+                  }</span>`
                 : ""
             }
           </div>
@@ -604,7 +774,7 @@
       `
     }
 
-    const hasCopy = Boolean(heading || subheading || description || slide.ctaText)
+    const hasCopy = Boolean(heading || subheading || description || slide.ctaText || slide.cta2Text)
     const multiPad = [
       "center",
       "coverflow",
@@ -616,15 +786,26 @@
       "collection-rail",
     ].includes(effect)
     const slidePad = multiPad ? "0 12px" : effect === "hero-boxed" ? "0 24px" : "0"
+    const heroTypes = ["hero-fullwidth", "hero-boxed", "autoplay", "center", "hero-video", "slide", "thumbnails"]
+    const heroAnimation =
+      heroTypes.includes(effect) && settings.heroAnimation && settings.heroAnimation !== "none"
+        ? String(settings.heroAnimation)
+        : ""
+    const animClass =
+      heroAnimation && heroAnimation !== "thumbnails" && heroAnimation !== "hero-video"
+        ? ` se-frame-${escapeHtml(heroAnimation)}`
+        : heroAnimation === "hero-video"
+          ? " se-frame-hero-video"
+          : ""
     const splitPanels =
-      effect === "split-panel"
+      effect === "split-panel" || heroAnimation === "split-panel"
         ? `<div class="se-split-panel se-split-panel--left"></div><div class="se-split-panel se-split-panel--right"></div>`
         : ""
 
     return `
       <div data-slideease-slide-id="${escapeHtml(slide.id)}">
         <div style="padding:${slidePad};">
-          <article class="slideease-frame se-frame-${escapeHtml(effect || "fade")}${effect === "hero-boxed" ? " se-frame--boxed" : ""}" style="--se-radius:${radius}px;border-radius:${radius}px;">
+          <article class="slideease-frame se-frame-${escapeHtml(effect || "fade")}${animClass}${effect === "hero-boxed" ? " se-frame--boxed" : ""}${heroAnimation === "slide-up" ? " se-frame-slide-up" : ""}" style="--se-radius:${radius}px;border-radius:${radius}px;">
             <div class="se-media-wrap">${renderMedia(slide, settings)}</div>
             <div class="se-overlay" aria-hidden="true">
               <span class="se-overlay__tint" style="background:${escapeHtml(overlayColor)};opacity:${overlayOpacity};"></span>
@@ -632,7 +813,7 @@
             </div>
             ${
               hasCopy
-                ? `<div class="se-rise-content se-copy se-copy--${escapeHtml(align)}" style="align-items:${justify};text-align:${escapeHtml(align)};color:${textColor};">
+                ? `<div class="se-rise-content se-copy se-copy--${escapeHtml(placement)}" style="justify-content:${justifyContent};align-items:${alignItems};text-align:${escapeHtml(align)};color:${textColor};">
               <div class="se-copy-plate">
                 ${subheading ? `<p class="se-eyebrow">${escapeHtml(subheading)}</p>` : ""}
                 ${heading ? `<h3 class="se-heading">${escapeHtml(heading)}</h3>` : ""}
@@ -653,6 +834,72 @@
   function premiumLayoutCss() {
     return `
           .slideease-container-${uniqueId}.se-root--boxed { max-width: 1120px; margin-inline: auto; padding-inline: 1rem; }
+          .slideease-container-${uniqueId}.se-root--testimonials {
+            max-width: min(100%, var(--se-width, 1100px));
+            margin-inline: auto;
+            padding-inline: clamp(2.75rem, 5vw, 3.5rem);
+            padding-block: 0.35rem 0.5rem;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .se-slider {
+            height: auto !important;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .slick-list {
+            height: auto !important;
+            overflow: hidden;
+            margin: 0 -12px;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .slick-track {
+            display: flex !important;
+            align-items: stretch !important;
+            height: auto !important;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .slick-slide {
+            height: auto !important;
+            float: none !important;
+            display: flex !important;
+            min-height: var(--se-height);
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .slick-slide > div {
+            height: auto !important;
+            min-height: var(--se-height);
+            width: 100%;
+            display: flex;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .se-nav--prev { left: 0; }
+          .slideease-container-${uniqueId}.se-root--testimonials .se-nav--next { right: 0; }
+          .slideease-container-${uniqueId}.se-root--testimonials .se-nav {
+            border: 1px solid #e7e7e7;
+            background: #fff;
+            color: #170f49;
+            box-shadow: 0 8px 24px rgba(23, 15, 73, 0.08);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            opacity: 1;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .slideease-dots-${uniqueId} {
+            position: static !important;
+            left: auto !important;
+            bottom: auto !important;
+            transform: none !important;
+            width: fit-content;
+            margin: 1.15rem auto 0.15rem !important;
+            background: transparent;
+            border: none;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            gap: 8px;
+            padding: 0;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .se-dot {
+            background: rgba(23, 15, 73, 0.18);
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .slideease-dots-${uniqueId} li.slick-active .se-dot {
+            background: #170f49;
+          }
+          .slideease-container-${uniqueId}.se-root--testimonials .se-progress { display: none !important; }
           .slideease-container-${uniqueId}.se-root--announce { --se-render-height: var(--se-height); }
           .slideease-container-${uniqueId}.se-root--utility { --se-render-height: var(--se-height); }
           .slideease-container-${uniqueId} .se-product-pad { padding: 0 10px; height: 100%; display: flex; width: 100%; box-sizing: border-box; }
@@ -700,11 +947,11 @@
           }
           .slideease-container-${uniqueId} .se-product-card__atc {
             display: inline-flex; align-items: center; justify-content: center;
-            padding: var(--se-atc-pad, 10px) calc(var(--se-atc-pad, 10px) * 1.75);
-            border-radius: var(--se-atc-radius, 50px);
+            padding: var(--se-cta-pad, 12px) calc(var(--se-cta-pad, 12px) * 1.75);
+            border-radius: var(--se-cta-radius, 50px);
             border: var(--se-atc-border-width, 1px) solid var(--se-atc-border, #170f49);
             background: var(--se-atc-bg, #fff); color: var(--se-atc-color, #170f49);
-            font-size: var(--se-atc-font-size, 14px); font-weight: 650;
+            font-size: var(--se-cta-font-size, 16px); font-weight: 650;
             line-height: 1; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
             text-decoration: none; cursor: pointer; font-family: inherit;
           }
@@ -716,6 +963,19 @@
           .slideease-container-${uniqueId} .se-product-card__atc:disabled {
             opacity: 0.65;
             cursor: wait;
+          }
+          .slideease-container-${uniqueId} .se-product-card__atc--soldout,
+          .slideease-container-${uniqueId} .se-product-card__atc--soldout:disabled {
+            opacity: 0.72;
+            cursor: not-allowed;
+            background: #f3f4f6;
+            color: #6b7280;
+            border-color: #d1d5db;
+          }
+          .slideease-container-${uniqueId} .se-product-card__atc--soldout:hover:disabled {
+            background: #f3f4f6;
+            color: #6b7280;
+            border-color: #d1d5db;
           }
           .slideease-container-${uniqueId} .se-product-card__shop:hover,
           .slideease-container-${uniqueId} .se-product-card__cta:hover {
@@ -788,12 +1048,46 @@
           }
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy,
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy {
-            justify-content: flex-end;
             padding: clamp(1.5rem, 5vw, 3.5rem);
+            padding-bottom: calc(2.75rem + var(--se-pagination-offset, 16px));
+          }
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--middle,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--middle,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--middle,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--middle,
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--center,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--center,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--center,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--center {
+            justify-content: center;
+          }
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--bottom-center,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--bottom-center,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--bottom-center,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--bottom-center,
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--bottom-left,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--bottom-left,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--bottom-left,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--bottom-left,
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--bottom-right,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--bottom-right,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--bottom-right,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--bottom-right,
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--left,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--left,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--left,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--left,
+          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy--right,
+          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy--right,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-copy--right,
+          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--right {
+            justify-content: flex-end;
           }
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-overlay__tint,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-overlay__tint,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-overlay__tint,
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-overlay__tint {
             opacity: 1 !important;
             background:
@@ -802,6 +1096,7 @@
           }
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-eyebrow,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-eyebrow,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-eyebrow,
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-eyebrow {
             display: inline-flex; width: fit-content; padding: 0.28rem 0.7rem; border-radius: 999px;
             border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08);
@@ -809,25 +1104,50 @@
           }
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-cta,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-cta,
+          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-cta,
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-cta {
-            --se-cta-bg: #ffffff;
-            --se-cta-hover-bg: #f3f4f6;
-            --se-cta-color: #170f49;
-            --se-cta-border: transparent;
-            --se-cta-border-width: 0px;
+            /* keep merchant CTA colors from settings */
           }
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .slideease-frame {
             box-shadow: 0 18px 48px rgba(23,15,73,0.1);
           }
-          .slideease-container-${uniqueId} .se-testimonial {
-            min-height: var(--se-height); display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 0.85rem; text-align: center; padding: 2rem 1.5rem; background: #fff; border: 1px solid #170f49; color: #170f49;
+          .slideease-container-${uniqueId} .se-testimonial-pad {
+            padding: 0 12px; height: 100%; min-height: var(--se-height); box-sizing: border-box; display: flex; width: 100%;
           }
-          .slideease-container-${uniqueId} .se-testimonial__quote { font-size: 2.5rem; line-height: 1; color: #ed8104; font-weight: 700; }
-          .slideease-container-${uniqueId} .se-testimonial__text { margin: 0; max-width: 36rem; font-size: clamp(1.05rem, 2.4vw, 1.4rem); line-height: 1.45; font-weight: 550; }
-          .slideease-container-${uniqueId} .se-testimonial__author { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.35rem; text-align: left; }
-          .slideease-container-${uniqueId} .se-testimonial__author span { display: block; color: #5f5a72; font-size: 0.82rem; }
-          .slideease-container-${uniqueId} .se-testimonial__avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid #e7e7e7; }
+          .slideease-container-${uniqueId} .se-testimonial {
+            height: var(--se-height); min-height: var(--se-height); max-height: var(--se-height);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 0.85rem; text-align: center; padding: 1.5rem 1.35rem; background: #fff;
+            border: 1px solid #e8e8ef; color: #170f49;
+            box-shadow: 0 10px 28px rgba(23, 15, 73, 0.055);
+            width: 100%; box-sizing: border-box; flex: 1;
+            transition: box-shadow 0.28s var(--se-ease, ease), border-color 0.28s ease, transform 0.28s var(--se-ease, ease);
+          }
+          .slideease-container-${uniqueId} .se-testimonial:hover {
+            border-color: #dddde8;
+            box-shadow: 0 16px 40px rgba(23, 15, 73, 0.09);
+            transform: translateY(-2px);
+          }
+          .slideease-container-${uniqueId} .se-testimonial__quote {
+            font-size: 2rem; line-height: 1; color: #ed8104; font-weight: 700; flex-shrink: 0;
+          }
+          .slideease-container-${uniqueId} .se-testimonial__text {
+            margin: 0; flex: 0 1 auto; max-width: 22rem; width: 100%;
+            font-size: clamp(0.95rem, 1.15vw, 1.08rem); line-height: 1.55; font-weight: 500;
+            color: #170f49; text-align: center;
+          }
+          .slideease-container-${uniqueId} .se-testimonial__author {
+            display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+            margin-top: 0.35rem; text-align: left; flex-shrink: 0;
+          }
+          .slideease-container-${uniqueId} .se-testimonial__author strong { display: block; font-size: 0.9rem; font-weight: 650; color: #170f49; }
+          .slideease-container-${uniqueId} .se-testimonial__author span { display: block; color: #5f5a72; font-size: 0.8rem; margin-top: 0.12rem; }
+          .slideease-container-${uniqueId} .se-testimonial__avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #f0f0f4; flex-shrink: 0; }
+          @media (max-width: 640px) {
+            .slideease-container-${uniqueId}.se-root--testimonials { padding-inline: 2.6rem; }
+            .slideease-container-${uniqueId} .se-testimonial { padding: 1.25rem 1.1rem; }
+            .slideease-container-${uniqueId} .se-testimonial-pad { padding: 0 8px; }
+          }
           .slideease-container-${uniqueId} .se-logo-cell {
             height: var(--se-height); display: flex; align-items: center; justify-content: center; padding: 0.75rem 1rem;
             filter: grayscale(1); opacity: 0.78;
@@ -864,6 +1184,13 @@
 
     trackEvent("view", slides[0]?.id)
     const { config: slickConfig, effect } = buildSlickConfig(settings)
+    if (effect === "testimonials") {
+      const show = Math.min(Math.max(Number(slickConfig.slidesToShow) || 3, 1), 3)
+      const visible = Math.min(show, slides.length)
+      slickConfig.slidesToShow = visible
+      slickConfig.slidesToScroll = visible
+      if (slides.length <= show) slickConfig.infinite = false
+    }
     const frameHeight = resolveFrameHeight(settings)
     const isProductLayout = ["product-carousel", "product-showcase", "collection-rail"].includes(effect)
     const showArrows =
@@ -871,13 +1198,35 @@
       !["marquee", "logo-grid", "announcement"].includes(effect)
     const showProgress =
       Boolean(settings.autoplay) &&
-      !["marquee", "logo-grid", "announcement"].includes(effect) &&
-      !isProductLayout &&
+      Boolean(settings.progressBar) &&
+      ["hero-fullwidth", "hero-boxed", "autoplay", "center", "hero-video", "slide", "thumbnails"].includes(effect) &&
       slides.length > 1
     const arrowBg = escapeHtml(settings.arrowBg || "rgba(15,23,42,0.55)")
     const arrowColor = escapeHtml(settings.arrowColor || "#ffffff")
     const dotColor = escapeHtml(settings.dotColor || "#1a2f4a")
     const autoplayMs = Number(settings.autoplaySpeed) || 3200
+    const headingFontSize = Math.min(Math.max(Number(settings.headingFontSize ?? 42), 18), 96)
+    const subheadingFontSize = Math.min(Math.max(Number(settings.subheadingFontSize ?? 12), 10), 28)
+    const descriptionFontSize = Math.min(Math.max(Number(settings.descriptionFontSize ?? 16), 12), 32)
+    const mobileHeadingFontSize = Math.min(
+      Math.max(Number(settings.mobile?.headingFontSize ?? Math.round(headingFontSize * 0.67)), 14),
+      64,
+    )
+    const mobileSubheadingFontSize = Math.min(
+      Math.max(Number(settings.mobile?.subheadingFontSize ?? Math.round(subheadingFontSize * 0.9)), 9),
+      22,
+    )
+    const mobileDescriptionFontSize = Math.min(
+      Math.max(Number(settings.mobile?.descriptionFontSize ?? Math.round(descriptionFontSize * 0.88)), 11),
+      24,
+    )
+    const headingColor = escapeHtml(settings.headingColor || "#ffffff")
+    const subheadingColor = escapeHtml(settings.subheadingColor || "#ffffff")
+    const descriptionColor = escapeHtml(settings.descriptionColor || "#ffffff")
+    const copyGap = Math.min(Math.max(Number(settings.copyGap ?? 10), 0), 48)
+    const paginationOffset = Math.min(Math.max(Number(settings.paginationOffset ?? 16), 0), 120)
+    const progressBarColor = escapeHtml(settings.progressBarColor || "#ffffff")
+    const dotsPosition = ["left", "right", "center"].includes(settings.dotsPosition) ? settings.dotsPosition : "center"
     const sectionHeadingSize = Number(settings.sectionHeadingFontSize) || 28
     const sectionHeadingGap = Math.max(0, Number(settings.sectionHeadingGap ?? 16))
     const productTitleSize = Number(settings.productTitleFontSize) || 16
@@ -899,12 +1248,16 @@
       ),
     )
     const ctaFontSize = Math.min(Math.max(Number(settings.ctaFontSize ?? settings.productCtaFontSize ?? 16), 10), 24)
+    const mobileCtaFontSize = Math.min(
+      Math.max(Number(settings.mobile?.ctaFontSize ?? Math.round(ctaFontSize * 0.88)), 10),
+      22,
+    )
     const ctaRadius = Math.min(Math.max(Number(settings.ctaBorderRadius ?? 50), 0), 50)
     const ctaBorderWidth = Math.min(Math.max(Number(settings.ctaBorderWidth ?? 1), 0), 6)
-    const atcPad = Math.max(4, Number(settings.atcPadding ?? settings.ctaPadding ?? 10))
-    const atcFontSize = Math.min(Math.max(Number(settings.atcFontSize ?? 14), 10), 24)
-    const atcRadius = Math.min(Math.max(Number(settings.atcBorderRadius ?? 50), 0), 50)
-    const atcBorderWidth = Math.min(Math.max(Number(settings.atcBorderWidth ?? 1), 0), 6)
+    const atcPad = ctaPad
+    const atcFontSize = ctaFontSize
+    const atcRadius = ctaRadius
+    const atcBorderWidth = ctaBorderWidth
     const atcBg = escapeHtml(settings.atcBackground || "#ffffff")
     const atcColor = escapeHtml(settings.atcTextColor || "#170f49")
     const atcBorder = escapeHtml(settings.atcBorderColor || "#170f49")
@@ -913,7 +1266,10 @@
     const productStyleVars = isProductLayout
       ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;`
       : ""
-    const ctaStyleVars = `--se-cta-pad:${ctaPad}px;--se-cta-font-size:${ctaFontSize}px;--se-cta-radius:${ctaRadius}px;--se-cta-border-width:${ctaBorderWidth}px;`
+    const ctaStyleVars = `--se-cta-pad:${ctaPad}px;--se-cta-font-size:${ctaFontSize}px;--se-cta-radius:${ctaRadius}px;--se-cta-border-width:${ctaBorderWidth}px;--se-m-cta-font-size:${mobileCtaFontSize}px;`
+    const heroStyleVars = !isProductLayout
+      ? `--se-heading-size:${headingFontSize}px;--se-subheading-size:${subheadingFontSize}px;--se-desc-size:${descriptionFontSize}px;--se-m-heading-size:${mobileHeadingFontSize}px;--se-m-subheading-size:${mobileSubheadingFontSize}px;--se-m-desc-size:${mobileDescriptionFontSize}px;--se-heading-color:${headingColor};--se-subheading-color:${subheadingColor};--se-desc-color:${descriptionColor};--se-copy-gap:${copyGap}px;--se-pagination-offset:${paginationOffset}px;--se-progress-color:${progressBarColor};`
+      : ""
     const isMulti =
       [
         "center",
@@ -925,11 +1281,15 @@
         "product-showcase",
         "collection-rail",
         "logo-grid",
+        "testimonials",
       ].includes(effect) || Number(settings.slidesToShow) > 1
     const isUtilityCompact = ["announcement", "logo-grid", "testimonials"].includes(effect)
+    const testimonialWidth = Math.min(Math.max(Number(settings.width) || 1100, 320), 1600)
+    const widthStyleVar = effect === "testimonials" ? `--se-width:${testimonialWidth}px;` : ""
 
-    const thumbs = settings.thumbnails
-      ? `<div class="slideease-thumbs-${uniqueId} se-thumbs" aria-label="Slide thumbnails">${slides
+    const thumbs =
+      settings.thumbnails || settings.heroAnimation === "thumbnails"
+        ? `<div class="slideease-thumbs-${uniqueId} se-thumbs" aria-label="Slide thumbnails">${slides
           .map(
             (slide) => `
             <div class="se-thumb">
@@ -939,10 +1299,10 @@
             </div>`,
           )
           .join("")}</div>`
-      : ""
+        : ""
 
     insertAdjacent(`
-      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "announcement" ? " se-root--announce" : ""}" data-effect="${escapeHtml(effect)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${ctaStyleVars}${productStyleVars}" aria-roledescription="carousel">
+      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${effect === "announcement" ? " se-root--announce" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}" aria-roledescription="carousel">
         ${
           ["product-carousel", "product-showcase", "collection-rail"].includes(effect) && settings.sectionHeading
             ? `<h2 class="se-section-heading">${escapeHtml(settings.sectionHeading)}</h2>`
@@ -1025,21 +1385,21 @@
             padding-bottom: clamp(1.5rem, 3vw, 2.25rem);
           }
           .slideease-container-${uniqueId}.se-root--multi .se-eyebrow {
-            font-size: clamp(0.62rem, 0.9vw, 0.7rem);
+            font-size: var(--se-subheading-size, clamp(0.62rem, 0.9vw, 0.7rem));
             padding: 0.32rem 0.58rem;
             letter-spacing: 0.12em;
           }
           .slideease-container-${uniqueId}.se-root--multi .se-heading {
             max-width: 100%;
-            font-size: clamp(1.35rem, 2.4vw, 2.1rem);
+            font-size: var(--se-heading-size, clamp(1.35rem, 2.4vw, 2.1rem));
             letter-spacing: -0.03em;
           }
           .slideease-container-${uniqueId}.se-root--multi .se-desc {
-            font-size: clamp(0.85rem, 1.3vw, 1rem);
+            font-size: var(--se-desc-size, clamp(0.85rem, 1.3vw, 1rem));
             -webkit-line-clamp: 2;
           }
           .slideease-container-${uniqueId}.se-root--multi .se-copy-plate {
-            gap: 0.4rem;
+            gap: var(--se-copy-gap, 0.4rem);
             max-width: 100%;
           }
           .slideease-container-${uniqueId} .se-media-wrap {
@@ -1088,23 +1448,29 @@
             justify-content: flex-end;
             gap: 0;
             padding: clamp(1.25rem, 3.5vw, 3rem);
-            padding-bottom: clamp(3rem, 6vw, 4.5rem);
+            padding-bottom: calc(2.75rem + var(--se-pagination-offset, 16px));
             max-width: 100%;
             pointer-events: none;
             overflow: hidden;
           }
-          .slideease-container-${uniqueId} .se-copy--left { justify-content: flex-end; }
-          .slideease-container-${uniqueId} .se-copy--right { justify-content: flex-end; }
-          .slideease-container-${uniqueId} .se-copy--center {
+          .slideease-container-${uniqueId} .se-copy--left,
+          .slideease-container-${uniqueId} .se-copy--bottom-left,
+          .slideease-container-${uniqueId} .se-copy--right,
+          .slideease-container-${uniqueId} .se-copy--bottom-right,
+          .slideease-container-${uniqueId} .se-copy--bottom-center {
+            justify-content: flex-end;
+          }
+          .slideease-container-${uniqueId} .se-copy--center,
+          .slideease-container-${uniqueId} .se-copy--middle {
             justify-content: center;
             padding-top: clamp(2rem, 5vw, 4rem);
-            padding-bottom: clamp(2.5rem, 6vw, 4.5rem);
+            padding-bottom: calc(2.75rem + var(--se-pagination-offset, 16px));
           }
           .slideease-container-${uniqueId} .se-copy-plate {
             pointer-events: auto;
             display: flex;
             flex-direction: column;
-            gap: clamp(0.4rem, 1vw, 0.75rem);
+            gap: var(--se-copy-gap, clamp(0.4rem, 1vw, 0.75rem));
             max-width: min(46rem, 100%);
             max-height: 100%;
             min-height: 0;
@@ -1113,9 +1479,23 @@
             filter: drop-shadow(0 3px 18px rgba(0,0,0,0.32));
             overflow: hidden;
           }
-          .slideease-container-${uniqueId} .se-copy--center .se-copy-plate { margin: 0 auto; text-align: center; align-items: center; }
-          .slideease-container-${uniqueId} .se-copy--left .se-copy-plate { margin-right: auto; align-items: flex-start; }
-          .slideease-container-${uniqueId} .se-copy--right .se-copy-plate { margin-left: auto; align-items: flex-end; }
+          .slideease-container-${uniqueId} .se-copy--center .se-copy-plate,
+          .slideease-container-${uniqueId} .se-copy--middle .se-copy-plate,
+          .slideease-container-${uniqueId} .se-copy--bottom-center .se-copy-plate {
+            margin: 0 auto;
+            text-align: center;
+            align-items: center;
+          }
+          .slideease-container-${uniqueId} .se-copy--left .se-copy-plate,
+          .slideease-container-${uniqueId} .se-copy--bottom-left .se-copy-plate {
+            margin-right: auto;
+            align-items: flex-start;
+          }
+          .slideease-container-${uniqueId} .se-copy--right .se-copy-plate,
+          .slideease-container-${uniqueId} .se-copy--bottom-right .se-copy-plate {
+            margin-left: auto;
+            align-items: flex-end;
+          }
 
           .slideease-container-${uniqueId} .se-eyebrow {
             margin: 0;
@@ -1127,7 +1507,8 @@
             background: rgba(255,255,255,0.12);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            font-size: clamp(0.68rem, 1vw, 0.76rem);
+            font-size: var(--se-subheading-size, clamp(0.68rem, 1vw, 0.76rem));
+            color: var(--se-subheading-color, inherit);
             font-weight: 700;
             letter-spacing: 0.16em;
             text-transform: uppercase;
@@ -1137,8 +1518,8 @@
           .slideease-container-${uniqueId} .se-heading {
             margin: 0;
             max-width: 18ch;
-            color: inherit;
-            font-size: clamp(2.6rem, 5.6vw, 5rem);
+            color: var(--se-heading-color, inherit);
+            font-size: var(--se-heading-size, clamp(2.6rem, 5.6vw, 5rem));
             font-weight: 780;
             letter-spacing: -0.045em;
             line-height: 1.05;
@@ -1150,8 +1531,8 @@
           .slideease-container-${uniqueId} .se-desc {
             margin: 0;
             max-width: 38rem;
-            color: inherit;
-            font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+            color: var(--se-desc-color, inherit);
+            font-size: var(--se-desc-size, clamp(1.1rem, 1.8vw, 1.35rem));
             line-height: 1.5;
             opacity: 0.92;
             display: -webkit-box;
@@ -1161,6 +1542,14 @@
             flex-shrink: 1;
             min-height: 0;
           }
+          .slideease-container-${uniqueId} .se-cta-row {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem;
+            margin-top: 0.35rem;
+          }
+          .slideease-container-${uniqueId} .se-cta-row .se-cta { margin-top: 0; }
           .slideease-container-${uniqueId} .se-cta {
             display: inline-flex;
             align-items: center;
@@ -1186,6 +1575,22 @@
               box-shadow 0.25s ease,
               background 0.25s ease,
               filter 0.25s ease;
+          }
+          .slideease-container-${uniqueId} .se-cta--secondary {
+            background: var(--se-cta2-bg, transparent);
+            color: var(--se-cta2-color, var(--se-cta-color));
+            border-color: var(--se-cta2-border, var(--se-cta-border));
+            box-shadow: none;
+          }
+          .slideease-container-${uniqueId} .se-cta--secondary svg {
+            color: var(--se-cta2-icon-color, var(--se-cta2-color));
+            background: var(--se-cta2-icon-bg, rgba(255,255,255,0.12));
+          }
+          .slideease-container-${uniqueId} .se-cta--secondary:hover {
+            background: var(--se-cta2-hover-bg, rgba(255,255,255,0.14));
+            color: var(--se-cta2-hover-color, var(--se-cta2-color));
+            box-shadow: none;
+            filter: none;
           }
           .slideease-container-${uniqueId} .se-cta span { padding-inline: 0.1rem 0.55rem; }
           .slideease-container-${uniqueId} .se-cta--no-icon { padding-inline: calc(var(--se-cta-pad, 12px) * 1.75); }
@@ -1256,13 +1661,14 @@
           .slideease-container-${uniqueId} .slideease-dots-${uniqueId} {
             position: absolute;
             left: 50%;
-            bottom: 18px;
+            bottom: 14px;
             transform: translateX(-50%);
             z-index: 7;
             display: flex !important;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            margin: 0;
+            margin: 0 !important;
             padding: 7px 9px;
             list-style: none;
             border-radius: 999px;
@@ -1270,6 +1676,18 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255,255,255,0.14);
+          }
+          .slideease-container-${uniqueId}.se-root--dots-left .slideease-dots-${uniqueId} {
+            left: clamp(14px, 3vw, 36px) !important;
+            right: auto !important;
+            transform: none !important;
+            justify-content: flex-start !important;
+          }
+          .slideease-container-${uniqueId}.se-root--dots-right .slideease-dots-${uniqueId} {
+            right: clamp(14px, 3vw, 36px) !important;
+            left: auto !important;
+            transform: none !important;
+            justify-content: flex-end !important;
           }
           .slideease-container-${uniqueId} .slideease-dots-${uniqueId} li {
             margin: 0;
@@ -1313,7 +1731,7 @@
             display: block;
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #fff, #94a3b8);
+            background: var(--se-progress-color, #fff);
           }
           .slideease-container-${uniqueId}.se-progress-run .se-progress__bar {
             animation: seProgress var(--se-autoplay) linear forwards;
@@ -1437,22 +1855,36 @@
               min-height: 260px;
             }
             .slideease-container-${uniqueId} .se-nav { opacity: 0.9; width: 42px; height: 42px; }
-            .slideease-container-${uniqueId} .se-heading { max-width: 100%; font-size: clamp(2.15rem, 9vw, 3.4rem); }
-            .slideease-container-${uniqueId} .se-copy {
-              padding: 1.25rem;
-              padding-bottom: 3.5rem;
+            .slideease-container-${uniqueId} .se-eyebrow {
+              font-size: var(--se-m-subheading-size, var(--se-subheading-size, clamp(0.62rem, 2.4vw, 0.72rem)));
             }
-            .slideease-container-${uniqueId} .se-copy--center {
-              padding-top: 2.25rem;
-              padding-bottom: 3.25rem;
+            .slideease-container-${uniqueId} .se-heading {
+              max-width: 100%;
+              font-size: var(--se-m-heading-size, var(--se-heading-size, clamp(2.15rem, 9vw, 3.4rem)));
             }
-            .slideease-container-${uniqueId} .se-copy-plate { gap: 0.45rem; }
             .slideease-container-${uniqueId} .se-desc {
               display: -webkit-box;
               overflow: hidden;
               -webkit-line-clamp: 2;
               -webkit-box-orient: vertical;
+              font-size: var(--se-m-desc-size, var(--se-desc-size, inherit));
             }
+            .slideease-container-${uniqueId} .se-cta,
+            .slideease-container-${uniqueId} .se-product-card__shop,
+            .slideease-container-${uniqueId} .se-product-card__atc {
+              font-size: var(--se-m-cta-font-size, var(--se-cta-font-size, 14px));
+            }
+            .slideease-container-${uniqueId} .se-copy {
+              padding: 1.25rem;
+              padding-bottom: calc(3rem + var(--se-pagination-offset, 16px));
+            }
+            .slideease-container-${uniqueId} .se-copy--center,
+            .slideease-container-${uniqueId} .se-copy--middle {
+              padding-top: 2.25rem;
+              padding-bottom: calc(3rem + var(--se-pagination-offset, 16px));
+              justify-content: center;
+            }
+            .slideease-container-${uniqueId} .se-copy-plate { gap: var(--se-copy-gap, 0.45rem); }
             .slideease-container-${uniqueId} .slideease-dots-${uniqueId} { bottom: 12px; }
             .slideease-container-${uniqueId}.se-root--products .slideease-dots-${uniqueId} {
               position: static !important;
@@ -1480,6 +1912,9 @@
     })
 
     if (root) {
+      const soldOutLabel = settings.soldOutText || "Sold out"
+      const showSoldOut = settings.showSoldOut !== false
+      refreshAtcAvailability(root, { soldOutLabel, showSoldOut })
       root.addEventListener(
         "click",
         async (event) => {
@@ -1487,7 +1922,14 @@
           if (!btn || !root.contains(btn)) return
           event.preventDefault()
           event.stopPropagation()
-          if (btn.disabled || btn.dataset.seBusy === "1") return
+          if (
+            btn.disabled ||
+            btn.dataset.seBusy === "1" ||
+            btn.dataset.soldOut === "1" ||
+            btn.classList.contains("se-product-card__atc--soldout")
+          ) {
+            return
+          }
           const original = btn.textContent
           btn.dataset.seBusy = "1"
           btn.disabled = true
@@ -1506,12 +1948,18 @@
               btn.dataset.seBusy = "0"
             }, 1200)
           } catch (error) {
-            btn.textContent = "Unavailable"
-            setTimeout(() => {
-              btn.textContent = original
-              btn.disabled = false
-              btn.dataset.seBusy = "0"
-            }, 1800)
+            const message = String(error?.message || "")
+            if (/sold out/i.test(message)) {
+              if (showSoldOut) markAtcSoldOut(btn, soldOutLabel)
+              else btn.remove()
+            } else {
+              btn.textContent = "Unavailable"
+              setTimeout(() => {
+                btn.textContent = original
+                btn.disabled = false
+                btn.dataset.seBusy = "0"
+              }, 1800)
+            }
             console.warn("SlideEase add to cart failed:", error?.message || error)
           }
         },
@@ -1539,7 +1987,7 @@
         $slider.slick(slickConfig)
         fullBleed.sync()
 
-        if (settings.thumbnails) {
+        if (settings.thumbnails || settings.heroAnimation === "thumbnails") {
           window.jQuery(`.slideease-thumbs-${uniqueId}`).slick({
             slidesToShow: Math.min(6, slides.length),
             slidesToScroll: 1,

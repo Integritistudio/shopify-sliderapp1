@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { useNavigate, useParams } from "react-router-dom"
 import {
   Page,
@@ -19,6 +20,7 @@ import StyleSettingsForm from "../../components/style-settings-form"
 import SlideEditorPanel from "../../components/slide-editor-panel"
 import SeSelect from "../../components/se-select"
 import { getSliderTypeInfo, mergeSliderSettings, PRODUCT_SLIDER_TYPES } from "../../utils/sliderConfig"
+import { scrollPreviewIntoView } from "../../utils/scrollPreview"
 import { SLIDE_HARD_LIMIT, SLIDE_SOFT_LIMIT } from "../../utils/limits"
 
 function SliderEditorContent() {
@@ -26,7 +28,13 @@ function SliderEditorContent() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const editorAnchorRef = useRef(null)
+  const previewRef = useRef(null)
   const dragIdRef = useRef(null)
+  const liveOrderRef = useRef(null)
+  const floatStyleRef = useRef(null)
+  const cardRefs = useRef({})
+  const slidesRef = useRef([])
+  const reorderSlidesRef = useRef(null)
 
   const [slider, setSlider] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -42,7 +50,9 @@ function SliderEditorContent() {
   const [copied, setCopied] = useState(false)
   const [brandKit, setBrandKit] = useState(null)
   const [metrics, setMetrics] = useState(null)
-  const [dragOverId, setDragOverId] = useState(null)
+  const [draggingId, setDraggingId] = useState(null)
+  const [liveOrder, setLiveOrder] = useState(null)
+  const [floatStyle, setFloatStyle] = useState(null)
 
   const openAddSlide = () => {
     const count = slider?.slides?.length || 0
@@ -106,6 +116,21 @@ function SliderEditorContent() {
     [slider],
   )
 
+  const displaySlides = useMemo(() => {
+    if (!liveOrder) return slides
+    const byId = new Map(slides.map((slide) => [slide.id, slide]))
+    return liveOrder.map((slideId) => byId.get(slideId)).filter(Boolean)
+  }, [slides, liveOrder])
+
+  const draggingSlide = useMemo(
+    () => (draggingId ? slides.find((slide) => slide.id === draggingId) : null),
+    [draggingId, slides],
+  )
+
+  useEffect(() => {
+    slidesRef.current = slides
+  }, [slides])
+
   const editingSlide = useMemo(() => {
     if (panelMode === "create" || !panelMode) return null
     return slides.find((slide) => String(slide.id) === String(panelMode)) || null
@@ -142,13 +167,6 @@ function SliderEditorContent() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleTypeChange = async (type) => {
-    const nextSettings = mergeSliderSettings(type, settings)
-    setSliderType(type)
-    setSettings(nextSettings)
-    await saveSliderMeta({ sliderType: type, settings: nextSettings })
   }
 
   const persistSettings = async () => {
@@ -199,6 +217,72 @@ function SliderEditorContent() {
     }
   }
 
+  const duplicateSlide = async (slide) => {
+    if (!slide) return
+    if (slides.length >= SLIDE_HARD_LIMIT) {
+      showToast(`Maximum of ${SLIDE_HARD_LIMIT} slides reached`, { error: true })
+      return
+    }
+    try {
+      setSaving(true)
+      const titleBase = slide.title || slide.heading || "Slide"
+      const headingBase = slide.heading || slide.title || "Slide"
+      const payload = {
+        imageUrl: slide.imageUrl || "",
+        title: `${titleBase} (copy)`.slice(0, 200),
+        description: slide.description || "",
+        heading: `${headingBase} (copy)`.slice(0, 200),
+        subheading: slide.subheading || "",
+        ctaText: slide.ctaText || "",
+        ctaUrl: slide.ctaUrl || "",
+        ctaStyle: slide.ctaStyle || "primary",
+        ctaResourceType: slide.ctaResourceType || null,
+        ctaResourceId: slide.ctaResourceId || null,
+        ctaOpenInNewTab: Boolean(slide.ctaOpenInNewTab),
+        cta2Text: slide.cta2Text || "",
+        cta2Url: slide.cta2Url || "",
+        cta2OpenInNewTab: Boolean(slide.cta2OpenInNewTab),
+        textAlign: slide.textAlign || "center",
+        contentPosition: slide.contentPosition || null,
+        overlayColor: slide.overlayColor || "#000000",
+        overlayOpacity: slide.overlayOpacity ?? 0.3,
+        textColor: slide.textColor || "#ffffff",
+        buttonBg: slide.buttonBg || "#1a2f4a",
+        buttonTextColor: slide.buttonTextColor || "#ffffff",
+        imageAlt: slide.imageAlt || "",
+        shopifyFileId: slide.shopifyFileId || null,
+        variantId: slide.variantId || null,
+        availableForSale: slide.availableForSale !== false,
+        mediaType: slide.mediaType === "video" ? "video" : "image",
+        videoUrl: slide.videoUrl || "",
+        videoProvider: slide.videoProvider || null,
+        isVisible: slide.isVisible !== false,
+      }
+      const response = await fetch(`/api/sliders/${id}/slides`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to duplicate slide")
+      }
+      const saved = await response.json()
+      if (saved.warning) showToast(saved.warning)
+      setSlider((prev) => ({
+        ...prev,
+        slides: [...(prev.slides || []), saved],
+      }))
+      setPanelMode(null)
+      setConfirmDeleteId(null)
+      showToast("Slide duplicated")
+    } catch (err) {
+      showToast(err.message, { error: true })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const reorderSlides = async (orderedIds) => {
     const response = await fetch(`/api/sliders/${id}/slides/reorder`, {
       method: "PUT",
@@ -213,52 +297,126 @@ function SliderEditorContent() {
     setSlider((prev) => ({ ...prev, slides: updated }))
   }
 
-  const moveSlide = async (slideId, direction) => {
-    const ordered = slides.map((s) => s.id)
-    const index = ordered.indexOf(slideId)
-    const target = index + direction
-    if (index < 0 || target < 0 || target >= ordered.length) return
-    const next = [...ordered]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    await reorderSlides(next)
-  }
+  useEffect(() => {
+    reorderSlidesRef.current = reorderSlides
+  })
 
-  const onDragStart = (slideId) => {
-    dragIdRef.current = slideId
-  }
-
-  const onDrop = async (targetId) => {
-    const sourceId = dragIdRef.current
+  const clearDragState = () => {
     dragIdRef.current = null
-    setDragOverId(null)
-    if (!sourceId || sourceId === targetId) return
-    const ordered = slides.map((s) => s.id)
-    const from = ordered.indexOf(sourceId)
-    const to = ordered.indexOf(targetId)
-    if (from < 0 || to < 0) return
-    const next = [...ordered]
-    next.splice(from, 1)
-    next.splice(to, 0, sourceId)
-    await reorderSlides(next)
+    liveOrderRef.current = null
+    floatStyleRef.current = null
+    setDraggingId(null)
+    setLiveOrder(null)
+    setFloatStyle(null)
   }
 
-  const toggleVisibility = async (slide) => {
-    try {
-      const response = await fetch(`/api/sliders/${id}/slides/${slide.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isVisible: !slide.isVisible }),
-      })
-      if (!response.ok) throw new Error("Failed to update visibility")
-      const saved = await response.json()
-      setSlider((prev) => ({
-        ...prev,
-        slides: (prev.slides || []).map((item) => (item.id === saved.id ? saved : item)),
-      }))
-    } catch (err) {
-      showToast(err.message, { error: true })
+  const findReorderTarget = (clientY, order, activeId) => {
+    const others = order.filter((slideId) => slideId !== activeId)
+    let targetIndex = others.length
+    for (let i = 0; i < others.length; i++) {
+      const el = cardRefs.current[others[i]]
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      if (clientY < rect.top + rect.height / 2) {
+        targetIndex = i
+        break
+      }
     }
+    const next = [...others]
+    next.splice(targetIndex, 0, activeId)
+    return next
   }
+
+  const onSlidePointerMove = useCallback((e) => {
+    const activeId = dragIdRef.current
+    const style = floatStyleRef.current
+    if (!activeId || !style) return
+
+    const nextFloat = {
+      ...style,
+      left: e.clientX - style.offsetX,
+      top: e.clientY - style.offsetY,
+    }
+    floatStyleRef.current = nextFloat
+    setFloatStyle(nextFloat)
+
+    const order = liveOrderRef.current
+    if (!order?.length) return
+    const next = findReorderTarget(e.clientY, order, activeId)
+    if (next.every((slideId, index) => slideId === order[index])) return
+    liveOrderRef.current = next
+    setLiveOrder(next)
+  }, [])
+
+  const onSlidePointerUp = useCallback(async () => {
+    window.removeEventListener("pointermove", onSlidePointerMove)
+    window.removeEventListener("pointerup", onSlidePointerUp)
+    window.removeEventListener("pointercancel", onSlidePointerUp)
+    document.body.style.userSelect = ""
+    document.body.style.cursor = ""
+
+    const next = liveOrderRef.current
+    const previous = slidesRef.current.map((slide) => slide.id)
+    clearDragState()
+
+    if (!next?.length) return
+    if (next.every((slideId, index) => slideId === previous[index])) return
+
+    setSlider((prev) => ({
+      ...prev,
+      slides: next
+        .map((slideId, index) => {
+          const slide = (prev.slides || []).find((item) => item.id === slideId)
+          return slide ? { ...slide, position: index } : null
+        })
+        .filter(Boolean),
+    }))
+
+    await reorderSlidesRef.current?.(next)
+  }, [onSlidePointerMove])
+
+  const beginSlideDrag = (e, slide) => {
+    if (isProductSlider || e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const el = cardRefs.current[slide.id]
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const order = slides.map((item) => item.id)
+    const nextFloat = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+    }
+
+    dragIdRef.current = slide.id
+    liveOrderRef.current = order
+    floatStyleRef.current = nextFloat
+    setDraggingId(slide.id)
+    setLiveOrder(order)
+    setFloatStyle(nextFloat)
+    document.body.style.userSelect = "none"
+    document.body.style.cursor = "grabbing"
+
+    window.addEventListener("pointermove", onSlidePointerMove)
+    window.addEventListener("pointerup", onSlidePointerUp)
+    window.addEventListener("pointercancel", onSlidePointerUp)
+  }
+
+  useEffect(
+    () => () => {
+      window.removeEventListener("pointermove", onSlidePointerMove)
+      window.removeEventListener("pointerup", onSlidePointerUp)
+      window.removeEventListener("pointercancel", onSlidePointerUp)
+      document.body.style.userSelect = ""
+      document.body.style.cursor = ""
+    },
+    [onSlidePointerMove, onSlidePointerUp],
+  )
 
   const copyId = async () => {
     try {
@@ -331,14 +489,7 @@ function SliderEditorContent() {
 
         <div className="se-editor-shell">
           <div className="se-editor-top">
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 2fr) minmax(140px, 1fr)",
-                gap: "1rem",
-                marginBottom: "0.35rem",
-              }}
-            >
+            <div className="se-editor-top__meta">
               <TextField
                 label="Slider name"
                 value={name}
@@ -381,7 +532,7 @@ function SliderEditorContent() {
                       <Text variant="bodySm" color="subdued">
                         {isProductSlider
                           ? "Managed from Style & behavior — pick products or sync a collection"
-                          : "Drag cards to reorder"}
+                          : "Drag ⋮⋮ the slide lifts and others shift up or down"}
                       </Text>
                     </div>
                     {isProductSlider ? (
@@ -427,38 +578,34 @@ function SliderEditorContent() {
                     </div>
                   )}
 
-                  {slides.map((slide, index) => {
+                  {displaySlides.map((slide, index) => {
                     const selected = !isProductSlider && String(panelMode) === String(slide.id)
                     const confirming = confirmDeleteId === slide.id
+                    const isDragging = draggingId === slide.id
                     return (
                       <div
                         key={slide.id}
-                        draggable={!isProductSlider}
-                        onDragStart={() => !isProductSlider && onDragStart(slide.id)}
-                        onDragOver={(e) => {
-                          if (isProductSlider) return
-                          e.preventDefault()
-                          setDragOverId(slide.id)
+                        ref={(node) => {
+                          if (node) cardRefs.current[slide.id] = node
+                          else delete cardRefs.current[slide.id]
                         }}
-                        onDragLeave={() => setDragOverId((prev) => (prev === slide.id ? null : prev))}
-                        onDrop={() => !isProductSlider && onDrop(slide.id)}
                         style={{
-                          border:
-                            dragOverId === slide.id
-                              ? "1px dashed #b7bcc5"
-                              : selected
-                                ? "1px solid #d8dce2"
-                                : "1px solid #e2e8f0",
+                          border: isDragging
+                            ? "2px dashed #c9ccd1"
+                            : selected
+                              ? "1px solid #d8dce2"
+                              : "1px solid #e2e8f0",
                           borderRadius: 14,
-                          padding: 14,
-                          background: "#fff",
-                          cursor: isProductSlider ? "default" : "grab",
+                          padding: isDragging ? 0 : 14,
+                          background: isDragging ? "#f6f6f7" : "#fff",
+                          minHeight: isDragging ? floatStyle?.height || 84 : undefined,
                           boxShadow: "none",
+                          transition: "border-color 0.15s ease, background 0.15s ease",
                         }}
                       >
                         <div
                           style={{
-                            display: "flex",
+                            display: isDragging ? "none" : "flex",
                             gap: 12,
                             alignItems: "center",
                             justifyContent: "space-between",
@@ -468,14 +615,19 @@ function SliderEditorContent() {
                           <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
                             {!isProductSlider && (
                               <div
+                                onPointerDown={(e) => beginSlideDrag(e, slide)}
                                 style={{
-                                  width: 18,
+                                  width: 22,
                                   color: "#94a3b8",
                                   fontSize: 16,
                                   lineHeight: 1,
                                   userSelect: "none",
+                                  cursor: draggingId ? "grabbing" : "grab",
+                                  padding: "6px 2px",
+                                  touchAction: "none",
                                 }}
                                 title="Drag to reorder"
+                                aria-label="Drag to reorder"
                               >
                                 ⋮⋮
                               </div>
@@ -496,6 +648,7 @@ function SliderEditorContent() {
                                   src={slide.imageUrl}
                                   alt={slide.title}
                                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                  draggable={false}
                                 />
                               ) : null}
                             </div>
@@ -511,11 +664,9 @@ function SliderEditorContent() {
                                   </>
                                 ) : (
                                   <>
-                                    <Badge status={slide.isVisible === false ? "warning" : "success"}>
-                                      {slide.isVisible === false ? "Hidden" : "Visible"}
-                                    </Badge>
                                     {slide.mediaType === "video" && <Badge status="info">Video</Badge>}
                                     {slide.ctaText && <Badge>{slide.ctaText}</Badge>}
+                                    {slide.cta2Text && <Badge>{slide.cta2Text}</Badge>}
                                     <Text color="subdued">#{index + 1}</Text>
                                   </>
                                 )}
@@ -526,19 +677,6 @@ function SliderEditorContent() {
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {!isProductSlider && (
                               <>
-                                <Button size="slim" onClick={() => moveSlide(slide.id, -1)} disabled={index === 0}>
-                                  Up
-                                </Button>
-                                <Button
-                                  size="slim"
-                                  onClick={() => moveSlide(slide.id, 1)}
-                                  disabled={index === slides.length - 1}
-                                >
-                                  Down
-                                </Button>
-                                <Button size="slim" onClick={() => toggleVisibility(slide)}>
-                                  {slide.isVisible === false ? "Show" : "Hide"}
-                                </Button>
                                 <Button
                                   size="slim"
                                   onClick={() => {
@@ -547,6 +685,13 @@ function SliderEditorContent() {
                                   }}
                                 >
                                   {selected ? "Close" : "Edit"}
+                                </Button>
+                                <Button
+                                  size="slim"
+                                  onClick={() => duplicateSlide(slide)}
+                                  disabled={saving || slides.length >= SLIDE_HARD_LIMIT}
+                                >
+                                  Duplicate
                                 </Button>
                               </>
                             )}
@@ -560,7 +705,7 @@ function SliderEditorContent() {
                           </div>
                         </div>
 
-                        {confirming && (
+                        {!isDragging && confirming && (
                           <div className="se-danger-bar">
                             <Text>{isProductSlider ? "Remove this product from the slider?" : "Delete this slide permanently?"}</Text>
                             <div style={{ display: "flex", gap: 8 }}>
@@ -574,13 +719,14 @@ function SliderEditorContent() {
                           </div>
                         )}
 
-                        {selected && (
+                        {!isDragging && selected && (
                           <SlideEditorPanel
                             key={String(slide.id)}
                             title="Edit slide"
                             initialSlide={slide}
                             brandKit={brandKit}
                             sliderType={sliderType}
+                            settings={settings}
                             onCancel={() => setPanelMode(null)}
                             onSave={saveSlide}
                           />
@@ -588,6 +734,70 @@ function SliderEditorContent() {
                       </div>
                     )
                   })}
+
+                  {typeof document !== "undefined" &&
+                    draggingSlide &&
+                    floatStyle &&
+                    createPortal(
+                      <div
+                        style={{
+                          position: "fixed",
+                          left: floatStyle.left,
+                          top: floatStyle.top,
+                          width: floatStyle.width,
+                          zIndex: 10000,
+                          pointerEvents: "none",
+                          borderRadius: 14,
+                          padding: 14,
+                          background: "#fff",
+                          border: "1px solid #d8dce2",
+                          boxShadow: "0 16px 40px rgba(22, 29, 37, 0.18)",
+                          transform: "scale(1.02)",
+                          cursor: "grabbing",
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                          <div
+                            style={{
+                              width: 22,
+                              color: "#5c6ac4",
+                              fontSize: 16,
+                              lineHeight: 1,
+                              userSelect: "none",
+                            }}
+                          >
+                            ⋮⋮
+                          </div>
+                          <div
+                            style={{
+                              width: 72,
+                              height: 54,
+                              borderRadius: 10,
+                              overflow: "hidden",
+                              background: "#f1f5f9",
+                              flexShrink: 0,
+                              border: "1px solid #e2e8f0",
+                            }}
+                          >
+                            {draggingSlide.imageUrl ? (
+                              <img
+                                src={draggingSlide.imageUrl}
+                                alt=""
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                draggable={false}
+                              />
+                            ) : null}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <Text variant="headingSm" as="h3">
+                              {draggingSlide.heading || draggingSlide.title}
+                            </Text>
+                            <Text color="subdued">Drop to reorder</Text>
+                          </div>
+                        </div>
+                      </div>,
+                      document.body,
+                    )}
 
                   {!isProductSlider && (
                     <div ref={editorAnchorRef}>
@@ -598,6 +808,7 @@ function SliderEditorContent() {
                           initialSlide={null}
                           brandKit={brandKit}
                           sliderType={sliderType}
+                          settings={settings}
                           onCancel={() => setPanelMode(null)}
                           onSave={saveSlide}
                         />
@@ -613,8 +824,12 @@ function SliderEditorContent() {
                     sliderId={slider.id}
                     sliderType={sliderType}
                     settings={settings}
-                    onTypeChange={handleTypeChange}
                     onSettingsChange={setSettings}
+                    onHeroAnimationChange={() => {
+                      window.setTimeout(() => {
+                        scrollPreviewIntoView(previewRef.current)
+                      }, 80)
+                    }}
                     onCollectionSynced={(data) => {
                       setSlider((prev) => ({
                         ...prev,
@@ -718,7 +933,7 @@ function SliderEditorContent() {
           </Tabs>
         </div>
 
-        <div className="se-preview-wrap">
+        <div className="se-preview-wrap" ref={previewRef}>
           <div className="se-preview-wrap__head">
             <div>
               <Text variant="headingMd" as="h2">

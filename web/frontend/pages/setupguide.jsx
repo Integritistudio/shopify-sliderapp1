@@ -11,12 +11,12 @@ export default function UserGuide() {
     {
       title: "Add slides with Shopify images or video",
       description:
-        "Open the slider editor, click Add slide, then Choose from Shopify Files — or drag-and-drop to upload. Switch to Video for YouTube, Vimeo, or Shopify videos. Pick product/collection CTAs with the resource picker.",
+        "Open the slider editor, click Add slide, then Choose from Shopify Files — or drag-and-drop to upload. Switch to Video for YouTube, Vimeo, or Shopify videos. Paste a storefront path or URL for the CTA.",
     },
     {
       title: "Customize each slide",
       description:
-        "Set heading, subheading, description, CTA text/URL, overlay, text colors, and alignment. Drag slides to reorder, hide slides, or open CTAs in a new tab.",
+        "Set heading, subheading, description, CTA text/URL, overlay, text colors, and alignment. Drag slides to reorder, or open CTAs in a new tab.",
     },
     {
       title: "Tune style and behavior",

@@ -2,6 +2,10 @@ export const SLIDER_TYPES = [
   { value: "hero-fullwidth", label: "Full Bleed Hero", description: "Edge-to-edge cinematic hero for campaign launches", group: "Hero" },
   { value: "hero-boxed", label: "Boxed Hero", description: "Contained hero frame with soft padding and radius", group: "Hero" },
   { value: "hero-video", label: "Video Hero", description: "Full-bleed video background with overlay copy and CTA", group: "Hero" },
+  { value: "slide", label: "Clean Sweep", description: "Crisp horizontal slide with smooth easing", group: "Hero" },
+  { value: "autoplay", label: "Auto Reel", description: "Three-up strip that advances on its own", group: "Hero" },
+  { value: "center", label: "Peek Carousel", description: "Hero in the middle with soft side peeks", group: "Hero" },
+  { value: "thumbnails", label: "Gallery Thumbs", description: "Main stage with a clickable thumbnail rail", group: "Hero" },
   { value: "product-carousel", label: "Product Carousel", description: "Multi-card product strip synced from a collection", group: "Product" },
   { value: "product-showcase", label: "Product Showcase", description: "Large featured product with soft side peeks", group: "Product" },
   { value: "collection-rail", label: "Collection Rail", description: "Compact product cards from one Shopify collection", group: "Product" },
@@ -9,13 +13,7 @@ export const SLIDER_TYPES = [
   { value: "logo-grid", label: "Logo Grid", description: "Brand logo strip for partners and press", group: "Utility" },
   { value: "stories", label: "Story Rings", description: "Instagram-style story circles with a focus frame", group: "Utility" },
   { value: "announcement", label: "Announcement Bar", description: "Slim rotating bar for promos and shipping notes", group: "Utility" },
-  { value: "fade", label: "Soft Crossfade", description: "Gentle dissolve from one frame to the next", group: "Classic" },
-  { value: "slide", label: "Clean Sweep", description: "Crisp horizontal slide with smooth easing", group: "Classic" },
-  { value: "autoplay", label: "Auto Reel", description: "Three-up strip that advances on its own", group: "Classic" },
-  { value: "center", label: "Peek Carousel", description: "Hero in the middle with soft side peeks", group: "Classic" },
-  { value: "variable-width", label: "Magazine Strip", description: "Editorial mix of wide and narrow frames", group: "Layout" },
-  { value: "vertical", label: "Vertical Scroll", description: "Frames move upward like a story feed", group: "Layout" },
-  { value: "thumbnails", label: "Gallery Thumbs", description: "Main stage with a clickable thumbnail rail", group: "Layout" },
+  { value: "marquee", label: "Infinite Ribbon", description: "Seamless looping ticker of frames", group: "Utility" },
   { value: "coverflow", label: "Coverflow", description: "Tilted 3D shelves with depth perspective", group: "Motion" },
   { value: "cube", label: "Cube Turn", description: "Faces rotate like a turning cube", group: "Motion" },
   { value: "flip", label: "Mirror Flip", description: "Card flips on the Y axis into place", group: "Motion" },
@@ -23,11 +21,6 @@ export const SLIDER_TYPES = [
   { value: "ken-burns", label: "Cinema Zoom", description: "Slow living zoom across the image", group: "Motion" },
   { value: "parallax", label: "Depth Drift", description: "Background shifts slower than the frame", group: "Motion" },
   { value: "cards-stack", label: "Deck Stack", description: "Cards peel forward from a stacked deck", group: "Motion" },
-  { value: "slide-up", label: "Caption Rise", description: "Text and CTA rise in after the image", group: "Motion" },
-  { value: "marquee", label: "Infinite Ribbon", description: "Seamless looping ticker of frames", group: "Motion" },
-  { value: "wipe", label: "Diagonal Wipe", description: "Angled reveal that sweeps across the frame", group: "Motion" },
-  { value: "blur-reveal", label: "Soft Focus", description: "Blurry frame snaps into crisp focus", group: "Motion" },
-  { value: "split-panel", label: "Split Reveal", description: "Two halves slide apart to unveil the slide", group: "Motion" },
 ]
 
 export const PRODUCT_SLIDER_TYPES = ["product-carousel", "product-showcase", "collection-rail"]
@@ -61,6 +54,14 @@ export const DEFAULT_SLIDER_SETTINGS = {
   ctaIconColor: "#ffffff",
   ctaIconBg: "rgba(255,255,255,0.12)",
   ctaIconSize: 34,
+  cta2Background: "transparent",
+  cta2TextColor: "#ffffff",
+  cta2BorderColor: "#ffffff",
+  cta2HoverBackground: "rgba(255,255,255,0.14)",
+  cta2HoverTextColor: "#ffffff",
+  cta2Icon: "none",
+  cta2IconColor: "#ffffff",
+  cta2IconBg: "rgba(255,255,255,0.12)",
   atcBackground: "#ffffff",
   atcTextColor: "#170f49",
   atcBorderColor: "#170f49",
@@ -68,21 +69,24 @@ export const DEFAULT_SLIDER_SETTINGS = {
   atcHoverTextColor: "#ffffff",
   atcBorderWidth: 1,
   atcBorderRadius: 50,
-  atcFontSize: 14,
-  atcPadding: 10,
+  atcFontSize: 16,
+  atcPadding: 12,
   pauseOnHover: true,
   showBranding: false,
   overlayEnabled: false,
   overlayColor: "#000000",
   overlayOpacity: 0.35,
   effect: "fade",
+  heroAnimation: "none",
   collectionId: null,
   collectionHandle: null,
   productLimit: 8,
   showPrice: true,
   showShopNow: true,
   showAddToCart: true,
+  showSoldOut: true,
   addToCartText: "Add to cart",
+  soldOutText: "Sold out",
   sectionHeading: "",
   sectionHeadingFontSize: 28,
   sectionHeadingGap: 16,
@@ -90,11 +94,27 @@ export const DEFAULT_SLIDER_SETTINGS = {
   productPriceFontSize: 14,
   productContentGap: 8,
   paginationGap: 16,
+  headingFontSize: 42,
+  subheadingFontSize: 12,
+  descriptionFontSize: 16,
+  headingColor: "#ffffff",
+  subheadingColor: "#ffffff",
+  descriptionColor: "#ffffff",
+  copyGap: 10,
+  paginationOffset: 16,
+  dotsPosition: "center",
+  contentPosition: "bottom-center",
+  progressBar: false,
+  progressBarColor: "#ffffff",
   mobile: {
     slidesToShow: 1,
     slidesToScroll: 1,
     arrows: true,
     dots: true,
+    headingFontSize: 28,
+    subheadingFontSize: 11,
+    descriptionFontSize: 14,
+    ctaFontSize: 14,
   },
 }
 
@@ -207,15 +227,20 @@ export function settingsFromPreset(sliderType = "fade") {
       return {
         ...base,
         effect: "testimonials",
-        transition: "fade",
-        height: 320,
+        transition: "slide",
+        height: 280,
         borderRadius: 16,
-        slidesToShow: 1,
+        width: 1100,
+        slidesToShow: 3,
+        slidesToScroll: 3,
         autoplay: true,
         autoplaySpeed: 5000,
         speed: 700,
         arrows: true,
         dots: true,
+        arrowBg: "#ffffff",
+        arrowColor: "#170f49",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
       }
     case "logo-grid":
       return {
@@ -305,14 +330,26 @@ export function settingsFromPreset(sliderType = "fade") {
 
 export function mergeSliderSettings(sliderType, settings = {}) {
   const preset = settingsFromPreset(sliderType)
-  return {
+  const merged = {
     ...preset,
     ...settings,
     mobile: {
+      ...DEFAULT_SLIDER_SETTINGS.mobile,
       ...preset.mobile,
       ...(settings.mobile || {}),
     },
   }
+  // Keep product button sizing equal (Shop now + Add to cart)
+  const sharedPad = Number(merged.ctaPadding ?? merged.atcPadding ?? 12)
+  const sharedFont = Number(merged.ctaFontSize ?? merged.atcFontSize ?? 16)
+  const sharedRadius = Number(merged.ctaBorderRadius ?? merged.atcBorderRadius ?? 50)
+  merged.ctaPadding = sharedPad
+  merged.atcPadding = sharedPad
+  merged.ctaFontSize = sharedFont
+  merged.atcFontSize = sharedFont
+  merged.ctaBorderRadius = sharedRadius
+  merged.atcBorderRadius = sharedRadius
+  return merged
 }
 
 export const SLIDE_SOFT_LIMIT = 20
@@ -330,6 +367,9 @@ export const DEFAULT_SLIDE_FIELDS = {
   ctaResourceType: null,
   ctaResourceId: null,
   ctaOpenInNewTab: false,
+  cta2Text: "",
+  cta2Url: "",
+  cta2OpenInNewTab: false,
   textAlign: "center",
   overlayColor: "#000000",
   overlayOpacity: 0.3,
@@ -339,6 +379,7 @@ export const DEFAULT_SLIDE_FIELDS = {
   imageAlt: "",
   shopifyFileId: null,
   variantId: null,
+  availableForSale: true,
   mediaType: "image",
   videoUrl: "",
   videoProvider: null,
@@ -359,6 +400,9 @@ export const SLIDE_ATTRIBUTES = [
   "ctaResourceType",
   "ctaResourceId",
   "ctaOpenInNewTab",
+  "cta2Text",
+  "cta2Url",
+  "cta2OpenInNewTab",
   "textAlign",
   "overlayColor",
   "overlayOpacity",
@@ -368,6 +412,7 @@ export const SLIDE_ATTRIBUTES = [
   "imageAlt",
   "shopifyFileId",
   "variantId",
+  "availableForSale",
   "mediaType",
   "videoUrl",
   "videoProvider",
