@@ -3,6 +3,7 @@ import { Slider, Slide, AnalyticsEvent } from "../models/index.js"
 import { corsHeaders } from "../middleware/cors.js"
 import { mergeSliderSettings, SLIDE_ATTRIBUTES } from "../utils/sliderDefaults.js"
 import { normalizeShopDomain } from "../utils/validation.js"
+import { getCachedShopPlan, evaluatePlacement } from "../utils/shopPlanCache.js"
 
 const router = express.Router()
 
@@ -59,13 +60,34 @@ router.get("/api/public/slider/:sliderId", corsHeaders, rateLimitPublic, async (
       return res.status(404).json({ error: "Slider not found" })
     }
 
+    const pageType = String(req.query.pageType || req.query.page_type || "").trim()
+    const cachedPlan = await getCachedShopPlan(shop)
+    const placement = evaluatePlacement(cachedPlan, pageType)
+
     const data = slider.get({ plain: true })
+    const visibleSlides = (data.slides || []).filter((slide) => slide.isVisible !== false)
+
     res.json({
       id: data.id,
       name: data.name,
       sliderType: data.sliderType,
       settings: mergeSliderSettings(data.sliderType, data.settings || {}),
-      slides: (data.slides || []).filter((slide) => slide.isVisible !== false),
+      slides: placement.allowed ? visibleSlides : [],
+      plan: {
+        planId: cachedPlan.planId,
+        name: cachedPlan.plan?.name,
+        placementAnyPage: cachedPlan.placementAnyPage,
+        allowedPageTypes: cachedPlan.allowedPageTypes,
+        placementLabel: cachedPlan.plan?.placementLabel,
+        placementAllowedSummary: cachedPlan.plan?.placementAllowedSummary,
+        placementBlockedSummary: cachedPlan.plan?.placementBlockedSummary,
+        pricingUrl: cachedPlan.pricingUrl,
+      },
+      placement: {
+        allowed: placement.allowed,
+        pageType: placement.pageType,
+        reason: placement.reason,
+      },
     })
   } catch (error) {
     console.error("Error fetching public slider:", error)

@@ -5,12 +5,42 @@
   const url = new URL(script.src)
   const sliderId = url.searchParams.get("id")
   const shopFromScript = url.searchParams.get("shop")
+  const pageTypeFromScript = url.searchParams.get("pageType") || ""
   const shopFromShopify =
     (window.Shopify && (window.Shopify.shop || window.Shopify.permanent_domain)) || ""
   const shop = (shopFromScript || shopFromShopify || "").replace(/^https?:\/\//, "").replace(/\/$/, "")
   const uniqueId = `slideease-${sliderId}-${Math.random().toString(36).slice(2, 9)}`
   const apiOrigin = url.origin
-  const apiUrl = `${apiOrigin}/api/public/slider/${encodeURIComponent(sliderId)}?shop=${encodeURIComponent(shop)}`
+
+  function resolvePageType() {
+    if (pageTypeFromScript) return String(pageTypeFromScript).trim().toLowerCase()
+    try {
+      const analyticsType =
+        window.Shopify?.analytics?.meta?.page?.pageType ||
+        window.Shopify?.analytics?.meta?.page?.page_type ||
+        ""
+      if (analyticsType) return String(analyticsType).trim().toLowerCase()
+    } catch {
+      // ignore
+    }
+    return ""
+  }
+
+  function isHomepageContext(pageType) {
+    if (pageType === "index") return true
+    // Fallback when Liquid/theme did not pass pageType
+    try {
+      const path = (window.location.pathname || "/").replace(/\/+$/, "") || "/"
+      const root = storeRoot().replace(/\/+$/, "") || ""
+      if (path === "/" || path === root) return true
+    } catch {
+      // ignore
+    }
+    return false
+  }
+
+  const pageType = resolvePageType()
+  const apiUrl = `${apiOrigin}/api/public/slider/${encodeURIComponent(sliderId)}?shop=${encodeURIComponent(shop)}&pageType=${encodeURIComponent(pageType)}`
 
   const CHEVRON_LEFT =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -444,6 +474,37 @@
         <span style="color:#64748b;font-size:0.9rem;line-height:1.45;">${escapeHtml(message)}</span>
       </div>
     `)
+  }
+
+  function renderPlacementLocked(plan) {
+    const pricingUrl = safeUrl(plan?.pricingUrl) || ""
+    const planName = escapeHtml(plan?.name || "Free")
+    const allowed = escapeHtml(plan?.placementAllowedSummary || "Homepage")
+    const blocked = escapeHtml(
+      plan?.placementBlockedSummary || "Product, Collection, Blog, and other pages",
+    )
+    const upgradeLink = pricingUrl
+      ? `<a href="${escapeHtml(pricingUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:0.85rem;padding:0.55rem 1rem;border-radius:10px;background:#1a2f4a;color:#fff;font-size:0.875rem;font-weight:600;text-decoration:none;">Upgrade for any-page placement</a>`
+      : ""
+    insertAdjacent(`
+      <div class="se-message se-placement-locked" style="width:100%;max-width:640px;margin:1.5rem auto;padding:1.35rem 1.5rem;border:1px solid #fde68a;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;background:#fffbeb;box-shadow:0 8px 24px rgba(15,23,42,0.06);">
+        <strong style="display:block;margin-bottom:0.35rem;color:#92400e;font-size:0.95rem;">${planName} plan: ${allowed} only</strong>
+        <span style="color:#a16207;font-size:0.9rem;line-height:1.45;">This slider cannot show here. On ${planName}, sliders are allowed on <strong>${allowed}</strong> and blocked on <strong>${blocked}</strong>. Upgrade to Standard or Pro to place sliders on Product, Collection, Blog, or any other page.</span>
+        ${upgradeLink}
+      </div>
+    `)
+  }
+
+  function isPlacementAllowed(plan) {
+    // Standard / Pro — any page
+    if (plan?.placementAnyPage) return true
+    if (plan?.allowedPageTypes == null && plan?.planId && plan.planId !== "free") return true
+    // Free — homepage only (index), with path fallback when pageType missing
+    if (pageType === "index" || (!pageType && isHomepageContext(""))) return true
+    if (Array.isArray(plan?.allowedPageTypes) && plan.allowedPageTypes.includes(pageType)) {
+      return true
+    }
+    return false
   }
 
   function buildSlickConfig(settings) {
@@ -2043,6 +2104,12 @@
       removeNode(`${uniqueId}-loading`)
       if (data.error) {
         renderMessage("Slider unavailable", data.error)
+        return
+      }
+      const plan = data.plan || {}
+      const apiSaysBlocked = data.placement && data.placement.allowed === false
+      if (apiSaysBlocked || !isPlacementAllowed(plan)) {
+        renderPlacementLocked(plan)
         return
       }
       renderSlider(data)

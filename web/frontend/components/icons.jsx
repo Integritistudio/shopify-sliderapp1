@@ -128,3 +128,17 @@ export function IconDraft({ size = 16 }) {
     </svg>
   )
 }
+
+export function IconLock({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="3.5" y="7" width="9" height="6.5" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M5.5 7V5.25a2.5 2.5 0 015 0V7"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}

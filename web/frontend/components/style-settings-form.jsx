@@ -4,12 +4,10 @@ import { useCallback, useEffect, useState } from "react"
 import { FormLayout, TextField, Stack, Text, Button, Banner } from "@shopify/polaris"
 import { useAppBridge } from "@shopify/app-bridge-react"
 import {
-  PRODUCT_SLIDER_TYPES,
-  HERO_SLIDER_TYPES,
   HERO_ANIMATION_OPTIONS,
   HERO_CONTENT_POSITION_OPTIONS,
-  resolveSliderType,
 } from "../utils/sliderConfig"
+import { getSettingsCapabilities } from "../utils/settingsVisibility"
 import SeSelect from "./se-select"
 
 function clampNum(value, min, max, fallback) {
@@ -125,9 +123,9 @@ export default function StyleSettingsForm({
   const [syncMessage, setSyncMessage] = useState(null)
   const shopify = useAppBridge()
 
-  const isProductType = PRODUCT_SLIDER_TYPES.includes(sliderType)
-  const isHeroType = HERO_SLIDER_TYPES.includes(resolveSliderType(sliderType))
+  const show = getSettingsCapabilities(sliderType)
   const isTestimonials = sliderType === "testimonials"
+  const isProductType = show.productSource
   const heightMin = sliderType === "announcement" ? 36 : sliderType === "logo-grid" ? 80 : 160
 
   const update = (key, value) => {
@@ -247,24 +245,40 @@ export default function StyleSettingsForm({
     }
   }
 
+  const showBehaviourToggles = show.autoplay || show.arrows || show.dots || show.infinite
+  const showNavColors = show.arrowColor || show.dotColor
+  const showLayoutRow = show.height || show.borderRadius
+  const showSlidesRow = show.slidesToShow || show.autoplaySpeed
+  const showMobileSection = show.mobileSlides || show.mobileHeroText || show.mobileCtaFont
+
   return (
     <FormLayout>
-      <Stack spacing="tight">
-        <Button pressed={Boolean(settings.autoplay)} onClick={() => update("autoplay", !settings.autoplay)} disabled={disabled}>
-          Autoplay {settings.autoplay ? "On" : "Off"}
-        </Button>
-        <Button pressed={settings.arrows !== false} onClick={() => update("arrows", settings.arrows === false)} disabled={disabled}>
-          Arrows {settings.arrows === false ? "Off" : "On"}
-        </Button>
-        <Button pressed={settings.dots !== false} onClick={() => update("dots", settings.dots === false)} disabled={disabled}>
-          Pagination {settings.dots === false ? "Off" : "On"}
-        </Button>
-        <Button pressed={settings.infinite !== false} onClick={() => update("infinite", settings.infinite === false)} disabled={disabled}>
-          Infinite {settings.infinite === false ? "Off" : "On"}
-        </Button>
-      </Stack>
+      {showBehaviourToggles ? (
+        <Stack spacing="tight">
+          {show.autoplay ? (
+            <Button pressed={Boolean(settings.autoplay)} onClick={() => update("autoplay", !settings.autoplay)} disabled={disabled}>
+              Autoplay {settings.autoplay ? "On" : "Off"}
+            </Button>
+          ) : null}
+          {show.arrows ? (
+            <Button pressed={settings.arrows !== false} onClick={() => update("arrows", settings.arrows === false)} disabled={disabled}>
+              Arrows {settings.arrows === false ? "Off" : "On"}
+            </Button>
+          ) : null}
+          {show.dots ? (
+            <Button pressed={settings.dots !== false} onClick={() => update("dots", settings.dots === false)} disabled={disabled}>
+              Pagination {settings.dots === false ? "Off" : "On"}
+            </Button>
+          ) : null}
+          {show.infinite ? (
+            <Button pressed={settings.infinite !== false} onClick={() => update("infinite", settings.infinite === false)} disabled={disabled}>
+              Infinite {settings.infinite === false ? "Off" : "On"}
+            </Button>
+          ) : null}
+        </Stack>
+      ) : null}
 
-      {isHeroType ? (
+      {show.heroAnimation ? (
         <SeSelect
           label="Animation style"
           options={HERO_ANIMATION_OPTIONS.map((option) => ({
@@ -284,9 +298,9 @@ export default function StyleSettingsForm({
         />
       ) : null}
 
-      {isHeroType ? <Text variant="headingSm">Hero text</Text> : null}
+      {show.heroText ? <Text variant="headingSm">Hero text</Text> : null}
 
-      {isHeroType ? (
+      {show.heroText ? (
         <SeSelect
           label="Content placement"
           options={HERO_CONTENT_POSITION_OPTIONS.map((option) => ({
@@ -300,7 +314,7 @@ export default function StyleSettingsForm({
         />
       ) : null}
 
-      {isHeroType ? (
+      {show.heroText ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Heading size (px)"
@@ -323,7 +337,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isHeroType ? (
+      {show.heroText ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Description size (px)"
@@ -344,7 +358,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isHeroType ? (
+      {show.heroText ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Copy gap (px)"
@@ -356,20 +370,24 @@ export default function StyleSettingsForm({
             helpText="Space between subheading, heading, and description"
             disabled={disabled}
           />
-          <ClampedNumberField
-            label="Distance from button (px)"
-            value={settings.paginationOffset ?? 16}
-            min={0}
-            max={120}
-            fallback={16}
-            onChange={(value) => update("paginationOffset", value)}
-            helpText="Space between the CTA button and the dots"
-            disabled={disabled || settings.dots === false}
-          />
+          {show.heroPaginationChrome ? (
+            <ClampedNumberField
+              label="Distance from button (px)"
+              value={settings.paginationOffset ?? 16}
+              min={0}
+              max={120}
+              fallback={16}
+              onChange={(value) => update("paginationOffset", value)}
+              helpText="Space between the CTA button and the dots"
+              disabled={disabled || settings.dots === false}
+            />
+          ) : (
+            <div />
+          )}
         </FormLayout.Group>
       ) : null}
 
-      {isHeroType ? (
+      {show.heroText ? (
         <FormLayout.Group>
           <ColorField
             label="Heading color"
@@ -388,9 +406,9 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isHeroType ? <Text variant="headingSm">Hero arrows & pagination</Text> : null}
+      {show.heroPaginationChrome ? <Text variant="headingSm">Hero arrows & pagination</Text> : null}
 
-      {isHeroType ? (
+      {show.heroPaginationChrome ? (
         <FormLayout.Group>
           <SeSelect
             label="Pagination position"
@@ -413,7 +431,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.productSource ? (
         <TextField
           label="Section heading (optional)"
           value={settings.sectionHeading || ""}
@@ -424,13 +442,13 @@ export default function StyleSettingsForm({
         />
       ) : null}
 
-      {isProductType && collectionsError ? (
+      {show.productSource && collectionsError ? (
         <Banner status="warning" title="Collections unavailable">
           <p>{collectionsError}</p>
         </Banner>
       ) : null}
 
-      {isProductType ? (
+      {show.productSource ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Button primary onClick={pickProducts} loading={syncing} disabled={disabled}>
             Select products
@@ -466,7 +484,7 @@ export default function StyleSettingsForm({
         </div>
       ) : null}
 
-      {isProductType && settings.showAddToCart !== false ? (
+      {show.productSource && settings.showAddToCart !== false ? (
         <FormLayout.Group>
           <TextField
             label="Add to cart label"
@@ -487,7 +505,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.productSource ? (
         <SeSelect
           label="Or sync from collection"
           options={[
@@ -510,7 +528,7 @@ export default function StyleSettingsForm({
         />
       ) : null}
 
-      {isProductType ? (
+      {show.productSource ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Collection product limit"
@@ -529,15 +547,15 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType && syncMessage ? (
+      {show.productSource && syncMessage ? (
         <Banner status={syncMessage.error ? "critical" : "success"}>
           <p>{syncMessage.text}</p>
         </Banner>
       ) : null}
 
-      {isProductType ? <Text variant="headingSm">Product typography</Text> : null}
+      {show.productTypography ? <Text variant="headingSm">Product typography</Text> : null}
 
-      {isProductType ? (
+      {show.productTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Section heading size (px)"
@@ -560,7 +578,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.productTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Product title size (px)"
@@ -583,7 +601,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.productTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Content gap (px)"
@@ -606,29 +624,39 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      <FormLayout.Group>
-        <ClampedNumberField
-          label="Height (px)"
-          helpText={isTestimonials ? "Applied as the height of each testimonial card" : undefined}
-          value={settings.height ?? (isTestimonials ? 280 : 640)}
-          min={heightMin}
-          max={isTestimonials ? 520 : 900}
-          fallback={isTestimonials ? 280 : 640}
-          onChange={(value) => update("height", value)}
-          disabled={disabled}
-        />
-        <ClampedNumberField
-          label="Corner radius (px)"
-          value={settings.borderRadius ?? 0}
-          min={0}
-          max={40}
-          fallback={0}
-          onChange={(value) => update("borderRadius", value)}
-          disabled={disabled}
-        />
-      </FormLayout.Group>
+      {showLayoutRow ? (
+        <FormLayout.Group>
+          {show.height ? (
+            <ClampedNumberField
+              label="Height (px)"
+              helpText={isTestimonials ? "Applied as the height of each testimonial card" : undefined}
+              value={settings.height ?? (isTestimonials ? 280 : 640)}
+              min={heightMin}
+              max={isTestimonials ? 520 : 900}
+              fallback={isTestimonials ? 280 : 640}
+              onChange={(value) => update("height", value)}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+          {show.borderRadius ? (
+            <ClampedNumberField
+              label="Corner radius (px)"
+              value={settings.borderRadius ?? 0}
+              min={0}
+              max={40}
+              fallback={0}
+              onChange={(value) => update("borderRadius", value)}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+        </FormLayout.Group>
+      ) : null}
 
-      {isTestimonials ? (
+      {show.width ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Slider width (px)"
@@ -644,127 +672,175 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      <FormLayout.Group>
-        <SeSelect
-          label="Image fit"
-          options={[
-            { label: "Cover", value: "cover" },
-            { label: "Contain", value: "contain" },
-          ]}
-          value={settings.objectFit || "cover"}
-          onChange={(value) => update("objectFit", value)}
-          disabled={disabled}
-        />
-        <div />
-      </FormLayout.Group>
-      <FormLayout.Group>
-        <ClampedNumberField
-          label={isTestimonials ? "Cards to show" : "Slides to show"}
-          helpText={isTestimonials ? "Show up to 3 cards; navigation advances by the same group size" : undefined}
-          value={settings.slidesToShow ?? (isTestimonials ? 3 : 1)}
-          min={1}
-          max={isTestimonials ? 3 : 12}
-          fallback={isTestimonials ? 3 : 1}
-          onChange={(value) => {
-            if (isTestimonials) {
-              onSettingsChange({
-                ...settings,
-                slidesToShow: value,
-                slidesToScroll: value,
-              })
-            } else {
-              update("slidesToShow", value)
-            }
-          }}
-          disabled={disabled}
-        />
-        <ClampedNumberField
-          label="Autoplay speed (ms)"
-          value={settings.autoplaySpeed ?? 3000}
-          min={0}
-          max={60000}
-          fallback={3000}
-          onChange={(value) => update("autoplaySpeed", value)}
-          disabled={disabled}
-        />
-      </FormLayout.Group>
-
-      <FormLayout.Group>
-        <TextField
-          label="Arrow color"
-          value={settings.arrowColor || "#ffffff"}
-          onChange={(value) => update("arrowColor", value)}
-          disabled={disabled}
-        />
-        <TextField
-          label="Dot color"
-          value={settings.dotColor || "#2c4a6e"}
-          onChange={(value) => update("dotColor", value)}
-          disabled={disabled}
-        />
-      </FormLayout.Group>
-
-      <Text variant="headingSm">{isProductType ? "Shop now button" : "First button"}</Text>
-      <FormLayout.Group>
-        <ColorField
-          label="Button background"
-          value={settings.ctaBackground || "#1a2f4a"}
-          onChange={(value) => update("ctaBackground", value)}
-          fallback="#1a2f4a"
-          disabled={disabled}
-        />
-        <ColorField
-          label="Text color"
-          value={settings.ctaTextColor || "#ffffff"}
-          onChange={(value) => update("ctaTextColor", value)}
-          fallback="#ffffff"
-          disabled={disabled}
-        />
-      </FormLayout.Group>
-
-      <FormLayout.Group>
-        <ColorField
-          label="Border color"
-          value={settings.ctaBorderColor || "#ffffff"}
-          onChange={(value) => update("ctaBorderColor", value)}
-          fallback="#ffffff"
-          disabled={disabled}
-        />
-        <ColorField
-          label="Hover background"
-          value={settings.ctaHoverBackground || "#243d5c"}
-          onChange={(value) => update("ctaHoverBackground", value)}
-          fallback="#243d5c"
-          disabled={disabled}
-        />
-      </FormLayout.Group>
-
-      <FormLayout.Group>
-        <ColorField
-          label="Hover text color"
-          value={settings.ctaHoverTextColor || "#ffffff"}
-          onChange={(value) => update("ctaHoverTextColor", value)}
-          fallback="#ffffff"
-          disabled={disabled}
-        />
-        {!isProductType ? (
+      {show.objectFit ? (
+        <FormLayout.Group>
           <SeSelect
-            label="Button icon"
+            label="Image fit"
             options={[
-              { label: "Arrow", value: "arrow" },
-              { label: "Chevron", value: "chevron" },
-              { label: "No icon", value: "none" },
+              { label: "Cover", value: "cover" },
+              { label: "Contain", value: "contain" },
             ]}
-            value={settings.ctaIcon || "arrow"}
-            onChange={(value) => update("ctaIcon", value)}
+            value={settings.objectFit || "cover"}
+            onChange={(value) => update("objectFit", value)}
             disabled={disabled}
           />
-        ) : (
           <div />
-        )}
-      </FormLayout.Group>
+        </FormLayout.Group>
+      ) : null}
 
-      {!isProductType ? (
+      {showSlidesRow ? (
+        <FormLayout.Group>
+          {show.slidesToShow ? (
+            <ClampedNumberField
+              label={isTestimonials ? "Cards to show" : "Slides to show"}
+              helpText={isTestimonials ? "Show up to 3 cards; navigation advances by the same group size" : undefined}
+              value={settings.slidesToShow ?? (isTestimonials ? 3 : 1)}
+              min={1}
+              max={isTestimonials ? 3 : 12}
+              fallback={isTestimonials ? 3 : 1}
+              onChange={(value) => {
+                if (isTestimonials) {
+                  onSettingsChange({
+                    ...settings,
+                    slidesToShow: value,
+                    slidesToScroll: value,
+                  })
+                } else {
+                  update("slidesToShow", value)
+                }
+              }}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+          {show.autoplaySpeed ? (
+            <ClampedNumberField
+              label="Autoplay speed (ms)"
+              value={settings.autoplaySpeed ?? 3000}
+              min={0}
+              max={60000}
+              fallback={3000}
+              onChange={(value) => update("autoplaySpeed", value)}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+        </FormLayout.Group>
+      ) : null}
+
+      {showNavColors ? (
+        <FormLayout.Group>
+          {show.arrowColor ? (
+            <TextField
+              label="Arrow color"
+              value={settings.arrowColor || "#ffffff"}
+              onChange={(value) => update("arrowColor", value)}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+          {show.dotColor ? (
+            <TextField
+              label="Dot color"
+              value={settings.dotColor || "#2c4a6e"}
+              onChange={(value) => update("dotColor", value)}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+        </FormLayout.Group>
+      ) : null}
+
+      {show.ctaBackgroundOnly && !show.ctaPrimary && !show.shopNowButton ? (
+        <>
+          <Text variant="headingSm">Bar style</Text>
+          <FormLayout.Group>
+            <ColorField
+              label="Background"
+              value={settings.ctaBackground || "#1a2f4a"}
+              onChange={(value) => update("ctaBackground", value)}
+              fallback="#1a2f4a"
+              disabled={disabled}
+            />
+            <div />
+          </FormLayout.Group>
+        </>
+      ) : null}
+
+      {show.ctaPrimary || show.shopNowButton ? (
+        <Text variant="headingSm">{show.shopNowButton ? "Shop now button" : "First button"}</Text>
+      ) : null}
+
+      {show.ctaPrimary || show.shopNowButton ? (
+        <FormLayout.Group>
+          <ColorField
+            label="Button background"
+            value={settings.ctaBackground || "#1a2f4a"}
+            onChange={(value) => update("ctaBackground", value)}
+            fallback="#1a2f4a"
+            disabled={disabled}
+          />
+          <ColorField
+            label="Text color"
+            value={settings.ctaTextColor || "#ffffff"}
+            onChange={(value) => update("ctaTextColor", value)}
+            fallback="#ffffff"
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.ctaPrimary || show.shopNowButton ? (
+        <FormLayout.Group>
+          <ColorField
+            label="Border color"
+            value={settings.ctaBorderColor || "#ffffff"}
+            onChange={(value) => update("ctaBorderColor", value)}
+            fallback="#ffffff"
+            disabled={disabled}
+          />
+          <ColorField
+            label="Hover background"
+            value={settings.ctaHoverBackground || "#243d5c"}
+            onChange={(value) => update("ctaHoverBackground", value)}
+            fallback="#243d5c"
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.ctaPrimary || show.shopNowButton ? (
+        <FormLayout.Group>
+          <ColorField
+            label="Hover text color"
+            value={settings.ctaHoverTextColor || "#ffffff"}
+            onChange={(value) => update("ctaHoverTextColor", value)}
+            fallback="#ffffff"
+            disabled={disabled}
+          />
+          {show.ctaIcons ? (
+            <SeSelect
+              label="Button icon"
+              options={[
+                { label: "Arrow", value: "arrow" },
+                { label: "Chevron", value: "chevron" },
+                { label: "No icon", value: "none" },
+              ]}
+              value={settings.ctaIcon || "arrow"}
+              onChange={(value) => update("ctaIcon", value)}
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
+        </FormLayout.Group>
+      ) : null}
+
+      {show.ctaIcons ? (
         <FormLayout.Group>
           <ColorField
             label="Icon color"
@@ -783,7 +859,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!isProductType ? (
+      {show.ctaIcons ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Icon size (px)"
@@ -799,9 +875,9 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!isProductType ? <Text variant="headingSm">Second button</Text> : null}
+      {show.ctaSecondary ? <Text variant="headingSm">Second button</Text> : null}
 
-      {!isProductType ? (
+      {show.ctaSecondary ? (
         <FormLayout.Group>
           <ColorField
             label="Button background"
@@ -820,7 +896,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!isProductType ? (
+      {show.ctaSecondary ? (
         <FormLayout.Group>
           <ColorField
             label="Border color"
@@ -839,7 +915,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!isProductType ? (
+      {show.ctaSecondary ? (
         <FormLayout.Group>
           <ColorField
             label="Hover text color"
@@ -862,7 +938,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!isProductType ? (
+      {show.ctaSecondary ? (
         <FormLayout.Group>
           <ColorField
             label="Icon color"
@@ -881,49 +957,51 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      <FormLayout.Group>
-        <ClampedNumberField
-          label="Buttons border (px)"
-          value={settings.ctaBorderWidth ?? 1}
-          min={0}
-          max={6}
-          fallback={1}
-          onChange={(next) => {
-            if (isProductType) {
-              onSettingsChange({
-                ...settings,
-                ctaBorderWidth: next,
-                atcBorderWidth: next,
-              })
-            } else {
-              update("ctaBorderWidth", next)
-            }
-          }}
-          disabled={disabled}
-          helpText={isProductType ? undefined : "Same size for both buttons"}
-        />
-        <ClampedNumberField
-          label="Buttons corners (px)"
-          value={settings.ctaBorderRadius ?? settings.atcBorderRadius ?? 50}
-          min={0}
-          max={50}
-          fallback={50}
-          onChange={(next) => {
-            if (isProductType) {
-              onSettingsChange({
-                ...settings,
-                ctaBorderRadius: next,
-                atcBorderRadius: next,
-              })
-            } else {
-              update("ctaBorderRadius", next)
-            }
-          }}
-          disabled={disabled}
-        />
-      </FormLayout.Group>
+      {show.ctaSizing ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Buttons border (px)"
+            value={settings.ctaBorderWidth ?? 1}
+            min={0}
+            max={6}
+            fallback={1}
+            onChange={(next) => {
+              if (show.atcButton) {
+                onSettingsChange({
+                  ...settings,
+                  ctaBorderWidth: next,
+                  atcBorderWidth: next,
+                })
+              } else {
+                update("ctaBorderWidth", next)
+              }
+            }}
+            disabled={disabled}
+            helpText={show.atcButton ? undefined : "Same size for both buttons"}
+          />
+          <ClampedNumberField
+            label="Buttons corners (px)"
+            value={settings.ctaBorderRadius ?? settings.atcBorderRadius ?? 50}
+            min={0}
+            max={50}
+            fallback={50}
+            onChange={(next) => {
+              if (show.atcButton) {
+                onSettingsChange({
+                  ...settings,
+                  ctaBorderRadius: next,
+                  atcBorderRadius: next,
+                })
+              } else {
+                update("ctaBorderRadius", next)
+              }
+            }}
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
 
-      {isProductType ? (
+      {show.ctaSizing && show.atcButton ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Buttons font size (px)"
@@ -956,7 +1034,9 @@ export default function StyleSettingsForm({
             disabled={disabled}
           />
         </FormLayout.Group>
-      ) : (
+      ) : null}
+
+      {show.ctaSizing && !show.atcButton ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Buttons font size (px)"
@@ -977,11 +1057,11 @@ export default function StyleSettingsForm({
             disabled={disabled}
           />
         </FormLayout.Group>
-      )}
+      ) : null}
 
-      {isProductType ? <Text variant="headingSm">Add to cart button</Text> : null}
+      {show.atcButton ? <Text variant="headingSm">Add to cart button</Text> : null}
 
-      {isProductType ? (
+      {show.atcButton ? (
         <FormLayout.Group>
           <ColorField
             label="Button background"
@@ -1000,7 +1080,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.atcButton ? (
         <FormLayout.Group>
           <ColorField
             label="Border color"
@@ -1019,7 +1099,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.atcButton ? (
         <FormLayout.Group>
           <ColorField
             label="Hover text color"
@@ -1032,29 +1112,32 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      <Text variant="headingSm">Mobile overrides</Text>
-      <FormLayout.Group>
-        <ClampedNumberField
-          label="Mobile slides to show"
-          value={settings.mobile?.slidesToShow ?? 1}
-          min={1}
-          max={isTestimonials ? 3 : 12}
-          fallback={1}
-          onChange={(value) => updateMobile("slidesToShow", value)}
-          disabled={disabled}
-        />
-        <ClampedNumberField
-          label="Mobile slides to scroll"
-          value={settings.mobile?.slidesToScroll ?? 1}
-          min={1}
-          max={12}
-          fallback={1}
-          onChange={(value) => updateMobile("slidesToScroll", value)}
-          disabled={disabled}
-        />
-      </FormLayout.Group>
+      {showMobileSection ? <Text variant="headingSm">Mobile overrides</Text> : null}
 
-      {!isProductType ? (
+      {show.mobileSlides ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Mobile slides to show"
+            value={settings.mobile?.slidesToShow ?? 1}
+            min={1}
+            max={isTestimonials ? 3 : 12}
+            fallback={1}
+            onChange={(value) => updateMobile("slidesToShow", value)}
+            disabled={disabled}
+          />
+          <ClampedNumberField
+            label="Mobile slides to scroll"
+            value={settings.mobile?.slidesToScroll ?? 1}
+            min={1}
+            max={12}
+            fallback={1}
+            onChange={(value) => updateMobile("slidesToScroll", value)}
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.mobileHeroText ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile heading size (px)"
@@ -1077,7 +1160,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!isProductType ? (
+      {show.mobileHeroText && show.mobileCtaFont ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile description size (px)"
@@ -1100,7 +1183,22 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {isProductType ? (
+      {show.mobileHeroText && !show.mobileCtaFont ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Mobile description size (px)"
+            value={settings.mobile?.descriptionFontSize ?? 14}
+            min={11}
+            max={24}
+            fallback={14}
+            onChange={(value) => updateMobile("descriptionFontSize", value)}
+            disabled={disabled}
+          />
+          <div />
+        </FormLayout.Group>
+      ) : null}
+
+      {!show.mobileHeroText && show.mobileCtaFont ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile button size (px)"
@@ -1110,7 +1208,7 @@ export default function StyleSettingsForm({
             fallback={14}
             onChange={(value) => updateMobile("ctaFontSize", value)}
             disabled={disabled}
-            helpText="Shop now and Add to cart"
+            helpText={show.atcButton ? "Shop now and Add to cart" : undefined}
           />
           <div />
         </FormLayout.Group>

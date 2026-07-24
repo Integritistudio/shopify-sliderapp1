@@ -15,6 +15,7 @@ import MediaPickerInline from "./media-picker-inline"
 import ColorField from "./color-field"
 import SeSelect from "./se-select"
 import { HERO_SLIDER_TYPES, HERO_CONTENT_POSITION_OPTIONS, resolveContentPlacement } from "../utils/sliderConfig"
+import { canShow } from "../utils/settingsVisibility"
 
 const EMPTY_SLIDE = {
   imageUrl: "",
@@ -67,6 +68,8 @@ export default function SlideEditorPanel({
   const [showPicker, setShowPicker] = useState(false)
   const [error, setError] = useState("")
   const [showSecondButton, setShowSecondButton] = useState(false)
+
+  const showSlideCta = canShow(sliderType, "slideCtaFields")
 
   const fieldLabels = {
     testimonials: { heading: "Quote", subheading: "Author", description: "Role / detail", image: "Avatar image URL" },
@@ -276,31 +279,35 @@ export default function SlideEditorPanel({
           multiline={3}
         />
 
-        <FormLayout.Group>
-          <TextField label="Button text" value={form.ctaText} onChange={(value) => update("ctaText", value)} placeholder="Shop now" />
-          <TextField
-            label="Button URL"
-            value={form.ctaUrl}
-            onChange={(value) =>
-              setForm((prev) => ({
-                ...prev,
-                ctaUrl: value,
-                ctaResourceType: null,
-                ctaResourceId: null,
-              }))
-            }
-            placeholder="/collections/all"
-            helpText=""
+        {showSlideCta ? (
+          <FormLayout.Group>
+            <TextField label="Button text" value={form.ctaText} onChange={(value) => update("ctaText", value)} placeholder="Shop now" />
+            <TextField
+              label="Button URL"
+              value={form.ctaUrl}
+              onChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  ctaUrl: value,
+                  ctaResourceType: null,
+                  ctaResourceId: null,
+                }))
+              }
+              placeholder="/collections/all"
+              helpText=""
+            />
+          </FormLayout.Group>
+        ) : null}
+
+        {showSlideCta ? (
+          <Checkbox
+            label="Open button in new tab"
+            checked={Boolean(form.ctaOpenInNewTab)}
+            onChange={(value) => update("ctaOpenInNewTab", value)}
           />
-        </FormLayout.Group>
+        ) : null}
 
-        <Checkbox
-          label="Open button in new tab"
-          checked={Boolean(form.ctaOpenInNewTab)}
-          onChange={(value) => update("ctaOpenInNewTab", value)}
-        />
-
-        {!showSecondButton ? (
+        {showSlideCta && !showSecondButton ? (
           <Button
             onClick={() => {
               setShowSecondButton(true)
@@ -309,7 +316,9 @@ export default function SlideEditorPanel({
           >
             Add second button
           </Button>
-        ) : (
+        ) : null}
+
+        {showSlideCta && showSecondButton ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <TextField
@@ -348,7 +357,7 @@ export default function SlideEditorPanel({
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
 
         {HERO_SLIDER_TYPES.includes(sliderType) ? (
           <SeSelect

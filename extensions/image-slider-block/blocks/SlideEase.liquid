@@ -2,6 +2,7 @@
   <div
     class="slideease-app-block"
     data-slider-id="{{ block.settings.slider_id | escape }}"
+    data-page-type="{{ request.page_type | escape }}"
     style="width: 100%; max-width: 100%; margin-top: {{ block.settings.padding_top }}px; margin-bottom: {{ block.settings.padding_bottom }}px;"
   >
     {% if block.settings.heading != blank %}
@@ -9,8 +10,13 @@
         {{ block.settings.heading | escape }}
       </h2>
     {% endif %}
+    {% comment %}
+      Placement by plan (enforced in CDN + public API):
+      - Free: Homepage only (page_type index)
+      - Standard / Pro: any page (product, collection, blog, …)
+    {% endcomment %}
     <script
-      src="https://dispatch-cambridge-meanwhile-majority.trycloudflare.com/slider-cdn.js?id={{ block.settings.slider_id | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&v=30"
+      src="https://architect-laid-families-suffering.trycloudflare.com/slider-cdn.js?id={{ block.settings.slider_id | url_encode }}&shop={{ shop.permanent_domain | url_encode }}&pageType={{ request.page_type | url_encode }}&v=32"
       defer
     ></script>
   </div>
@@ -25,7 +31,7 @@
       "type": "text",
       "id": "slider_id",
       "label": "Slider ID",
-      "info": "Paste the numeric Slider ID from the SlideEase app"
+      "info": "Paste the numeric Slider ID from the SlideEase app. Free plan: homepage only. Standard/Pro: any page."
     },
     {
       "type": "checkbox",

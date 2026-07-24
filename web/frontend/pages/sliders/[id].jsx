@@ -21,12 +21,16 @@ import SlideEditorPanel from "../../components/slide-editor-panel"
 import SeSelect from "../../components/se-select"
 import { getSliderTypeInfo, mergeSliderSettings, PRODUCT_SLIDER_TYPES } from "../../utils/sliderConfig"
 import { scrollPreviewIntoView } from "../../utils/scrollPreview"
-import { SLIDE_HARD_LIMIT, SLIDE_SOFT_LIMIT } from "../../utils/limits"
+import { SLIDE_SOFT_LIMIT } from "../../utils/limits"
+import { canAddSlide, effectiveMaxSlides, placementGuidance } from "../../utils/plans"
+import { useShopPlan, openManagedPricing } from "../../hooks/useShopPlan"
+import UpgradeModal from "../../components/upgrade-modal"
 
 function SliderEditorContent() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { planId, plan, pricingUrl } = useShopPlan()
   const editorAnchorRef = useRef(null)
   const previewRef = useRef(null)
   const dragIdRef = useRef(null)
@@ -53,11 +57,37 @@ function SliderEditorContent() {
   const [draggingId, setDraggingId] = useState(null)
   const [liveOrder, setLiveOrder] = useState(null)
   const [floatStyle, setFloatStyle] = useState(null)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradeMeta, setUpgradeMeta] = useState({
+    title: "Slide limit reached",
+    message: "",
+    requiredPlanId: "standard",
+  })
+
+  const maxSlides = effectiveMaxSlides(planId)
+
+  const openUpgrade = ({ title, message, requiredPlanId }) => {
+    setUpgradeMeta({
+      title: title || "Upgrade required",
+      message: message || "",
+      requiredPlanId: requiredPlanId || "standard",
+    })
+    setUpgradeOpen(true)
+  }
 
   const openAddSlide = () => {
     const count = slider?.slides?.length || 0
-    if (count >= SLIDE_HARD_LIMIT) {
-      showToast(`Maximum of ${SLIDE_HARD_LIMIT} slides reached`, { error: true })
+    const check = canAddSlide({ planId, currentSlideCount: count })
+    if (!check.ok) {
+      if (check.code === "PLAN_SLIDE_LIMIT") {
+        openUpgrade({
+          title: "Slide limit reached",
+          message: check.message,
+          requiredPlanId: check.requiredPlan,
+        })
+      } else {
+        showToast(check.message, { error: true })
+      }
       return
     }
     setSelectedTab(0)
@@ -138,7 +168,7 @@ function SliderEditorContent() {
 
   const typeInfo = getSliderTypeInfo(sliderType)
   const softLimitHit = slides.length >= SLIDE_SOFT_LIMIT
-  const hardLimitHit = slides.length >= SLIDE_HARD_LIMIT
+  const planLimitHit = !canAddSlide({ planId, currentSlideCount: slides.length }).ok
   const isProductSlider = PRODUCT_SLIDER_TYPES.includes(sliderType)
 
   const saveSliderMeta = async (overrides = {}) => {
@@ -175,8 +205,14 @@ function SliderEditorContent() {
 
   const saveSlide = async (slideData) => {
     const isEdit = Boolean(editingSlide?.id)
-    if (!isEdit && slides.length >= SLIDE_HARD_LIMIT) {
-      throw new Error(`Maximum of ${SLIDE_HARD_LIMIT} slides reached`)
+    if (!isEdit) {
+      const check = canAddSlide({ planId, currentSlideCount: slides.length })
+      if (!check.ok) {
+        const err = new Error(check.message)
+        err.code = check.code
+        err.requiredPlan = check.requiredPlan
+        throw err
+      }
     }
     const url = isEdit ? `/api/sliders/${id}/slides/${editingSlide.id}` : `/api/sliders/${id}/slides`
     const response = await fetch(url, {
@@ -186,7 +222,10 @@ function SliderEditorContent() {
     })
     if (!response.ok) {
       const data = await response.json().catch(() => ({}))
-      throw new Error(data.error || "Failed to save slide")
+      const err = new Error(data.error || "Failed to save slide")
+      err.code = data.code
+      err.requiredPlan = data.requiredPlan
+      throw err
     }
     const saved = await response.json()
     if (saved.warning) showToast(saved.warning)
@@ -219,8 +258,17 @@ function SliderEditorContent() {
 
   const duplicateSlide = async (slide) => {
     if (!slide) return
-    if (slides.length >= SLIDE_HARD_LIMIT) {
-      showToast(`Maximum of ${SLIDE_HARD_LIMIT} slides reached`, { error: true })
+    const check = canAddSlide({ planId, currentSlideCount: slides.length })
+    if (!check.ok) {
+      if (check.code === "PLAN_SLIDE_LIMIT") {
+        openUpgrade({
+          title: "Slide limit reached",
+          message: check.message,
+          requiredPlanId: check.requiredPlan,
+        })
+      } else {
+        showToast(check.message, { error: true })
+      }
       return
     }
     try {
@@ -265,6 +313,14 @@ function SliderEditorContent() {
       })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
+        if (data.code && String(data.code).startsWith("PLAN_")) {
+          openUpgrade({
+            title: "Slide limit reached",
+            message: data.error,
+            requiredPlanId: data.requiredPlan || "standard",
+          })
+          return
+        }
         throw new Error(data.error || "Failed to duplicate slide")
       }
       const saved = await response.json()
@@ -473,17 +529,31 @@ function SliderEditorContent() {
     >
       <div className="se-page">
       <Stack vertical spacing="loose">
-        {softLimitHit && !hardLimitHit && (
+        {softLimitHit && !planLimitHit && (
           <Banner status="warning" title="Approaching slide limit">
             <p>
-              This slider has {slides.length} slides. For best performance, keep under {SLIDE_SOFT_LIMIT}. Hard limit is{" "}
-              {SLIDE_HARD_LIMIT}.
+              This slider has {slides.length} slides. For best performance, keep under {SLIDE_SOFT_LIMIT}.
             </p>
           </Banner>
         )}
-        {hardLimitHit && (
-          <Banner status="critical" title="Slide limit reached">
-            <p>Maximum of {SLIDE_HARD_LIMIT} slides. Remove a slide before adding another.</p>
+        {planLimitHit && (
+          <Banner
+            status="warning"
+            title="Slide limit reached"
+            action={{
+              content: "Upgrade plan",
+              onAction: () =>
+                openUpgrade({
+                  title: "Slide limit reached",
+                  message: `Your ${plan.name} plan allows up to ${maxSlides} slides per slider. Upgrade to add more.`,
+                  requiredPlanId: planId === "free" ? "standard" : "pro",
+                }),
+            }}
+          >
+            <p>
+              Your {plan.name} plan allows up to {maxSlides} slides per slider. Existing slides still work — upgrade to
+              add more.
+            </p>
           </Banner>
         )}
 
@@ -538,7 +608,7 @@ function SliderEditorContent() {
                     {isProductSlider ? (
                       <Button onClick={() => setSelectedTab(1)}>Manage products</Button>
                     ) : (
-                      <Button primary onClick={openAddSlide} disabled={hardLimitHit}>
+                      <Button primary onClick={openAddSlide} disabled={planLimitHit}>
                         Add slide
                       </Button>
                     )}
@@ -689,7 +759,7 @@ function SliderEditorContent() {
                                 <Button
                                   size="slim"
                                   onClick={() => duplicateSlide(slide)}
-                                  disabled={saving || slides.length >= SLIDE_HARD_LIMIT}
+                                  disabled={saving || planLimitHit}
                                 >
                                   Duplicate
                                 </Button>
@@ -849,13 +919,45 @@ function SliderEditorContent() {
 
               {selectedTab === 2 && (
                 <Stack vertical spacing="loose">
+                  {(() => {
+                    const guide = placementGuidance(planId)
+                    return (
+                      <Banner
+                        status={guide.tone === "warning" ? "warning" : "success"}
+                        title={guide.title}
+                        action={
+                          !plan?.placementAnyPage
+                            ? {
+                                content: "View plans",
+                                onAction: () => openManagedPricing(pricingUrl),
+                              }
+                            : undefined
+                        }
+                      >
+                        <p>{guide.body}</p>
+                        {plan?.placementAnyPage ? (
+                          <p style={{ marginTop: 8 }}>
+                            Allowed: {plan.placementAllowedSummary}
+                          </p>
+                        ) : (
+                          <p style={{ marginTop: 8 }}>
+                            Allowed: {plan?.placementAllowedSummary || "Homepage"}. Not allowed:{" "}
+                            {plan?.placementBlockedSummary ||
+                              "Product, Collection, Blog, and other pages"}.
+                          </p>
+                        )}
+                      </Banner>
+                    )
+                  })()}
+
                   <Banner status="info" title="Add SlideEase to your theme">
                     <p>
                       1. Copy the Slider ID below.
                       <br />
                       2. Open Online Store → Themes → Customize.
                       <br />
-                      3. Add section → Apps → SlideEase Slider.
+                      3. Add section → Apps → SlideEase Slider
+                      {!plan?.placementAnyPage ? " on your Homepage template" : " on any page template"}.
                       <br />
                       4. Paste the Slider ID and save.
                     </p>
@@ -891,7 +993,7 @@ function SliderEditorContent() {
                         {copied ? "Copied" : "Copy Slider ID"}
                       </Button>
                       <Button onClick={markEmbedded}>Mark embed done</Button>
-                      <Button onClick={() => navigate("/setupguide")}>Open setup guide</Button>
+                      <Button onClick={() => navigate("/setupguide")}>Open guide</Button>
                     </div>
                   </div>
                 </Stack>
@@ -947,6 +1049,16 @@ function SliderEditorContent() {
         </div>
       </Stack>
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        title={upgradeMeta.title}
+        message={upgradeMeta.message}
+        currentPlanId={planId}
+        requiredPlanId={upgradeMeta.requiredPlanId}
+        pricingUrl={pricingUrl}
+      />
     </Page>
   )
 }

@@ -6,7 +6,10 @@ import { Page, Stack, Text, Spinner, TextField, Banner } from "@shopify/polaris"
 import { ToastProvider, useToast } from "../contexts/toast-context"
 import CreateSliderPanel from "../components/create-slider-panel"
 import OnboardingChecklist from "../components/onboarding-checklist"
+import UpgradeModal from "../components/upgrade-modal"
 import { getSliderTypeInfo } from "../utils/sliderConfig"
+import { canCreateSlider } from "../utils/plans"
+import { useShopPlan } from "../hooks/useShopPlan"
 import {
   IconPlus,
   IconEdit,
@@ -24,6 +27,14 @@ import {
 function SlidersIndexContent() {
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const {
+    planId,
+    plan,
+    limits,
+    usage,
+    pricingUrl,
+    refresh: refreshPlan,
+  } = useShopPlan()
   const [sliders, setSliders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -34,6 +45,21 @@ function SlidersIndexContent() {
   const [deleting, setDeleting] = useState(false)
   const [duplicatingId, setDuplicatingId] = useState(null)
   const [metricsSummary, setMetricsSummary] = useState({ views: 0, ctr: 0 })
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradeMeta, setUpgradeMeta] = useState({
+    title: "Upgrade required",
+    message: "",
+    requiredPlanId: "standard",
+  })
+
+  const openUpgrade = ({ title, message, requiredPlanId }) => {
+    setUpgradeMeta({
+      title: title || "Upgrade required",
+      message: message || "",
+      requiredPlanId: requiredPlanId || "standard",
+    })
+    setUpgradeOpen(true)
+  }
 
   const fetchSliders = async () => {
     try {
@@ -47,6 +73,7 @@ function SlidersIndexContent() {
         .then((r) => (r.ok ? r.json() : null))
         .then((m) => m && setMetricsSummary(m))
         .catch(() => {})
+      refreshPlan()
     } catch (err) {
       setError(err.message)
       showToast(err.message, { error: true })
@@ -57,6 +84,7 @@ function SlidersIndexContent() {
 
   useEffect(() => {
     fetchSliders()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const filtered = useMemo(() => {
@@ -78,6 +106,12 @@ function SlidersIndexContent() {
     [sliders],
   )
 
+  const sliderCount = sliders.length || usage.sliderCount || 0
+
+  const tryOpenCreate = () => {
+    setShowCreate((open) => !open)
+  }
+
   const createSlider = async (name, sliderType) => {
     const response = await fetch("/api/sliders", {
       method: "POST",
@@ -88,28 +122,54 @@ function SlidersIndexContent() {
         status: "draft",
       }),
     })
+    const data = await response.json().catch(() => ({}))
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}))
-      throw new Error(data.error || "Failed to create slider")
+      const err = new Error(data.error || "Failed to create slider")
+      err.code = data.code
+      err.requiredPlan = data.requiredPlan
+      err.pricingUrl = data.pricingUrl
+      throw err
     }
-    const slider = await response.json()
-    showToast(`Slider "${slider.name}" created`)
+    showToast(`Slider "${data.name}" created`)
     setShowCreate(false)
-    navigate(`/sliders/${slider.id}`)
+    refreshPlan()
+    navigate(`/sliders/${data.id}`)
   }
 
   const duplicateSlider = async (slider) => {
     try {
+      const check = canCreateSlider({
+        planId,
+        currentCount: sliderCount,
+        sliderType: slider.sliderType,
+      })
+      if (!check.ok) {
+        openUpgrade({
+          title: check.code === "PLAN_PRESET_LOCKED" ? "Preset locked" : "Slider limit reached",
+          message: check.message,
+          requiredPlanId: check.requiredPlan,
+        })
+        return
+      }
+
       setDuplicatingId(slider.id)
       const response = await fetch(`/api/sliders/${slider.id}/duplicate`, { method: "POST" })
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
+        if (data.code && String(data.code).startsWith("PLAN_")) {
+          openUpgrade({
+            title: "Upgrade required",
+            message: data.error,
+            requiredPlanId: data.requiredPlan || "standard",
+          })
+          return
+        }
         throw new Error(data.error || "Failed to duplicate slider")
       }
-      const copy = await response.json()
-      setSliders((prev) => [copy, ...prev])
-      showToast(`Duplicated as "${copy.name}"`)
-      navigate(`/sliders/${copy.id}`)
+      setSliders((prev) => [data, ...prev])
+      showToast(`Duplicated as "${data.name}"`)
+      refreshPlan()
+      navigate(`/sliders/${data.id}`)
     } catch (err) {
       showToast(err.message, { error: true })
     } finally {
@@ -125,6 +185,7 @@ function SlidersIndexContent() {
       setSliders((prev) => prev.filter((s) => s.id !== slider.id))
       showToast(`Deleted "${slider.name}"`)
       setDeleteTargetId(null)
+      refreshPlan()
     } catch (err) {
       showToast(err.message, { error: true })
     } finally {
@@ -143,7 +204,7 @@ function SlidersIndexContent() {
   }
 
   return (
-      <Page fullWidth>
+    <Page fullWidth>
       <div className="se-page">
         <div className="se-dashboard-stack">
           <div className="se-hero">
@@ -154,28 +215,29 @@ function SlidersIndexContent() {
             <div className="se-hero__stats">
               <span className="se-stat">
                 {sliders.length} slider{sliders.length === 1 ? "" : "s"}
+                {limits.maxSliders != null ? ` / ${limits.maxSliders}` : ""}
               </span>
               <span className="se-stat">{totalSlides} slides</span>
               <span className="se-stat">
                 {metricsSummary.views} views · {metricsSummary.ctr}% CTR
               </span>
+              <span className="se-stat">{plan.name} plan</span>
             </div>
             <div className="se-hero__actions">
-              <button
-                type="button"
-                className="se-btn se-btn--primary"
-                onClick={() => setShowCreate((v) => !v)}
-              >
+              <button type="button" className="se-btn se-btn--primary" onClick={tryOpenCreate}>
                 {showCreate ? <IconClose size={15} /> : <IconPlus size={15} />}
                 {showCreate ? "Close" : "Create slider"}
               </button>
-              <button type="button" className="se-btn se-btn--secondary" onClick={() => navigate("/brand-kit")}>
+              <button type="button" className="se-btn se-btn--secondary" onClick={() => navigate("/appearance")}>
                 <IconPalette size={15} />
-                Brand kit
+                Appearance
+              </button>
+              <button type="button" className="se-btn se-btn--ghost" onClick={() => navigate("/pricing")}>
+                Pricing
               </button>
               <button type="button" className="se-btn se-btn--ghost" onClick={() => navigate("/setupguide")}>
                 <IconBook size={15} />
-                Setup
+                Guide
               </button>
             </div>
           </div>
@@ -189,7 +251,13 @@ function SlidersIndexContent() {
           <OnboardingChecklist sliders={sliders} />
 
           {showCreate && (
-            <CreateSliderPanel onCancel={() => setShowCreate(false)} onCreateSlider={createSlider} />
+            <CreateSliderPanel
+              onCancel={() => setShowCreate(false)}
+              onCreateSlider={createSlider}
+              planId={planId}
+              sliderCount={sliderCount}
+              pricingUrl={pricingUrl}
+            />
           )}
 
           <div className="se-panel">
@@ -246,7 +314,7 @@ function SlidersIndexContent() {
                     : "Add images, CTAs, and style — then embed with one ID."}
                 </Text>
               </div>
-              <button type="button" className="se-btn se-btn--primary" onClick={() => setShowCreate(true)}>
+              <button type="button" className="se-btn se-btn--primary" onClick={tryOpenCreate}>
                 <IconPlus size={15} />
                 Create slider
               </button>
@@ -329,6 +397,17 @@ function SlidersIndexContent() {
           )}
         </div>
       </div>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        title={upgradeMeta.title}
+        message={upgradeMeta.message}
+        currentPlanId={planId}
+        requiredPlanId={upgradeMeta.requiredPlanId}
+        pricingUrl={pricingUrl}
+        hideBackdrop
+      />
     </Page>
   )
 }

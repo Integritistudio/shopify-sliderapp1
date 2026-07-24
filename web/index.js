@@ -1,4 +1,4 @@
-import dotenv from "dotenv"
+import "./load-env.js"
 import path from "path"
 import { fileURLToPath } from "url"
 import express from "express"
@@ -15,12 +15,18 @@ import slideRoutes from "./routes/slides.js"
 import filesRoutes from "./routes/files.js"
 import collectionsRoutes from "./routes/collections.js"
 import shopRoutes from "./routes/shop.js"
+import billingRoutes from "./routes/billing.js"
 import webhookRoutes from "./routes/webhooks.js"
 import { requestLogger, errorHandler, notFoundHandler, handleOptions } from "./utils/index.js"
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-dotenv.config({ path: path.resolve(__dirname, "../.env") })
+process.on("uncaughtException", (error) => {
+  console.error("[fatal] uncaughtException:", error)
+})
+process.on("unhandledRejection", (reason) => {
+  console.error("[fatal] unhandledRejection:", reason)
+})
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number.parseInt(process.env.BACKEND_PORT || process.env.PORT || "3000", 10)
 const STATIC_PATH =
   process.env.NODE_ENV === "production" ? `${process.cwd()}/frontend/dist` : `${process.cwd()}/frontend/`
@@ -56,6 +62,7 @@ app.use("/api", slideRoutes)
 app.use("/api", filesRoutes)
 app.use("/api", collectionsRoutes)
 app.use("/api", shopRoutes)
+app.use("/api", billingRoutes)
 app.use("/api", webhookRoutes)
 
 app.use(shopify.cspHeaders())
@@ -76,6 +83,11 @@ app.use("/*", shopify.ensureInstalledOnShop(), async (_req, res, _next) => {
 app.use(notFoundHandler)
 app.use(errorHandler)
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} (NODE_ENV=${process.env.NODE_ENV || "undefined"})`)
+})
+
+server.on("error", (error) => {
+  console.error(`[fatal] HTTP server error on port ${PORT}:`, error)
+  process.exit(1)
 })

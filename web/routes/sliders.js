@@ -7,11 +7,18 @@ import {
   SLIDE_ATTRIBUTES,
   DEFAULT_SLIDE_FIELDS,
   PRODUCT_SLIDER_TYPES,
-  SLIDE_HARD_LIMIT,
 } from "../utils/sliderDefaults.js"
 import { sanitizePlainText } from "../utils/validation.js"
 import { getTemplateById } from "../utils/templates.js"
 import { fetchCollectionProducts, fetchProductsByIds } from "./collections.js"
+import {
+  assertCanCreateSlider,
+  assertCanChangeSliderType,
+  getPlanMaxSlidesForShop,
+} from "../utils/planGuards.js"
+import { SLIDE_ABSOLUTE_CEILING } from "../utils/plans.js"
+import { resolveShopPlan } from "../utils/resolveShopPlan.js"
+import { upsertShopPlanCache } from "../utils/shopPlanCache.js"
 
 const router = express.Router()
 
@@ -91,6 +98,12 @@ async function markOnboarding(shop, patch) {
 router.get("/sliders", async (req, res) => {
   try {
     const shop = req.shop
+    const session = res.locals.shopify?.session
+    if (shop && session) {
+      resolveShopPlan(session)
+        .then((resolved) => upsertShopPlanCache(shop, resolved.planId))
+        .catch((err) => console.warn("ShopPlan cache sync skipped:", err?.message || err))
+    }
     const sliders = await Slider.findAll({
       where: { shop },
       include: [
@@ -157,6 +170,15 @@ router.post("/sliders", async (req, res) => {
 
     const template = templateId ? getTemplateById(templateId) : null
     const type = template?.sliderType || sliderType || "center"
+    const templateSlidesPreview = slidesInput || template?.slides || []
+    const initialSlideCount = Array.isArray(templateSlidesPreview) ? templateSlidesPreview.length : 0
+
+    const gate = await assertCanCreateSlider(req, res, {
+      sliderType: type,
+      initialSlideCount,
+    })
+    if (gate.denied) return
+
     const brandKit = await BrandKit.findOne({ where: { shop } })
 
     const slider = await Slider.create({
@@ -238,6 +260,11 @@ router.put("/sliders/:id", async (req, res) => {
     }
     if (isExpanded !== undefined) slider.isExpanded = Boolean(isExpanded)
     if (sliderType !== undefined) {
+      const typeGate = await assertCanChangeSliderType(req, res, {
+        nextType: sliderType,
+        currentType: slider.sliderType,
+      })
+      if (typeGate.denied) return
       slider.sliderType = sliderType
       slider.settings = mergeSliderSettings(sliderType, settings || slider.settings || {})
     } else if (settings !== undefined) {
@@ -303,6 +330,13 @@ router.post("/sliders/:id/duplicate", async (req, res) => {
     }
 
     const plain = source.get({ plain: true })
+    const sourceSlides = plain.slides || []
+    const gate = await assertCanCreateSlider(req, res, {
+      sliderType: plain.sliderType,
+      initialSlideCount: sourceSlides.length,
+    })
+    if (gate.denied) return
+
     const copy = await Slider.create({
       name: sanitizePlainText(`Copy of ${plain.name}`, 120),
       sliderType: plain.sliderType,
@@ -313,7 +347,7 @@ router.post("/sliders/:id/duplicate", async (req, res) => {
       shop,
     })
 
-    const slides = plain.slides || []
+    const slides = sourceSlides
     if (slides.length) {
       await Slide.bulkCreate(
         slides.map((slide, index) => ({
@@ -397,9 +431,10 @@ router.post("/sliders/:id/sync-collection", async (req, res) => {
       return res.status(400).json({ error: "Select a collection before syncing" })
     }
 
+    const { maxSlides } = await getPlanMaxSlidesForShop(session)
     const limit = Math.min(
       Math.max(Number(req.body?.productLimit ?? settings.productLimit ?? 8), 1),
-      Math.min(SLIDE_HARD_LIMIT, 50),
+      Math.min(maxSlides, SLIDE_ABSOLUTE_CEILING),
     )
     const showPrice = req.body?.showPrice ?? settings.showPrice !== false
     if (req.body?.sectionHeading !== undefined) {
@@ -466,7 +501,11 @@ router.post("/sliders/:id/sync-products", async (req, res) => {
     slider.settings = settings
     await slider.save()
 
-    const products = await fetchProductsByIds(session, productIds)
+    const { maxSlides } = await getPlanMaxSlidesForShop(session)
+    const products = (await fetchProductsByIds(session, productIds)).slice(
+      0,
+      Math.min(maxSlides, SLIDE_ABSOLUTE_CEILING),
+    )
     await replaceWithProductSlides(slider, products, { showPrice })
     await markOnboarding(shop, { addedSlide: products.length > 0 })
 

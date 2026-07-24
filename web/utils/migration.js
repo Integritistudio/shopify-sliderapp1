@@ -482,6 +482,25 @@ const migrations = {
       }
     },
   },
+
+  "013-shop-plans": {
+    up: async (queryInterface) => {
+      const tables = await queryInterface.showAllTables()
+      const exists = tables.map((t) => String(t).toLowerCase()).includes("shopplans")
+      if (exists) return
+      await queryInterface.createTable("ShopPlans", {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        shop: { type: DataTypes.STRING, allowNull: false, unique: true },
+        planId: { type: DataTypes.STRING, allowNull: false, defaultValue: "free" },
+        placementAnyPage: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+        createdAt: { type: DataTypes.DATE, allowNull: false },
+        updatedAt: { type: DataTypes.DATE, allowNull: false },
+      })
+    },
+    down: async (queryInterface) => {
+      await queryInterface.dropTable("ShopPlans")
+    },
+  },
 }
 
 // Run pending migrations

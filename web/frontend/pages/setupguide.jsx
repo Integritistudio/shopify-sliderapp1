@@ -30,13 +30,20 @@ export default function UserGuide() {
     {
       title: "Add the theme app block",
       description:
-        "Online Store → Themes → Customize → Add section → Apps → SlideEase Slider. Paste the Slider ID, optionally set a heading and spacing, then save. Mark embed done on the Publish tab when finished.",
+        "Online Store → Themes → Customize → Add section → Apps → SlideEase Slider. Paste the Slider ID, optionally set a heading and spacing, then save. Placement depends on your plan: Free = Homepage only; Standard/Pro = any page (Product, Collection, Blog, and more). Mark embed done on the Publish tab when finished.",
     },
   ]
 
   return (
-    <Page title="SlideEase setup guide" subtitle="Build polished sliders with Shopify Files, CTAs, and live previews">
+    <Page title="Guide" subtitle="Build polished sliders with Shopify Files, CTAs, and live previews">
       <Stack vertical spacing="loose">
+        <Banner title="Plan placement rules" status="info">
+          <p>
+            <strong>Free:</strong> Homepage only — not Product, Collection, or Blog.{" "}
+            <strong>Standard &amp; Pro:</strong> Any page (Product, Collection, Blog, Homepage, and more).
+          </p>
+        </Banner>
+
         <Banner title="Enhanced editor" status="info">
           <p>
             SlideEase now supports multiple sliders, Shopify Files image picking, per-slide CTAs, advanced style options,

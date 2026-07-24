@@ -3,7 +3,9 @@ import { Op } from "sequelize"
 import { Slider, Slide } from "../models/index.js"
 import { extractShop } from "../middleware/auth.js"
 import { pickSlidePayload, sanitizePlainText, validateSlideInput } from "../utils/validation.js"
-import { DEFAULT_SLIDE_FIELDS, SLIDE_HARD_LIMIT, SLIDE_SOFT_LIMIT } from "../utils/sliderDefaults.js"
+import { DEFAULT_SLIDE_FIELDS } from "../utils/sliderDefaults.js"
+import { assertCanAddSlide } from "../utils/planGuards.js"
+import { SLIDE_SOFT_LIMIT } from "../utils/plans.js"
 
 const router = express.Router()
 
@@ -81,16 +83,9 @@ router.post("/sliders/:sliderId/slides", async (req, res) => {
       return res.status(404).json({ error: "Slider not found" })
     }
 
-    const slideCount = await Slide.count({
-      where: { SliderId: Number.parseInt(sliderId, 10) },
-    })
-    if (slideCount >= SLIDE_HARD_LIMIT) {
-      return res.status(400).json({
-        error: `This slider already has ${SLIDE_HARD_LIMIT} slides (maximum). Remove a slide before adding another.`,
-        code: "SLIDE_HARD_LIMIT",
-        limit: SLIDE_HARD_LIMIT,
-      })
-    }
+    const gate = await assertCanAddSlide(req, res, sliderId)
+    if (gate.denied) return
+    const slideCount = gate.slideCount
 
     const errors = validateSlideInput(payload)
     if (errors.length) {
@@ -148,7 +143,7 @@ router.post("/sliders/:sliderId/slides", async (req, res) => {
     }
 
     const warning =
-      slideCount + 1 >= SLIDE_SOFT_LIMIT && slideCount + 1 < SLIDE_HARD_LIMIT
+      slideCount + 1 >= SLIDE_SOFT_LIMIT
         ? `This slider has ${slideCount + 1} slides. Consider keeping under ${SLIDE_SOFT_LIMIT} for best performance.`
         : null
 

@@ -4,6 +4,7 @@ import { NavMenu } from "@shopify/app-bridge-react";
 import Routes from "./Routes";
 
 import { QueryProvider, PolarisProvider } from "./components";
+import { AppearanceProvider } from "./contexts/appearance-context";
 
 export default function App() {
   // Any .tsx or .jsx files in /pages will become a route
@@ -17,14 +18,17 @@ export default function App() {
     <PolarisProvider>
       <BrowserRouter>
         <QueryProvider>
-          <NavMenu>
-            <a href="/" rel="home">
-              Sliders
-            </a>
-            <a href="/brand-kit">Brand kit</a>
-            <a href="/setupguide">Setup guide</a>
-          </NavMenu>
-          <Routes pages={pages} />
+          <AppearanceProvider>
+            <NavMenu>
+              <a href="/" rel="home">
+                Sliders
+              </a>
+              <a href="/appearance">Appearance</a>
+              <a href="/pricing">Pricing</a>
+              <a href="/setupguide">Guide</a>
+            </NavMenu>
+            <Routes pages={pages} />
+          </AppearanceProvider>
         </QueryProvider>
       </BrowserRouter>
     </PolarisProvider>
