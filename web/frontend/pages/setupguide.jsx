@@ -36,61 +36,63 @@ export default function UserGuide() {
 
   return (
     <Page title="Guide" subtitle="Build polished sliders with Shopify Files, CTAs, and live previews">
-      <Stack vertical spacing="loose">
-        <Banner title="Plan placement rules" status="info">
-          <p>
-            <strong>Free:</strong> Homepage only — not Product, Collection, or Blog.{" "}
-            <strong>Standard &amp; Pro:</strong> Any page (Product, Collection, Blog, Homepage, and more).
-          </p>
-        </Banner>
+      <div style={{ paddingBottom: 48 }}>
+        <Stack vertical spacing="loose">
+          <Banner title="Plan placement rules" status="info">
+            <p>
+              <strong>Free:</strong> Homepage only — not Product, Collection, or Blog.{" "}
+              <strong>Standard &amp; Pro:</strong> Any page (Product, Collection, Blog, Homepage, and more).
+            </p>
+          </Banner>
 
-        <Banner title="Enhanced editor" status="info">
-          <p>
-            SlideEase now supports multiple sliders, Shopify Files image picking, per-slide CTAs, advanced style options,
-            and a live sample preview before you publish.
-          </p>
-        </Banner>
+          <Banner title="Enhanced editor" status="info">
+            <p>
+              SlideEase now supports multiple sliders, Shopify Files image picking, per-slide CTAs, advanced style options,
+              and a live sample preview before you publish.
+            </p>
+          </Banner>
 
-        {steps.map((step, index) => (
-          <Card key={step.title} sectioned>
-            <Stack vertical spacing="tight">
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  style={{
-                    backgroundColor: "#ed8104",
-                    color: "white",
-                    borderRadius: "50%",
-                    width: 32,
-                    height: 32,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {index + 1}
+          {steps.map((step, index) => (
+            <Card key={step.title} sectioned>
+              <Stack vertical spacing="tight">
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      backgroundColor: "#ed8104",
+                      color: "white",
+                      borderRadius: "50%",
+                      width: 32,
+                      height: 32,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {index + 1}
+                  </div>
+                  <Text variant="headingMd" as="h3">
+                    {step.title}
+                  </Text>
                 </div>
-                <Text variant="headingMd" as="h3">
-                  {step.title}
-                </Text>
-              </div>
-              <Text color="subdued">{step.description}</Text>
+                <Text color="subdued">{step.description}</Text>
+              </Stack>
+            </Card>
+          ))}
+
+          <Card sectioned>
+            <Stack vertical spacing="tight">
+              <Text variant="headingMd" as="h3">
+                Need help?
+              </Text>
+              <Text>
+                If files do not appear or uploads fail, reinstall the app so it can request{" "}
+                <strong>read_files</strong> and <strong>write_files</strong>. Contact support at info@integriti.io.
+              </Text>
             </Stack>
           </Card>
-        ))}
-
-        <Card sectioned>
-          <Stack vertical spacing="tight">
-            <Text variant="headingMd" as="h3">
-              Need help?
-            </Text>
-            <Text>
-              If files do not appear or uploads fail, reinstall the app so it can request{" "}
-              <strong>read_files</strong> and <strong>write_files</strong>. Contact support at info@integriti.io.
-            </Text>
-          </Stack>
-        </Card>
-      </Stack>
+        </Stack>
+      </div>
     </Page>
   )
 }
