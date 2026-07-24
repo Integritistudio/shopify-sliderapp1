@@ -60,6 +60,7 @@
     if (!value) return ""
     const trimmed = String(value).trim()
     if (trimmed.startsWith("/")) return trimmed
+    if (/^data:image\/[a-zA-Z0-9.+-]+(;|,)/i.test(trimmed)) return trimmed
     try {
       const parsed = new URL(trimmed)
       if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.toString()
@@ -795,7 +796,9 @@
       return `
         <div data-slideease-slide-id="${escapeHtml(slide.id)}">
           <div class="se-logo-cell se-frame-${escapeHtml(effect)}">
-            ${logo ? `<img src="${logo}" alt="${escapeHtml(heading || "Brand")}" loading="lazy" />` : `<span>${escapeHtml(heading || "Brand")}</span>`}
+            <div class="se-logo-card">
+              ${logo ? `<img src="${logo}" alt="" loading="lazy" />` : `<span class="se-logo-fallback" aria-hidden="true"></span>`}
+            </div>
           </div>
         </div>
       `
@@ -1209,12 +1212,36 @@
             .slideease-container-${uniqueId} .se-testimonial { padding: 1.25rem 1.1rem; }
             .slideease-container-${uniqueId} .se-testimonial-pad { padding: 0 8px; }
           }
-          .slideease-container-${uniqueId} .se-logo-cell {
-            height: var(--se-height); display: flex; align-items: center; justify-content: center; padding: 0.75rem 1rem;
-            filter: grayscale(1); opacity: 0.78;
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] {
+            border-radius: 16px;
+            border: 1px solid #ebe4f5;
+            background: linear-gradient(120deg, #fff8f0 0%, #f7f2ff 48%, #eef8ff 100%);
+            padding: 0.65rem 0.35rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
           }
-          .slideease-container-${uniqueId} .se-logo-cell img { max-width: 140px; max-height: 64px; object-fit: contain; }
-          .slideease-container-${uniqueId} .se-logo-cell span { font-weight: 700; color: #170f49; }
+          .slideease-container-${uniqueId} .se-logo-cell {
+            height: var(--se-height); display: flex; align-items: center; justify-content: center; padding: 0.55rem 0.45rem;
+          }
+          .slideease-container-${uniqueId} .se-logo-card {
+            width: 100%; max-width: 160px; height: calc(var(--se-height) - 1.1rem); min-height: 56px;
+            display: flex; align-items: center; justify-content: center;
+            background: #fff; border-radius: 14px; padding: 0.7rem 1rem;
+            border: 1px solid rgba(23, 15, 73, 0.07);
+            box-shadow: 0 6px 18px rgba(23, 15, 73, 0.07);
+            transition: transform 0.25s var(--se-ease, ease), box-shadow 0.25s ease;
+          }
+          .slideease-container-${uniqueId} .se-logo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(23, 15, 73, 0.1);
+          }
+          .slideease-container-${uniqueId} .se-logo-cell img {
+            max-width: 140px; max-height: 64px; width: auto; height: auto; object-fit: contain;
+            filter: none; opacity: 1; display: block;
+          }
+          .slideease-container-${uniqueId} .se-logo-fallback {
+            display: block; width: 70%; height: 55%; border-radius: 8px;
+            background: linear-gradient(135deg, #ffd6a5, #c4b5fd, #93c5fd);
+          }
           .slideease-container-${uniqueId} .se-story { position: relative; overflow: hidden; height: var(--se-render-height); background: #111; }
           .slideease-container-${uniqueId} .se-story__media { position: absolute; inset: 0; }
           .slideease-container-${uniqueId} .se-story__media .se-media { width: 100%; height: 100%; object-fit: cover; }

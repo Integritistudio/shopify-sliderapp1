@@ -15,6 +15,8 @@ export function safeUrl(value) {
   if (!value) return ""
   const trimmed = String(value).trim()
   if (trimmed.startsWith("/")) return trimmed
+  // Allow sample/preview logos encoded as data:image/* (never data:text/html etc.)
+  if (/^data:image\/[a-zA-Z0-9.+-]+(;|,)/i.test(trimmed)) return trimmed
   try {
     const url = new URL(trimmed)
     if (url.protocol === "http:" || url.protocol === "https:") {

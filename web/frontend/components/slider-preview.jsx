@@ -1358,28 +1358,65 @@ export default function SliderPreview({
     if (effect === "logo-grid") {
       const loop = [...visibleSlides, ...visibleSlides]
       return (
-        <div style={{ overflow: "hidden", borderRadius: 12, border: "1px solid #e7e7e7", background: "#fff", padding: "1rem 0" }}>
-          <div style={{ display: "flex", gap: 28, width: "max-content", animation: "seMarquee 16s linear infinite", alignItems: "center" }}>
-            {loop.map((slide, i) => (
-              <div
-                key={`${slide.id}-logo-${i}`}
-                style={{
-                  width: compact ? 88 : 120,
-                  height: compact ? 48 : 64,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  filter: "grayscale(1)",
-                  opacity: 0.75,
-                }}
-              >
-                {safeUrl(slide.imageUrl) ? (
-                  <img src={safeUrl(slide.imageUrl)} alt={slide.heading || ""} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-                ) : (
-                  <span style={{ fontWeight: 700, color: "#170f49" }}>{slide.heading || "Brand"}</span>
-                )}
-              </div>
-            ))}
+        <div
+          style={{
+            overflow: "hidden",
+            borderRadius: 16,
+            border: "1px solid #ebe4f5",
+            background: "linear-gradient(120deg, #fff8f0 0%, #f7f2ff 48%, #eef8ff 100%)",
+            padding: compact ? "0.85rem 0" : "1.15rem 0",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: compact ? 12 : 16,
+              width: "max-content",
+              animation: "seMarquee 18s linear infinite",
+              alignItems: "center",
+              paddingInline: 12,
+            }}
+          >
+            {loop.map((slide, i) => {
+              const logoSrc = safeUrl(slide.imageUrl)
+              return (
+                <div
+                  key={`${slide.id}-logo-${i}`}
+                  style={{
+                    width: compact ? 108 : 140,
+                    height: compact ? 58 : 72,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "#ffffff",
+                    borderRadius: 14,
+                    border: "1px solid rgba(23, 15, 73, 0.07)",
+                    boxShadow: "0 6px 18px rgba(23, 15, 73, 0.07)",
+                    padding: "10px 14px",
+                    flex: "0 0 auto",
+                  }}
+                >
+                  {logoSrc ? (
+                    <img
+                      src={logoSrc}
+                      alt=""
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+                    />
+                  ) : (
+                    <div
+                      aria-hidden
+                      style={{
+                        width: "70%",
+                        height: "55%",
+                        borderRadius: 8,
+                        background: "linear-gradient(135deg, #ffd6a5, #c4b5fd, #93c5fd)",
+                      }}
+                    />
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )

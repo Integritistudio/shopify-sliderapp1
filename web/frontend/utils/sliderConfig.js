@@ -619,6 +619,15 @@ export function buildSlickConfig(settings, { thumbnailSelector } = {}) {
   return config
 }
 
+/** Local colorful logo marks for Logo Grid sample previews (image only, no text). */
+const SAMPLE_LOGO_IMAGES = [
+  "/sample-logos/logo-1.svg",
+  "/sample-logos/logo-2.svg",
+  "/sample-logos/logo-3.svg",
+  "/sample-logos/logo-4.svg",
+  "/sample-logos/logo-5.svg",
+]
+
 export const SAMPLE_SLIDES = [
   {
     id: "sample-1",
@@ -788,30 +797,37 @@ export const SAMPLE_SLIDES_BY_TYPE = {
   "logo-grid": [
     {
       id: "l1",
-      imageUrl: "https://images.unsplash.com/photo-1611162617474-5b21e919e113?w=400&q=80",
-      heading: "Northwind",
-      title: "Northwind",
+      imageUrl: SAMPLE_LOGO_IMAGES[0],
+      heading: "",
+      title: "",
       isVisible: true,
     },
     {
       id: "l2",
-      imageUrl: "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=400&q=80",
-      heading: "Harbor",
-      title: "Harbor",
+      imageUrl: SAMPLE_LOGO_IMAGES[1],
+      heading: "",
+      title: "",
       isVisible: true,
     },
     {
       id: "l3",
-      imageUrl: "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=400&q=80",
-      heading: "Atlas",
-      title: "Atlas",
+      imageUrl: SAMPLE_LOGO_IMAGES[2],
+      heading: "",
+      title: "",
       isVisible: true,
     },
     {
       id: "l4",
-      imageUrl: "https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?w=400&q=80",
-      heading: "Summit",
-      title: "Summit",
+      imageUrl: SAMPLE_LOGO_IMAGES[3],
+      heading: "",
+      title: "",
+      isVisible: true,
+    },
+    {
+      id: "l5",
+      imageUrl: SAMPLE_LOGO_IMAGES[4],
+      heading: "",
+      title: "",
       isVisible: true,
     },
   ],
