@@ -2,18 +2,15 @@
  * Shopify inbound webhook handlers: privacy + app lifecycle + subscriptions.
  */
 import { DeliveryMethod } from "@shopify/shopify-api"
-import { Slider } from "./models/index.js"
+import { Slider, ShopAffiliate, ShopPlan } from "./models/index.js"
 import shopify from "./shopify.js"
 import {
   getShopAffiliate,
   upsertShopAffiliate,
   normalizeShopDomain,
+  markShopUninstalled,
 } from "./utils/shopAffiliate.js"
-import {
-  buildShopContext,
-  notifyPortal,
-  uninstallEventId,
-} from "./utils/portalWebhook.js"
+import { sendUninstall } from "./utils/portalWebhook.js"
 import { upsertShopPlanCache } from "./utils/shopPlanCache.js"
 import { handleSubscriptionUpdate } from "./utils/subscriptionBilling.js"
 
@@ -27,7 +24,11 @@ export default {
     callback: async (topic, shop, body, webhookId) => {
       const payload = JSON.parse(body)
       console.log("CUSTOMERS_DATA_REQUEST received:", payload)
-      console.log(`Customer data request for ${payload.customer?.email} in shop ${payload.shop_domain}`)
+      console.log(
+        `Customer data request for ${payload.customer?.email} in shop ${payload.shop_domain}`,
+      )
+      // Slide Ease does not store customer PII beyond optional analytics events;
+      // acknowledge receipt for mandatory compliance.
     },
   },
 
@@ -37,7 +38,10 @@ export default {
     callback: async (topic, shop, body, webhookId) => {
       const payload = JSON.parse(body)
       console.log("CUSTOMERS_REDACT received:", payload)
-      console.log(`Redacting customer ${payload.customer?.email} in shop ${payload.shop_domain}`)
+      console.log(
+        `Redacting customer ${payload.customer?.email} in shop ${payload.shop_domain}`,
+      )
+      // No per-customer merchant records stored by Slide Ease.
     },
   },
 
@@ -48,16 +52,22 @@ export default {
       const payload = JSON.parse(body)
       console.log("SHOP_REDACT received:", payload)
 
-      const shopDomain = payload.shop_domain
+      const shopDomain = normalizeShopDomain(payload.shop_domain || shop)
 
       try {
-        // Delete merchant content only — do NOT clear ShopAffiliates (referral lock survives)
-        const deletedCount = await Slider.destroy({
-          where: { shop: shopDomain },
-          cascade: true,
-        })
+        // Mandatory shop/redact: delete merchant content AND shop-identifying /
+        // affiliate rows. Attribution may survive uninstall→reinstall, but once
+        // Shopify issues shop/redact the grace period is over.
+        if (shopDomain) {
+          const deletedCount = await Slider.destroy({
+            where: { shop: shopDomain },
+            cascade: true,
+          })
+          console.log(`Deleted ${deletedCount} sliders for shop ${shopDomain}`)
 
-        console.log(`Deleted ${deletedCount} sliders for shop ${shopDomain}`)
+          await ShopPlan.destroy({ where: { shop: shopDomain } }).catch(() => {})
+          await ShopAffiliate.destroy({ where: { shop: shopDomain } }).catch(() => {})
+        }
       } catch (error) {
         console.error("Error redacting shop data:", error)
       }
@@ -69,7 +79,9 @@ export default {
     callbackUrl: "/api/webhooks",
     callback: async (topic, shop, body, webhookId) => {
       const payload = JSON.parse(body)
-      const shopDomain = normalizeShopDomain(shop || payload.myshopify_domain || payload.domain)
+      const shopDomain = normalizeShopDomain(
+        shop || payload.myshopify_domain || payload.domain,
+      )
       console.log("APP_UNINSTALLED received:", shopDomain, webhookId)
 
       try {
@@ -82,15 +94,18 @@ export default {
         }
 
         if (row) {
-          const ctx = buildShopContext({
-            shopDomain: row.shop,
-            shopifyShopId: row.shopifyShopId || payload.admin_graphql_api_id,
-            shopName: row.shopName || payload.name,
-          })
-          await notifyPortal("uninstall", ctx, uninstallEventId(ctx.shopify_shop_id, new Date().toISOString()))
+          const eventId = await markShopUninstalled(row, { webhookId })
+          await sendUninstall(
+            {
+              shopDomain: row.shop,
+              shopifyShopId: row.shopifyShopId || payload.admin_graphql_api_id,
+              shopName: row.shopName || payload.name,
+            },
+            { eventId, webhookId },
+          )
         }
 
-        // Reset plan cache to free; keep affiliate row intact
+        // Reset plan cache to free; keep affiliate row intact until shop/redact
         if (shopDomain) {
           await upsertShopPlanCache(shopDomain, "free").catch(() => {})
         }
@@ -105,7 +120,10 @@ export default {
             }
           }
         } catch (sessionErr) {
-          console.warn("APP_UNINSTALLED session cleanup failed:", sessionErr?.message || sessionErr)
+          console.warn(
+            "APP_UNINSTALLED session cleanup failed:",
+            sessionErr?.message || sessionErr,
+          )
         }
       } catch (error) {
         console.error("APP_UNINSTALLED handler error:", error)

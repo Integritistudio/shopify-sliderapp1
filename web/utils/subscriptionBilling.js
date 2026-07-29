@@ -3,10 +3,15 @@
  *
  * Note: quiet monthly renewals often do NOT fire this webhook; lifecycle
  * (activate / change / cancel / decline) is what we report here.
+ * payment_cancelled is supported by the portal contract but has no reliable
+ * Managed Pricing trigger — do not synthesize it.
  */
 import {
-  buildShopContext,
-  notifyPortal,
+  sendSubscriptionActivated,
+  sendPlanChanged,
+  sendPaymentCompleted,
+  sendSubscriptionCancelled,
+  sendPaymentDeclined,
   billingEventId,
 } from "./portalWebhook.js"
 import { mapShopifyHandleToPlanId } from "./plans.js"
@@ -56,14 +61,13 @@ export async function handleSubscriptionUpdate({ shopDomain, appSubscription, we
   }
 
   const previousPlanId = row?.lastPlanId || null
-  const ctx = buildShopContext({
+  const ctx = {
     shopDomain: shop || row?.shop,
     shopifyShopId: shopifyShopId || row?.shopifyShopId,
     shopName: row?.shopName,
-  })
+  }
 
-  const baseBilling = {
-    ...ctx,
+  const billingFields = {
     shopify_subscription_id: subscriptionId || undefined,
     shopify_plan_id: planId,
     amount,
@@ -84,38 +88,33 @@ export async function handleSubscriptionUpdate({ shopDomain, appSubscription, we
       previousPlanId && previousPlanId !== planId && previousPlanId !== "free"
 
     if (planChanged) {
-      await notifyPortal(
-        "billing",
+      await sendPlanChanged(
+        ctx,
         {
-          ...baseBilling,
-          event_type: "plan_changed",
+          ...billingFields,
           previous_shopify_plan_id: previousPlanId,
         },
-        billingEventId(`plan-change-${webhookId || "x"}`, subscriptionId),
+        billingEventId("plan-change", subscriptionId, webhookId),
       )
     } else {
-      await notifyPortal(
-        "billing",
-        {
-          ...baseBilling,
-          event_type: "subscription_activated",
-        },
-        billingEventId(`sub-activated-${webhookId || "x"}`, subscriptionId),
+      await sendSubscriptionActivated(
+        ctx,
+        billingFields,
+        billingEventId("sub-activated", subscriptionId, webhookId),
       )
     }
 
     // Report payment on activation / paid plan change (not silent renewals)
     if (amount != null && amount > 0) {
-      await notifyPortal(
-        "billing",
+      await sendPaymentCompleted(
+        ctx,
         {
-          ...baseBilling,
-          event_type: "payment_completed",
+          ...billingFields,
           shopify_payment_id: subscriptionId
-            ? `${subscriptionId}/charge/${sub.updated_at || webhookId || Date.now()}`
+            ? `${subscriptionId}/charge/${webhookId || sub.updated_at || "activation"}`
             : undefined,
         },
-        billingEventId(`pay-completed-${webhookId || sub.updated_at || "x"}`, subscriptionId),
+        billingEventId("pay-completed", subscriptionId, webhookId || sub.updated_at),
       )
     }
 
@@ -130,13 +129,10 @@ export async function handleSubscriptionUpdate({ shopDomain, appSubscription, we
   }
 
   if (status === "CANCELLED" || status === "EXPIRED") {
-    await notifyPortal(
-      "billing",
-      {
-        ...baseBilling,
-        event_type: "subscription_cancelled",
-      },
-      billingEventId(`sub-cancelled-${webhookId || "x"}`, subscriptionId),
+    await sendSubscriptionCancelled(
+      ctx,
+      billingFields,
+      billingEventId("sub-cancelled", subscriptionId, webhookId),
     )
     if (row) {
       await upsertShopAffiliate(shop, {
@@ -148,16 +144,15 @@ export async function handleSubscriptionUpdate({ shopDomain, appSubscription, we
   }
 
   if (status === "DECLINED" || status === "FROZEN") {
-    await notifyPortal(
-      "billing",
+    await sendPaymentDeclined(
+      ctx,
       {
-        ...baseBilling,
-        event_type: "payment_declined",
+        ...billingFields,
         shopify_payment_id: subscriptionId
-          ? `${subscriptionId}/declined/${webhookId || sub.updated_at || Date.now()}`
+          ? `${subscriptionId}/declined/${webhookId || sub.updated_at || "x"}`
           : undefined,
       },
-      billingEventId(`pay-declined-${webhookId || "x"}`, subscriptionId),
+      billingEventId("pay-declined", subscriptionId, webhookId),
     )
     if (row) {
       await upsertShopAffiliate(shop, {
@@ -167,3 +162,6 @@ export async function handleSubscriptionUpdate({ shopDomain, appSubscription, we
     }
   }
 }
+
+// Re-export buildShopContext for callers that previously imported it here
+export { buildShopContext } from "./portalWebhook.js"

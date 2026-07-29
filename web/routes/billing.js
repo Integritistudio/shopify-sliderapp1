@@ -78,9 +78,12 @@ router.get("/billing/affiliate", async (req, res) => {
       row = (await ensureShopIdentity(session)) || row
     }
 
+    const code = row?.affiliateCode === "__CONFLICT__" ? null : row?.affiliateCode || null
+
     res.json({
-      affiliateCode: row?.affiliateCode || null,
+      affiliateCode: code,
       locked: isAffiliateLocked(row),
+      conflictLocked: row?.affiliateCode === "__CONFLICT__",
     })
   } catch (error) {
     console.error("Error fetching affiliate:", error)
@@ -92,6 +95,12 @@ router.get("/billing/affiliate", async (req, res) => {
  * POST /api/billing/affiliate
  * Body: { affiliateCode: string }
  * One-time: after success (or portal 409 conflict), no further codes accepted — including after reinstall.
+ *
+ * Outcomes (mirrors portal contract):
+ *   200 success / duplicate / duplicateAttribution
+ *   409 ATTRIBUTION_CONFLICT
+ *   400 CODE_INACTIVE / wrong app / validation
+ *   401 / 503 config / auth / transport
  */
 router.post("/billing/affiliate", async (req, res) => {
   try {
@@ -106,20 +115,34 @@ router.post("/billing/affiliate", async (req, res) => {
       return res.status(400).json({ error: "Could not resolve shop identity" })
     }
 
-    const result = await applyAffiliateCode(row, req.body?.affiliateCode || req.body?.affiliate_code)
+    const result = await applyAffiliateCode(
+      row,
+      req.body?.affiliateCode || req.body?.affiliate_code,
+    )
+
+    const displayCode =
+      result.affiliateCode === "__CONFLICT__" ? null : result.affiliateCode || null
+
     if (!result.ok) {
       return res.status(result.status || 400).json({
-        error: result.error,
+        success: false,
+        error: result.merchantMessage || result.error,
         code: result.code,
-        affiliateCode: result.affiliateCode || null,
+        outcome: result.outcome,
+        affiliateCode: displayCode,
         locked: Boolean(result.locked),
       })
     }
 
     res.json({
       success: true,
-      affiliateCode: result.affiliateCode,
+      ok: true,
+      affiliateCode: displayCode,
       locked: true,
+      outcome: result.outcome || "success",
+      duplicate: Boolean(result.duplicate),
+      duplicateAttribution: Boolean(result.duplicateAttribution),
+      message: result.merchantMessage || "Code applied",
     })
   } catch (error) {
     console.error("Error applying affiliate:", error)

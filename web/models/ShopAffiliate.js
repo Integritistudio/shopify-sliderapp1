@@ -45,6 +45,25 @@ const ShopAffiliate = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    /**
+     * Installation lifecycle for portal install/uninstall idempotency.
+     * installed | uninstalled — affiliate attribution is never cleared here.
+     */
+    installStatus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    /** Stable event_id for the current install cycle (reused on OAuth retries). */
+    installEventId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    /** Stable event_id for the last uninstall (idempotent webhook retries). */
+    uninstallEventId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     tableName: "ShopAffiliates",

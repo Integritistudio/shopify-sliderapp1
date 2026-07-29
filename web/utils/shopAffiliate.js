@@ -1,11 +1,10 @@
 import shopify from "../shopify.js"
 import { ShopAffiliate } from "../models/index.js"
 import {
-  buildShopContext,
-  notifyPortal,
-  postPortal,
+  sendInstall,
+  sendAffiliateCode,
   installEventId,
-  affiliateEventId,
+  uninstallEventId,
   isPortalConfigured,
 } from "./portalWebhook.js"
 
@@ -55,7 +54,7 @@ export async function fetchShopIdentity(session) {
 }
 
 /**
- * Upsert shop row; optionally merge identity fields.
+ * Upsert shop row; optionally merge identity / install fields.
  */
 export async function upsertShopAffiliate(shopDomain, fields = {}) {
   const shop = normalizeShopDomain(shopDomain)
@@ -69,6 +68,9 @@ export async function upsertShopAffiliate(shopDomain, fields = {}) {
       shopName: fields.shopName || null,
       lastPlanId: fields.lastPlanId || null,
       lastSubscriptionId: fields.lastSubscriptionId || null,
+      installStatus: fields.installStatus || null,
+      installEventId: fields.installEventId || null,
+      uninstallEventId: fields.uninstallEventId || null,
     },
   })
 
@@ -87,6 +89,18 @@ export async function upsertShopAffiliate(shopDomain, fields = {}) {
   }
   if (fields.lastSubscriptionId !== undefined && row.lastSubscriptionId !== fields.lastSubscriptionId) {
     row.lastSubscriptionId = fields.lastSubscriptionId
+    dirty = true
+  }
+  if (fields.installStatus !== undefined && row.installStatus !== fields.installStatus) {
+    row.installStatus = fields.installStatus
+    dirty = true
+  }
+  if (fields.installEventId !== undefined && row.installEventId !== fields.installEventId) {
+    row.installEventId = fields.installEventId
+    dirty = true
+  }
+  if (fields.uninstallEventId !== undefined && row.uninstallEventId !== fields.uninstallEventId) {
+    row.uninstallEventId = fields.uninstallEventId
     dirty = true
   }
   if (dirty) await row.save()
@@ -117,106 +131,184 @@ export async function ensureShopIdentity(session) {
 }
 
 /**
- * Send portal install event (idempotent via event_id).
+ * Begin a new install cycle if needed, persist stable installEventId, notify portal.
+ * Routine OAuth while already installed skips the portal call entirely.
+ *
+ * Returns { sent: boolean, result?, row, skipped?: boolean }
  */
-export async function notifyPortalInstall(row, { status = "installed" } = {}) {
-  if (!row) return
-  const ctx = buildShopContext({
-    shopDomain: row.shop,
-    shopifyShopId: row.shopifyShopId,
-    shopName: row.shopName,
-  })
+export async function notifyPortalInstall(row, { status = "installed", forceNewCycle = false } = {}) {
+  if (!row) return { sent: false, skipped: true, row }
+
+  const alreadyInstalled = row.installStatus === "installed" && row.installEventId
+  if (alreadyInstalled && !forceNewCycle) {
+    return { sent: false, skipped: true, row }
+  }
+
   const eventId = installEventId(row.shopifyShopId || row.shop)
-  return notifyPortal(
-    "install",
+  row.installEventId = eventId
+  row.installStatus = "installed"
+  row.uninstallEventId = null
+  await row.save()
+
+  const result = await sendInstall(
     {
-      ...ctx,
-      status,
+      shopDomain: row.shop,
+      shopifyShopId: row.shopifyShopId,
+      shopName: row.shopName,
     },
-    eventId,
+    { eventId, status },
   )
+
+  return { sent: true, result, row, skipped: false }
 }
 
 /**
- * Apply affiliate code: lock locally only after portal success or 409 conflict.
+ * Mark shop uninstalled locally (keeps affiliate attribution) and return
+ * a stable uninstall event_id for the portal call.
+ */
+export async function markShopUninstalled(row, { webhookId } = {}) {
+  if (!row) return null
+  if (row.installStatus === "uninstalled" && row.uninstallEventId) {
+    return row.uninstallEventId
+  }
+
+  const eventId =
+    row.uninstallEventId ||
+    uninstallEventId(row.shopifyShopId || row.shop, webhookId || new Date().toISOString())
+
+  row.installStatus = "uninstalled"
+  row.uninstallEventId = eventId
+  // Keep installEventId so reinstall can mint a NEW install event_id
+  row.installEventId = null
+  await row.save()
+  return eventId
+}
+
+/**
+ * Apply affiliate code: lock locally only after portal success / duplicate /
+ * duplicateAttribution / conflict. Never steal attribution on 409.
  */
 export async function applyAffiliateCode(row, rawCode) {
   if (!row) {
-    return { ok: false, status: 404, error: "Shop not found" }
-  }
-  if (isAffiliateLocked(row)) {
-    return {
-      ok: false,
-      status: 409,
-      error: "Affiliate code already applied for this store",
-      affiliateCode: row.affiliateCode,
-      locked: true,
-    }
+    return { ok: false, status: 404, error: "Shop not found", outcome: "error" }
   }
 
   const affiliate_code = String(rawCode || "")
     .trim()
     .toUpperCase()
   if (!affiliate_code || affiliate_code.length > 64) {
-    return { ok: false, status: 400, error: "Invalid affiliate code" }
+    return {
+      ok: false,
+      status: 400,
+      error: "Invalid affiliate code",
+      outcome: "validationError",
+      merchantMessage: "Invalid affiliate code",
+    }
+  }
+
+  // Same code again while locked → idempotent success (UI: already applied)
+  if (isAffiliateLocked(row)) {
+    const existing = String(row.affiliateCode || "")
+      .trim()
+      .toUpperCase()
+    if (existing && existing === affiliate_code) {
+      return {
+        ok: true,
+        status: 200,
+        affiliateCode: existing,
+        locked: true,
+        outcome: "duplicateAttribution",
+        merchantMessage: "Code applied",
+        duplicateAttribution: true,
+      }
+    }
+    return {
+      ok: false,
+      status: 409,
+      error: "This store is already linked to another partner. The existing affiliation cannot be overwritten.",
+      code: "ATTRIBUTION_CONFLICT",
+      affiliateCode: row.affiliateCode,
+      locked: true,
+      outcome: "attributionConflict",
+      merchantMessage:
+        "This store is already linked to another partner. The existing affiliation cannot be overwritten.",
+    }
   }
 
   if (!isPortalConfigured()) {
     return {
       ok: false,
       status: 503,
-      error: "Affiliate portal is not configured. Set PORTAL_WEBHOOK_BASE_URL and PORTAL_WEBHOOK_SECRET.",
+      error: "Affiliate portal is not configured. Set WEBHOOK_SECRET.",
       locked: false,
+      outcome: "notConfigured",
+      merchantMessage: "Affiliate portal is not configured. Contact support.",
+      code: "NOT_CONFIGURED",
     }
   }
 
-  const ctx = buildShopContext({
-    shopDomain: row.shop,
-    shopifyShopId: row.shopifyShopId,
-    shopName: row.shopName,
-  })
-
-  const result = await postPortal(
-    "affiliate-code",
+  const result = await sendAffiliateCode(
     {
-      ...ctx,
-      affiliate_code,
+      shopDomain: row.shop,
+      shopifyShopId: row.shopifyShopId,
+      shopName: row.shopName,
     },
-    affiliateEventId(row.shopifyShopId || row.shop, affiliate_code),
+    affiliate_code,
   )
 
   if (result.ok) {
     row.affiliateCode = affiliate_code
     row.affiliateLockedAt = new Date()
     await row.save()
-    return { ok: true, status: 200, affiliateCode: affiliate_code, locked: true }
+    return {
+      ok: true,
+      status: 200,
+      affiliateCode: affiliate_code,
+      locked: true,
+      outcome: result.outcome,
+      merchantMessage: result.merchantMessage || "Code applied",
+      duplicate: result.duplicate,
+      duplicateAttribution: result.duplicateAttribution,
+    }
   }
 
-  if (result.conflict) {
-    // Portal says shop already attributed — lock so we never accept another code
-    const existing =
+  if (result.conflict || result.outcome === "attributionConflict") {
+    // Portal says shop already attributed — lock WITHOUT storing the submitted
+    // code as if it were the existing affiliate.
+    const existingFromPortal =
       result.body?.error?.existing_code ||
+      result.body?.existing_affiliate_code ||
       result.body?.affiliate_code ||
-      affiliate_code
-    row.affiliateCode = String(existing).trim().toUpperCase() || affiliate_code
+      null
+
     row.affiliateLockedAt = new Date()
+    if (existingFromPortal) {
+      row.affiliateCode = String(existingFromPortal).trim().toUpperCase()
+    } else if (!row.affiliateCode) {
+      // Lock with sentinel so we never accept another code; don't claim submitted code
+      row.affiliateCode = row.affiliateCode || "__CONFLICT__"
+    }
     await row.save()
+
     return {
       ok: false,
       status: 409,
-      error:
-        result.body?.error?.message ||
-        "This store is already attributed to a different affiliate.",
-      code: result.body?.error?.code || "ATTRIBUTION_CONFLICT",
-      affiliateCode: row.affiliateCode,
+      error: result.merchantMessage || result.errorMessage,
+      code: result.errorCode || "ATTRIBUTION_CONFLICT",
+      affiliateCode: row.affiliateCode === "__CONFLICT__" ? null : row.affiliateCode,
       locked: true,
+      outcome: "attributionConflict",
+      merchantMessage: result.merchantMessage,
     }
   }
 
   return {
     ok: false,
     status: result.status || 502,
-    error: result.body?.error?.message || result.body?.error || "Failed to apply affiliate code",
+    error: result.merchantMessage || result.errorMessage || "Failed to apply affiliate code",
+    code: result.errorCode,
     locked: false,
+    outcome: result.outcome,
+    merchantMessage: result.merchantMessage,
   }
 }

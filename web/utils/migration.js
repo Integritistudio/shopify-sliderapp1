@@ -524,6 +524,38 @@ const migrations = {
       await queryInterface.dropTable("ShopAffiliates")
     },
   },
+
+  "015-shop-affiliates-install-state": {
+    up: async (queryInterface) => {
+      const table = await queryInterface.describeTable("ShopAffiliates").catch(() => null)
+      if (!table) return
+      if (!table.installStatus) {
+        await queryInterface.addColumn("ShopAffiliates", "installStatus", {
+          type: DataTypes.STRING,
+          allowNull: true,
+        })
+      }
+      if (!table.installEventId) {
+        await queryInterface.addColumn("ShopAffiliates", "installEventId", {
+          type: DataTypes.STRING,
+          allowNull: true,
+        })
+      }
+      if (!table.uninstallEventId) {
+        await queryInterface.addColumn("ShopAffiliates", "uninstallEventId", {
+          type: DataTypes.STRING,
+          allowNull: true,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const table = await queryInterface.describeTable("ShopAffiliates").catch(() => null)
+      if (!table) return
+      if (table.uninstallEventId) await queryInterface.removeColumn("ShopAffiliates", "uninstallEventId")
+      if (table.installEventId) await queryInterface.removeColumn("ShopAffiliates", "installEventId")
+      if (table.installStatus) await queryInterface.removeColumn("ShopAffiliates", "installStatus")
+    },
+  },
 }
 
 // Run pending migrations

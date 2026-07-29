@@ -78,16 +78,45 @@ export default function PricingPage() {
         body: JSON.stringify({ affiliateCode }),
       })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        if (data.locked && data.affiliateCode) {
-          setAffiliateLocked(true)
-          setAffiliateCode(data.affiliateCode)
-        }
-        throw new Error(data.error || "Failed to apply affiliate code")
+
+      if (response.ok) {
+        setAffiliateLocked(true)
+        setAffiliateCode(data.affiliateCode || affiliateCode)
+        setAffiliateSuccess(
+          data.duplicateAttribution || data.outcome === "duplicateAttribution"
+            ? "Code applied (already linked to this partner)."
+            : data.message || "Code applied",
+        )
+        return
       }
-      setAffiliateLocked(true)
-      setAffiliateCode(data.affiliateCode || affiliateCode)
-      setAffiliateSuccess("Affiliate code applied. It cannot be changed later.")
+
+      if (data.locked) {
+        setAffiliateLocked(true)
+        if (data.affiliateCode) setAffiliateCode(data.affiliateCode)
+      }
+
+      const code = data.code || data.outcome
+      let message = data.error || "Failed to apply affiliate code"
+      if (code === "ATTRIBUTION_CONFLICT" || data.outcome === "attributionConflict") {
+        message =
+          "This store is already linked to another partner. The existing affiliation cannot be overwritten."
+      } else if (
+        code === "CODE_INACTIVE" ||
+        data.outcome === "codeInactive" ||
+        data.outcome === "affiliateInactive"
+      ) {
+        message = "Invalid or inactive code"
+      } else if (data.outcome === "wrongApp") {
+        message = "Code doesn’t apply to Slide Ease"
+      } else if (data.outcome === "notConfigured" || response.status === 503) {
+        message = "Affiliate portal is not configured. Contact support."
+      } else if (data.outcome === "unauthorized" || response.status === 401) {
+        message = "Affiliate service authentication failed. Contact support."
+      } else if (data.outcome === "networkError" || response.status >= 500) {
+        message = "Could not reach the affiliate portal. Try again shortly."
+      }
+
+      throw new Error(message)
     } catch (error) {
       setAffiliateError(error.message)
     } finally {
@@ -219,7 +248,13 @@ export default function PricingPage() {
               ) : affiliateLocked ? (
                 <Banner status="success" title="Affiliate code applied">
                   <p>
-                    Code <strong>{affiliateCode || "—"}</strong> is locked to this store.
+                    {affiliateCode ? (
+                      <>
+                        Code <strong>{affiliateCode}</strong> is locked to this store.
+                      </>
+                    ) : (
+                      <>This store is already linked to a partner and cannot accept another code.</>
+                    )}
                   </p>
                 </Banner>
               ) : (
