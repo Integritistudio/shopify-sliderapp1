@@ -15,7 +15,7 @@ const shopify = shopifyApp({
       lineItemBilling: true,
       unstable_managedPricingSupport: true,
     },
-    billing: undefined, // App is free — no billing
+    billing: undefined, // Managed Pricing via Partner Dashboard (not custom Billing API)
   },
   auth: {
     path: "/api/auth",

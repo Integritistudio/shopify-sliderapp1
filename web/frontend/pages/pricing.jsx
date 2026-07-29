@@ -1,6 +1,7 @@
 "use client"
 
-import { Page, Layout, Text, Banner, Badge } from "@shopify/polaris"
+import { useCallback, useEffect, useState } from "react"
+import { Page, Layout, Text, Banner, Badge, TextField, FormLayout, Stack } from "@shopify/polaris"
 import { useNavigate } from "react-router-dom"
 import { PLANS, PLAN_IDS, formatPlanPrice, formatLimit, planRank } from "../utils/plans"
 import { useShopPlan, openManagedPricing } from "../hooks/useShopPlan"
@@ -36,6 +37,63 @@ const FEATURE_ROWS = [
 export default function PricingPage() {
   const navigate = useNavigate()
   const { planId, plan, pricingUrl, loading } = useShopPlan()
+
+  const [affiliateCode, setAffiliateCode] = useState("")
+  const [affiliateLocked, setAffiliateLocked] = useState(false)
+  const [affiliateLoading, setAffiliateLoading] = useState(true)
+  const [affiliateSubmitting, setAffiliateSubmitting] = useState(false)
+  const [affiliateError, setAffiliateError] = useState(null)
+  const [affiliateSuccess, setAffiliateSuccess] = useState(null)
+
+  const loadAffiliate = useCallback(async () => {
+    try {
+      setAffiliateLoading(true)
+      setAffiliateError(null)
+      const response = await fetch("/api/billing/affiliate")
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load affiliate status")
+      }
+      setAffiliateLocked(Boolean(data.locked))
+      setAffiliateCode(data.affiliateCode || "")
+    } catch (error) {
+      setAffiliateError(error.message)
+    } finally {
+      setAffiliateLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadAffiliate()
+  }, [loadAffiliate])
+
+  const submitAffiliate = async () => {
+    setAffiliateSubmitting(true)
+    setAffiliateError(null)
+    setAffiliateSuccess(null)
+    try {
+      const response = await fetch("/api/billing/affiliate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ affiliateCode }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        if (data.locked && data.affiliateCode) {
+          setAffiliateLocked(true)
+          setAffiliateCode(data.affiliateCode)
+        }
+        throw new Error(data.error || "Failed to apply affiliate code")
+      }
+      setAffiliateLocked(true)
+      setAffiliateCode(data.affiliateCode || affiliateCode)
+      setAffiliateSuccess("Affiliate code applied. It cannot be changed later.")
+    } catch (error) {
+      setAffiliateError(error.message)
+    } finally {
+      setAffiliateSubmitting(false)
+    }
+  }
 
   return (
     <Page
@@ -125,6 +183,70 @@ export default function PricingPage() {
             >
               Manage subscription on Shopify
             </button>
+          </div>
+        </Layout.Section>
+
+        <Layout.Section>
+          <div className="se-pricing-affiliate">
+            <Text variant="headingMd" as="h2">
+              Affiliate code
+            </Text>
+            <Text as="p" tone="subdued">
+              Apply a partner code once. After it is saved, it cannot be changed — even if you
+              reinstall the app.
+            </Text>
+
+            {affiliateSuccess ? (
+              <div style={{ marginTop: 12 }}>
+                <Banner status="success" onDismiss={() => setAffiliateSuccess(null)}>
+                  <p>{affiliateSuccess}</p>
+                </Banner>
+              </div>
+            ) : null}
+            {affiliateError ? (
+              <div style={{ marginTop: 12 }}>
+                <Banner status="critical" onDismiss={() => setAffiliateError(null)}>
+                  <p>{affiliateError}</p>
+                </Banner>
+              </div>
+            ) : null}
+
+            <div style={{ marginTop: 16 }}>
+              {affiliateLoading ? (
+                <Banner status="info">
+                  <p>Loading affiliate status…</p>
+                </Banner>
+              ) : affiliateLocked ? (
+                <Banner status="success" title="Affiliate code applied">
+                  <p>
+                    Code <strong>{affiliateCode || "—"}</strong> is locked to this store.
+                  </p>
+                </Banner>
+              ) : (
+                <FormLayout>
+                  <Stack alignment="trailing" spacing="tight" wrap={false}>
+                    <Stack.Item fill>
+                      <TextField
+                        label="Affiliate code"
+                        value={affiliateCode}
+                        onChange={setAffiliateCode}
+                        autoComplete="off"
+                        placeholder="PARTNER20"
+                        disabled={affiliateSubmitting}
+                      />
+                    </Stack.Item>
+                    <button
+                      type="button"
+                      className="se-btn se-btn--primary"
+                      onClick={submitAffiliate}
+                      disabled={affiliateSubmitting || !affiliateCode.trim()}
+                    >
+                      {affiliateSubmitting ? "Applying…" : "Apply code"}
+                    </button>
+                  </Stack>
+                </FormLayout>
+              )}
+            </div>
           </div>
         </Layout.Section>
       </Layout>

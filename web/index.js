@@ -16,7 +16,7 @@ import filesRoutes from "./routes/files.js"
 import collectionsRoutes from "./routes/collections.js"
 import shopRoutes from "./routes/shop.js"
 import billingRoutes from "./routes/billing.js"
-import webhookRoutes from "./routes/webhooks.js"
+import { afterAuth } from "./middleware/afterAuth.js"
 import { requestLogger, errorHandler, notFoundHandler, handleOptions } from "./utils/index.js"
 
 process.on("uncaughtException", (error) => {
@@ -37,7 +37,12 @@ express.raw({ type: "application/json" })
 
 // Set up Shopify authentication and webhook handling
 app.get(shopify.config.auth.path, shopify.auth.begin())
-app.get(shopify.config.auth.callbackPath, shopify.auth.callback(), shopify.redirectToShopifyOrAppRoot())
+app.get(
+  shopify.config.auth.callbackPath,
+  shopify.auth.callback(),
+  afterAuth,
+  shopify.redirectToShopifyOrAppRoot(),
+)
 app.post(shopify.config.webhooks.path, shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers }))
 
 // Sync and migrate database when server starts
@@ -63,7 +68,6 @@ app.use("/api", filesRoutes)
 app.use("/api", collectionsRoutes)
 app.use("/api", shopRoutes)
 app.use("/api", billingRoutes)
-app.use("/api", webhookRoutes)
 
 app.use(shopify.cspHeaders())
 app.use(serveStatic(STATIC_PATH, { index: false }))

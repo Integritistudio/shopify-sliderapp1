@@ -16,9 +16,12 @@ const SUBSCRIPTIONS_QUERY = `#graphql
   query SlideEaseActiveSubscriptions {
     currentAppInstallation {
       activeSubscriptions {
+        id
         name
         status
         test
+        createdAt
+        currentPeriodEnd
       }
     }
   }
@@ -49,6 +52,7 @@ export async function resolveShopPlan(session, options = {}) {
 
   let planId = "free"
   let subscriptionName = null
+  let subscriptionId = null
 
   try {
     if (session) {
@@ -67,6 +71,7 @@ export async function resolveShopPlan(session, options = {}) {
           bestRank = rank
           planId = mapped
           subscriptionName = sub.name
+          subscriptionId = sub.id || null
         }
       }
     }
@@ -81,6 +86,7 @@ export async function resolveShopPlan(session, options = {}) {
     limits: getPlanLimits(planId),
     pricingUrl,
     subscriptionName,
+    subscriptionId,
   }
 }
 

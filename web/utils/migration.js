@@ -501,6 +501,29 @@ const migrations = {
       await queryInterface.dropTable("ShopPlans")
     },
   },
+
+  "014-shop-affiliates": {
+    up: async (queryInterface) => {
+      const tables = await queryInterface.showAllTables()
+      const exists = tables.map((t) => String(t).toLowerCase()).includes("shopaffiliates")
+      if (exists) return
+      await queryInterface.createTable("ShopAffiliates", {
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        shop: { type: DataTypes.STRING, allowNull: false, unique: true },
+        shopifyShopId: { type: DataTypes.STRING, allowNull: true, unique: true },
+        shopName: { type: DataTypes.STRING, allowNull: true },
+        affiliateCode: { type: DataTypes.STRING, allowNull: true },
+        affiliateLockedAt: { type: DataTypes.DATE, allowNull: true },
+        lastPlanId: { type: DataTypes.STRING, allowNull: true },
+        lastSubscriptionId: { type: DataTypes.STRING, allowNull: true },
+        createdAt: { type: DataTypes.DATE, allowNull: false },
+        updatedAt: { type: DataTypes.DATE, allowNull: false },
+      })
+    },
+    down: async (queryInterface) => {
+      await queryInterface.dropTable("ShopAffiliates")
+    },
+  },
 }
 
 // Run pending migrations

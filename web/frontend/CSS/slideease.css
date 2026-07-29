@@ -1259,6 +1259,18 @@ input[type="range"] {
   justify-content: center;
 }
 
+.se-pricing-affiliate {
+  margin-top: 0.5rem;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid var(--se-line, #e8e4de);
+  border-radius: var(--se-radius, 12px);
+  background: #fff;
+}
+
+.se-pricing-affiliate .Polaris-Text--root + .Polaris-Text--root {
+  margin-top: 0.35rem;
+}
+
 .se-onboard {
   border: 1px solid #f3dfc7;
   background: linear-gradient(135deg, #fffaf3, #ffffff 52%);
