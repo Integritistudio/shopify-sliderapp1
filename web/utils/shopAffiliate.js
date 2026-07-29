@@ -165,7 +165,7 @@ export async function applyAffiliateCode(row, rawCode) {
     return {
       ok: false,
       status: 503,
-      error: "Affiliate portal is not configured. Set PORTAL_WEBHOOK_BASE_URL, PORTAL_WEBHOOK_SECRET, and SHOPIFY_APP_ID.",
+      error: "Affiliate portal is not configured. Set PORTAL_WEBHOOK_BASE_URL and PORTAL_WEBHOOK_SECRET.",
       locked: false,
     }
   }

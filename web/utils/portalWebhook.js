@@ -2,22 +2,16 @@
  * Outbound webhooks to the Shopify App Management Portal.
  *
  * Env:
- *   PORTAL_WEBHOOK_BASE_URL  e.g. https://portal.example.com/webhooks/shopify
+ *   PORTAL_WEBHOOK_BASE_URL  e.g. https://portal.example.com
  *   PORTAL_WEBHOOK_SECRET    shared secret → X-Webhook-Secret
- *   SHOPIFY_APP_ID           gid://shopify/App/...
  */
 
 const DEFAULT_TIMEOUT_MS = 5000
 
-export function getShopifyAppId() {
-  return String(process.env.SHOPIFY_APP_ID || "").trim()
-}
-
 export function isPortalConfigured() {
   return Boolean(
     String(process.env.PORTAL_WEBHOOK_BASE_URL || "").trim() &&
-      String(process.env.PORTAL_WEBHOOK_SECRET || "").trim() &&
-      getShopifyAppId(),
+      String(process.env.PORTAL_WEBHOOK_SECRET || "").trim(),
   )
 }
 
@@ -30,7 +24,6 @@ export function buildShopContext({ shopDomain, shopifyShopId, shopName }) {
     .toLowerCase()
     .replace(/^https?:\/\//, "")
   return {
-    shopify_app_id: getShopifyAppId(),
     shopify_shop_id: shopifyShopId || `gid://shopify/Shop/unknown`,
     shop_name: shopName || shop_url || "Unknown shop",
     shop_url,
@@ -48,14 +41,15 @@ export async function postPortal(topic, payload, eventId) {
   const base = String(process.env.PORTAL_WEBHOOK_BASE_URL || "")
     .trim()
     .replace(/\/$/, "")
+  const webhookBase = base.endsWith("/webhooks/shopify") ? base : `${base}/webhooks/shopify`
   const secret = String(process.env.PORTAL_WEBHOOK_SECRET || "").trim()
 
-  if (!base || !secret || !getShopifyAppId()) {
+  if (!base || !secret) {
     console.warn(`[portal] skipped ${topic}: portal env not configured`)
     return { ok: false, status: 0, body: { error: "portal_not_configured" } }
   }
 
-  const url = `${base}/${topic}`
+  const url = `${webhookBase}/${topic}`
   const body = {
     ...payload,
     ...(eventId ? { event_id: eventId } : {}),
