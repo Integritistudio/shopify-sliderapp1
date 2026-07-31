@@ -70,6 +70,7 @@ export default function SlideEditorPanel({
   const [showSecondButton, setShowSecondButton] = useState(false)
 
   const showSlideCta = canShow(sliderType, "slideCtaFields")
+  const isAnnouncement = sliderType === "announcement"
 
   const fieldLabels = {
     testimonials: { heading: "Quote", subheading: "Author", description: "Role / detail", image: "Avatar image URL" },
@@ -105,17 +106,23 @@ export default function SlideEditorPanel({
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
   const handleSave = async () => {
-    if (form.mediaType === "video") {
-      if (!form.videoUrl?.trim() && !form.imageUrl?.trim()) {
-        setError("Add a video URL (YouTube/Vimeo/Shopify) or upload a video")
+    if (!isAnnouncement) {
+      if (form.mediaType === "video") {
+        if (!form.videoUrl?.trim() && !form.imageUrl?.trim()) {
+          setError("Add a video URL (YouTube/Vimeo/Shopify) or upload a video")
+          return
+        }
+      } else if (!form.imageUrl?.trim()) {
+        setError("Choose an image from Shopify Files or paste an image URL")
         return
       }
-    } else if (!form.imageUrl?.trim()) {
-      setError("Choose an image from Shopify Files or paste an image URL")
-      return
     }
     if (!form.title?.trim()) {
       setError("Title is required")
+      return
+    }
+    if (isAnnouncement && !(form.heading?.trim() || form.title?.trim())) {
+      setError("Announcement message is required")
       return
     }
 
@@ -124,11 +131,13 @@ export default function SlideEditorPanel({
     try {
       await onSave({
         ...form,
-        imageUrl: form.imageUrl?.trim() || form.videoUrl?.trim() || "",
-        videoUrl: form.videoUrl?.trim() || "",
-        videoProvider: detectVideoProvider(form.videoUrl),
+        imageUrl: isAnnouncement ? form.imageUrl?.trim() || "" : form.imageUrl?.trim() || form.videoUrl?.trim() || "",
+        videoUrl: isAnnouncement ? "" : form.videoUrl?.trim() || "",
+        videoProvider: isAnnouncement ? null : detectVideoProvider(form.videoUrl),
+        mediaType: isAnnouncement ? "image" : form.mediaType,
         title: form.title.trim(),
-        description: form.description?.trim() || "",
+        description: isAnnouncement ? "" : form.description?.trim() || "",
+        subheading: isAnnouncement ? "" : form.subheading?.trim() || "",
         heading: form.heading?.trim() || form.title.trim(),
         imageAlt: form.imageAlt?.trim() || form.title.trim(),
       })
@@ -165,33 +174,37 @@ export default function SlideEditorPanel({
         </div>
       )}
 
-      <div style={{ marginBottom: 12 }}>
-        <ButtonGroup segmented>
-          <Button pressed={form.mediaType === "image"} onClick={() => update("mediaType", "image")}>
-            Image
-          </Button>
-          <Button pressed={form.mediaType === "video"} onClick={() => update("mediaType", "video")}>
-            Video
-          </Button>
-        </ButtonGroup>
-      </div>
+      {!isAnnouncement ? (
+        <div style={{ marginBottom: 12 }}>
+          <ButtonGroup segmented>
+            <Button pressed={form.mediaType === "image"} onClick={() => update("mediaType", "image")}>
+              Image
+            </Button>
+            <Button pressed={form.mediaType === "video"} onClick={() => update("mediaType", "video")}>
+              Video
+            </Button>
+          </ButtonGroup>
+        </div>
+      ) : null}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-        <Button onClick={() => setShowPicker((v) => !v)}>
-          {showPicker ? "Hide Shopify Files" : "Choose from Shopify Files"}
-        </Button>
-        {form.imageUrl && (
-          <Button
-            onClick={() =>
-              setForm((prev) => ({ ...prev, imageUrl: "", shopifyFileId: null, videoUrl: prev.mediaType === "video" ? prev.videoUrl : "" }))
-            }
-          >
-            Clear media
+      {!isAnnouncement ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          <Button onClick={() => setShowPicker((v) => !v)}>
+            {showPicker ? "Hide Shopify Files" : "Choose from Shopify Files"}
           </Button>
-        )}
-      </div>
+          {form.imageUrl && (
+            <Button
+              onClick={() =>
+                setForm((prev) => ({ ...prev, imageUrl: "", shopifyFileId: null, videoUrl: prev.mediaType === "video" ? prev.videoUrl : "" }))
+              }
+            >
+              Clear media
+            </Button>
+          )}
+        </div>
+      ) : null}
 
-      {showPicker && (
+      {!isAnnouncement && showPicker ? (
         <div style={{ marginBottom: 14 }}>
           <MediaPickerInline
             mediaType={form.mediaType}
@@ -221,9 +234,9 @@ export default function SlideEditorPanel({
             }}
           />
         </div>
-      )}
+      ) : null}
 
-      {form.imageUrl && (
+      {!isAnnouncement && form.imageUrl ? (
         <div
           style={{
             width: "100%",
@@ -241,10 +254,10 @@ export default function SlideEditorPanel({
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         </div>
-      )}
+      ) : null}
 
       <FormLayout>
-        {form.mediaType === "video" && (
+        {!isAnnouncement && form.mediaType === "video" ? (
           <TextField
             label="Video URL"
             value={form.videoUrl}
@@ -252,32 +265,50 @@ export default function SlideEditorPanel({
             placeholder="YouTube, Vimeo, or Shopify video URL"
             helpText="Paste a YouTube/Vimeo link or upload a Shopify video above."
           />
+        ) : null}
+
+        {!isAnnouncement ? (
+          <TextField
+            label={fieldLabels.image}
+            value={form.imageUrl}
+            onChange={(value) => update("imageUrl", value)}
+            placeholder="https://cdn.shopify.com/..."
+            helpText="Prefer Shopify Files above. URL is an optional fallback."
+          />
+        ) : null}
+
+        {isAnnouncement ? (
+          <FormLayout.Group>
+            <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} requiredIndicator />
+            <TextField
+              label={fieldLabels.heading}
+              value={form.heading}
+              onChange={(value) => update("heading", value)}
+              placeholder="Free shipping on orders over $50"
+            />
+          </FormLayout.Group>
+        ) : (
+          <FormLayout.Group>
+            <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} requiredIndicator />
+            <TextField label="Alt text" value={form.imageAlt} onChange={(value) => update("imageAlt", value)} />
+          </FormLayout.Group>
         )}
 
-        <TextField
-          label={fieldLabels.image}
-          value={form.imageUrl}
-          onChange={(value) => update("imageUrl", value)}
-          placeholder="https://cdn.shopify.com/..."
-          helpText="Prefer Shopify Files above. URL is an optional fallback."
-        />
+        {!isAnnouncement ? (
+          <FormLayout.Group>
+            <TextField label={fieldLabels.heading} value={form.heading} onChange={(value) => update("heading", value)} />
+            <TextField label={fieldLabels.subheading} value={form.subheading} onChange={(value) => update("subheading", value)} />
+          </FormLayout.Group>
+        ) : null}
 
-        <FormLayout.Group>
-          <TextField label="Title" value={form.title} onChange={(value) => update("title", value)} requiredIndicator />
-          <TextField label="Alt text" value={form.imageAlt} onChange={(value) => update("imageAlt", value)} />
-        </FormLayout.Group>
-
-        <FormLayout.Group>
-          <TextField label={fieldLabels.heading} value={form.heading} onChange={(value) => update("heading", value)} />
-          <TextField label={fieldLabels.subheading} value={form.subheading} onChange={(value) => update("subheading", value)} />
-        </FormLayout.Group>
-
-        <TextField
-          label={fieldLabels.description}
-          value={form.description}
-          onChange={(value) => update("description", value)}
-          multiline={3}
-        />
+        {!isAnnouncement ? (
+          <TextField
+            label={fieldLabels.description}
+            value={form.description}
+            onChange={(value) => update("description", value)}
+            multiline={3}
+          />
+        ) : null}
 
         {showSlideCta ? (
           <FormLayout.Group>

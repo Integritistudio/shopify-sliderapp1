@@ -20,6 +20,7 @@ const CAPABILITY_DEFAULTS = {
   width: false,
   objectFit: false,
   slidesToShow: false,
+  logoSize: false,
   heroAnimation: false,
   heroText: false,
   heroPaginationChrome: false,
@@ -120,6 +121,7 @@ const TYPE_CAPABILITIES = {
     height: true,
     slidesToShow: true,
     mobileSlides: true,
+    logoSize: true,
   }),
 
   stories: caps({
@@ -131,13 +133,14 @@ const TYPE_CAPABILITIES = {
     height: true,
     borderRadius: true,
     objectFit: true,
-    mobileSlides: true,
   }),
 
   announcement: caps({
     autoplay: true,
+    arrows: true,
     infinite: true,
     autoplaySpeed: true,
+    arrowColor: true,
     height: true,
     ctaBackgroundOnly: true,
     slideCtaFields: true,

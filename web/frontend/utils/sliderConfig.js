@@ -359,6 +359,8 @@ export function settingsFromPreset(sliderType = "fade") {
         effect: "logo-grid",
         transition: "slide",
         height: 140,
+        logoWidth: 140,
+        logoHeight: 64,
         borderRadius: 0,
         slidesToShow: 5,
         autoplay: true,
@@ -367,7 +369,7 @@ export function settingsFromPreset(sliderType = "fade") {
         arrows: false,
         dots: false,
         infinite: true,
-        mobile: { slidesToShow: 3, slidesToScroll: 1, arrows: false, dots: false },
+        mobile: { slidesToShow: 2, slidesToScroll: 1, arrows: false, dots: false },
       }
     case "stories":
       return {
@@ -381,6 +383,7 @@ export function settingsFromPreset(sliderType = "fade") {
         speed: 650,
         arrows: true,
         dots: false,
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: false },
       }
     case "announcement":
       return {
@@ -393,8 +396,10 @@ export function settingsFromPreset(sliderType = "fade") {
         autoplay: true,
         autoplaySpeed: 4000,
         speed: 500,
-        arrows: false,
+        arrows: true,
         dots: false,
+        arrowBg: "rgba(255,255,255,0.14)",
+        arrowColor: "#ffffff",
       }
     case "slide":
       return { ...base, transition: "slide", effect: "slide", slidesToShow: 1, speed: 550 }

@@ -430,7 +430,7 @@ function HeroFrame({ slide, settings, compact, heightOverride, boxed = false, vi
   )
 }
 
-function ProductCard({ slide, settings, compact = false, featured = false }) {
+function ProductCard({ slide, settings, compact = false, featured = false, reserveTitleSpace = true }) {
   const imageUrl = safeUrl(slide.imageUrl)
   const title = slide.heading || slide.title || "Product"
   const price = slide.description || ""
@@ -448,6 +448,7 @@ function ProductCard({ slide, settings, compact = false, featured = false }) {
   const showSoldOut = settings.showSoldOut !== false
   const isSoldOut = slide.availableForSale === false
   const sharedRadius = settings.ctaBorderRadius ?? settings.atcBorderRadius ?? 50
+  const titleFontSize = featured ? titleSize + 1 : titleSize
   const shopStyle = {
     display: "inline-flex",
     alignSelf: "flex-start",
@@ -507,9 +508,9 @@ function ProductCard({ slide, settings, compact = false, featured = false }) {
         <div
           style={{
             fontWeight: 650,
-            fontSize: featured ? titleSize + 1 : titleSize,
+            fontSize: titleFontSize,
             lineHeight: 1.3,
-            minHeight: `calc(${featured ? titleSize + 1 : titleSize}px * 1.3 * 2)`,
+            ...(reserveTitleSpace ? { minHeight: `calc(${titleFontSize}px * 1.3 * 2)` } : null),
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
@@ -948,7 +949,7 @@ export default function SliderPreview({
   const showArrows =
     mergedSettings.arrows !== false &&
     visibleSlides.length > 1 &&
-    !["marquee", "logo-grid", "announcement"].includes(effect)
+    !["marquee", "logo-grid"].includes(effect)
   const showDots = mergedSettings.dots !== false && !showGalleryThumbs
   const dotsGap = isHeroType ? Number(mergedSettings.paginationOffset ?? 16) : Number(mergedSettings.paginationGap ?? 12)
   const dotsPosition = isHeroType ? mergedSettings.dotsPosition || "center" : "center"
@@ -1203,7 +1204,12 @@ export default function SliderPreview({
             {cards.map((slide, i) => (
               <div key={`${slide.id}-pc-${i}`} style={{ height: "100%", display: "flex" }}>
                 <div style={{ width: "100%", display: "flex" }}>
-                  <ProductCard slide={slide} settings={mergedSettings} compact={compact || effect === "collection-rail"} />
+                  <ProductCard
+                    slide={slide}
+                    settings={mergedSettings}
+                    compact={compact || effect === "collection-rail"}
+                    reserveTitleSpace={false}
+                  />
                 </div>
               </div>
             ))}
@@ -1229,7 +1235,13 @@ export default function SliderPreview({
               const active = compact || i === 1
               return (
                 <div key={`${slide.id}-ps-${i}`} style={{ opacity: active ? 1 : 0.72, transition: "opacity 0.3s ease" }}>
-                  <ProductCard slide={slide} settings={mergedSettings} compact={!active || compact} featured={active} />
+                  <ProductCard
+                    slide={slide}
+                    settings={mergedSettings}
+                    compact={!active || compact}
+                    featured={active}
+                    reserveTitleSpace={false}
+                  />
                 </div>
               )
             })}
@@ -1357,6 +1369,10 @@ export default function SliderPreview({
 
     if (effect === "logo-grid") {
       const loop = [...visibleSlides, ...visibleSlides]
+      const logoW = Math.min(Math.max(Number(mergedSettings.logoWidth ?? 140), 40), 280)
+      const logoH = Math.min(Math.max(Number(mergedSettings.logoHeight ?? 64), 24), 160)
+      const cardW = compact ? Math.round(logoW * 0.78) : logoW
+      const cardH = compact ? Math.round(logoH * 0.9) : logoH
       return (
         <div
           style={{
@@ -1384,8 +1400,8 @@ export default function SliderPreview({
                 <div
                   key={`${slide.id}-logo-${i}`}
                   style={{
-                    width: compact ? 108 : 140,
-                    height: compact ? 58 : 72,
+                    width: cardW + 28,
+                    height: cardH + 20,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1395,20 +1411,21 @@ export default function SliderPreview({
                     boxShadow: "0 6px 18px rgba(23, 15, 73, 0.07)",
                     padding: "10px 14px",
                     flex: "0 0 auto",
+                    boxSizing: "border-box",
                   }}
                 >
                   {logoSrc ? (
                     <img
                       src={logoSrc}
                       alt=""
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+                      style={{ maxWidth: cardW, maxHeight: cardH, width: "auto", height: "auto", objectFit: "contain", display: "block" }}
                     />
                   ) : (
                     <div
                       aria-hidden
                       style={{
-                        width: "70%",
-                        height: "55%",
+                        width: Math.round(cardW * 0.7),
+                        height: Math.round(cardH * 0.55),
                         borderRadius: 8,
                         background: "linear-gradient(135deg, #ffd6a5, #c4b5fd, #93c5fd)",
                       }}
@@ -1425,7 +1442,7 @@ export default function SliderPreview({
     if (effect === "stories") {
       return (
         <div style={{ position: "relative" }}>
-          <div style={{ display: "flex", gap: 12, justifyContent: compact ? "flex-start" : "center", overflowX: "auto", paddingBottom: 12 }}>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", overflowX: "auto", paddingBottom: 12 }}>
             {visibleSlides.map((slide, i) => (
               <button
                 key={`story-ring-${slide.id}`}
@@ -1481,59 +1498,75 @@ export default function SliderPreview({
 
     if (effect === "announcement") {
       return (
-        <div
-          className="se-fx-fade"
-          key={current.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            minHeight: Number(mergedSettings.height) || 48,
-            padding: "0.65rem 1rem",
-            background: mergedSettings.ctaBackground || "#170f49",
-            color: current.textColor || mergedSettings.ctaTextColor || "#fff",
-            borderRadius: mergedSettings.borderRadius ?? 0,
-            textAlign: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={{ fontSize: compact ? "0.82rem" : "0.92rem", fontWeight: 600 }}>
-            {current.heading || current.title || "Announcement"}
-          </span>
-          {current.ctaText || current.cta2Text ? (
-            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6 }}>
-              {current.ctaText ? (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    padding: "0.25rem 0.65rem",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.45)",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                  }}
-                >
-                  {current.ctaText}
-                </span>
-              ) : null}
-              {current.cta2Text ? (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    padding: "0.25rem 0.65rem",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.45)",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    background: "transparent",
-                  }}
-                >
-                  {current.cta2Text}
-                </span>
-              ) : null}
+        <div style={{ position: "relative" }}>
+          <div
+            className="se-fx-fade"
+            key={current.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              minHeight: Number(mergedSettings.height) || 48,
+              height: Number(mergedSettings.height) || 48,
+              padding: showArrows ? "0 2.5rem" : "0 1rem",
+              boxSizing: "border-box",
+              overflow: "hidden",
+              background: mergedSettings.ctaBackground || "#170f49",
+              color: current.textColor || mergedSettings.ctaTextColor || "#fff",
+              borderRadius: mergedSettings.borderRadius ?? 0,
+              textAlign: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ fontSize: compact ? "0.82rem" : "0.92rem", fontWeight: 600 }}>
+              {current.heading || current.title || "Announcement"}
             </span>
-          ) : null}
+            {current.ctaText || current.cta2Text ? (
+              <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6 }}>
+                {current.ctaText ? (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      padding: "0.25rem 0.65rem",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.45)",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {current.ctaText}
+                  </span>
+                ) : null}
+                {current.cta2Text ? (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      padding: "0.25rem 0.65rem",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.45)",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      background: "transparent",
+                    }}
+                  >
+                    {current.cta2Text}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
+          <NavArrows
+            onPrev={goPrev}
+            onNext={goNext}
+            settings={{
+              ...mergedSettings,
+              arrowBg: mergedSettings.arrowBg || "rgba(255,255,255,0.14)",
+              arrowColor: mergedSettings.arrowColor || "#ffffff",
+            }}
+            show={showArrows}
+            offset={6}
+          />
         </div>
       )
     }

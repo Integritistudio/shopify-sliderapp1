@@ -77,6 +77,7 @@
     if (effect === "announcement") return Math.min(Math.max(preferred, 36), 120)
     if (effect === "logo-grid") return Math.min(Math.max(preferred, 80), 240)
     if (effect === "testimonials") return Math.min(Math.max(preferred, 160), 520)
+    if (effect === "stories") return Math.min(Math.max(preferred, 280), 420)
     return Math.min(Math.max(preferred, 320), 900)
   }
 
@@ -558,7 +559,7 @@
       cssEase: marqueeEffects.includes(effect) ? "linear" : "cubic-bezier(0.22, 1, 0.36, 1)",
       adaptiveHeight: false,
       centerMode: centerEffects.includes(effect) || Boolean(settings.centerMode),
-      centerPadding: effect === "coverflow" ? "6%" : effect === "product-showcase" ? "10%" : settings.centerPadding || "10%",
+      centerPadding: effect === "coverflow" ? "6%" : effect === "product-showcase" ? "0px" : settings.centerPadding || "10%",
       vertical: effect === "vertical" || Boolean(settings.vertical),
       variableWidth: effect === "variable-width" || Boolean(settings.variableWidth),
       lazyLoad: settings.lazyLoad ? "ondemand" : null,
@@ -568,32 +569,50 @@
         {
           breakpoint: 900,
           settings: {
-            slidesToShow: productStripEffects.includes(effect)
-              ? Math.min(Number(settings.slidesToShow) || 4, 3)
-              : effect === "testimonials"
-                ? Math.min(Number(settings.slidesToShow) || 3, 2)
-                : Math.min(Number(settings.slidesToShow) || 1, 2),
+            slidesToShow: effect === "stories" || fadeEffects.includes(effect)
+              ? 1
+              : effect === "product-showcase"
+                ? 3
+                : productStripEffects.includes(effect)
+                  ? Math.min(Number(settings.slidesToShow) || 4, 3)
+                  : effect === "testimonials"
+                    ? Math.min(Number(settings.slidesToShow) || 3, 2)
+                    : Math.min(Number(settings.slidesToShow) || 1, 2),
             ...(effect === "testimonials"
               ? { slidesToScroll: Math.min(Number(settings.slidesToShow) || 3, 2) }
-              : {}),
+              : effect === "product-showcase"
+                ? { slidesToScroll: 1 }
+                : effect === "stories" || fadeEffects.includes(effect)
+                  ? { slidesToScroll: 1, fade: true }
+                  : {}),
             centerMode: centerEffects.includes(effect),
-            centerPadding: "5%",
+            centerPadding: effect === "product-showcase" ? "0px" : "5%",
           },
         },
         {
           breakpoint: 640,
-          settings: {
-            slidesToShow: mobileShow,
-            slidesToScroll: Math.min(mobileScroll, mobileShow),
-            centerMode: false,
-            vertical: false,
-            variableWidth: false,
-          },
+          settings:
+            effect === "stories" || fadeEffects.includes(effect)
+              ? {
+                  slidesToShow: 1,
+                  slidesToScroll: 1,
+                  fade: true,
+                  centerMode: false,
+                  vertical: false,
+                  variableWidth: false,
+                }
+              : {
+                  slidesToShow: mobileShow,
+                  slidesToScroll: Math.min(mobileScroll, mobileShow),
+                  centerMode: false,
+                  vertical: false,
+                  variableWidth: false,
+                },
         },
       ],
     }
 
-    if (fadeEffects.includes(effect)) {
+    if (fadeEffects.includes(effect) || effect === "stories") {
       config.slidesToShow = 1
       config.slidesToScroll = 1
     }
@@ -604,7 +623,9 @@
       config.slidesToScroll = show
     }
     if (centerEffects.includes(effect)) {
-      config.slidesToShow = Math.max(Number(settings.slidesToShow) || 3, 1)
+      // Product Showcase always mirrors the live preview: 3 cards, center featured.
+      config.slidesToShow = effect === "product-showcase" ? 3 : Math.max(Number(settings.slidesToShow) || 3, 1)
+      if (effect === "product-showcase") config.slidesToScroll = 1
     }
     if (productStripEffects.includes(effect)) {
       config.slidesToShow = Math.max(Number(settings.slidesToShow) || (effect === "collection-rail" ? 5 : 4), 1)
@@ -615,6 +636,38 @@
       config.dots = false
       config.waitForAnimate = false
       config.slidesToShow = Math.max(Number(settings.slidesToShow) || 5, 1)
+      if (effect === "logo-grid") {
+        const desktopLogos = Math.min(Math.max(Number(settings.slidesToShow) || 5, 2), 8)
+        const tabletLogos = Math.min(desktopLogos, 3)
+        // Mobile phones can't fit 3+ logo cards; saved "3" caused overflow + clone doubles.
+        const mobileLogos = Math.min(Math.max(Number(settings.mobile?.slidesToShow) || 2, 1), 2)
+        config.slidesToShow = desktopLogos
+        config.slidesToScroll = 1
+        config.responsive = [
+          {
+            breakpoint: 900,
+            settings: {
+              slidesToShow: tabletLogos,
+              slidesToScroll: 1,
+              arrows: false,
+              dots: false,
+              centerMode: false,
+              variableWidth: false,
+            },
+          },
+          {
+            breakpoint: 640,
+            settings: {
+              slidesToShow: mobileLogos,
+              slidesToScroll: 1,
+              arrows: false,
+              dots: false,
+              centerMode: false,
+              variableWidth: false,
+            },
+          },
+        ]
+      }
     }
     return { config, effect }
   }
@@ -805,20 +858,38 @@
     }
 
     if (effect === "stories") {
+      const storyRadius = Number(settings.borderRadius ?? 18) || 18
+      const hasStoryCopy = Boolean(heading || subheading || description || slide.ctaText || slide.cta2Text)
       return `
         <div data-slideease-slide-id="${escapeHtml(slide.id)}">
-          <article class="se-story se-frame-${escapeHtml(effect)}" style="--se-radius:${radius || 18}px;border-radius:${radius || 18}px;">
-            <div class="se-story__media">${renderMedia(slide, settings)}</div>
-            <div class="se-story__label">${escapeHtml(heading || "Story")}</div>
+          <article class="slideease-frame se-story-focus se-frame-stories" style="--se-radius:${storyRadius}px;border-radius:${storyRadius}px;">
+            <div class="se-media-wrap">${renderMedia(slide, settings)}</div>
+            <div class="se-overlay" aria-hidden="true">
+              <span class="se-overlay__tint" style="background:${escapeHtml(overlayColor)};opacity:${overlayOpacity};"></span>
+            </div>
+            ${
+              hasStoryCopy
+                ? `<div class="se-copy se-copy--middle se-story-focus__copy" style="justify-content:center;align-items:center;text-align:center;color:${textColor};">
+              <div class="se-copy-plate">
+                ${subheading ? `<p class="se-eyebrow">${escapeHtml(subheading)}</p>` : ""}
+                ${heading ? `<h3 class="se-heading">${escapeHtml(heading)}</h3>` : ""}
+                ${description ? `<p class="se-desc">${escapeHtml(description)}</p>` : ""}
+                ${ctaHtml}
+              </div>
+            </div>`
+                : ""
+            }
           </article>
         </div>
       `
     }
 
     if (effect === "announcement") {
+      const announceRadius = Math.min(Math.max(Number(settings.borderRadius ?? 0), 0), 40)
+      const announceHeight = Math.min(Math.max(Number(settings.height) || 48, 36), 120)
       return `
         <div data-slideease-slide-id="${escapeHtml(slide.id)}">
-          <div class="se-announce se-frame-${escapeHtml(effect)}" style="background:${btnBg};color:${textColor || btnText};">
+          <div class="se-announce se-frame-${escapeHtml(effect)}" style="background:${btnBg};color:${textColor || btnText};border-radius:${announceRadius}px;height:${announceHeight}px;min-height:${announceHeight}px;">
             <span class="se-announce__text">${escapeHtml(heading || "Announcement")}</span>
             ${
               slide.ctaText || slide.cta2Text
@@ -1102,13 +1173,42 @@
           }
           .slideease-container-${uniqueId}.se-root--products .se-progress { display: none !important; }
           .slideease-container-${uniqueId}[data-effect="product-carousel"] .se-product-card,
-          .slideease-container-${uniqueId}[data-effect="product-showcase"] .se-product-card,
           .slideease-container-${uniqueId}[data-effect="collection-rail"] .se-product-card {
             transform: none !important;
             animation: none !important;
           }
-          .slideease-container-${uniqueId}[data-effect="product-showcase"] .slick-center .se-product-card {
-            box-shadow: none;
+          /* Product Showcase only — match live preview: larger center, softer side peeks */
+          .slideease-container-${uniqueId}[data-effect="product-showcase"] .slick-track {
+            align-items: center !important;
+          }
+          .slideease-container-${uniqueId}[data-effect="product-showcase"] .se-product-card {
+            transform-origin: center center;
+            transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+            animation: none !important;
+          }
+          /* Don't reserve 2-line title height — short titles left a fake gap above the price */
+          .slideease-container-${uniqueId}[data-effect="product-showcase"] .se-product-card__title,
+          .slideease-container-${uniqueId}[data-effect="product-carousel"] .se-product-card__title,
+          .slideease-container-${uniqueId}[data-effect="collection-rail"] .se-product-card__title {
+            min-height: 0;
+          }
+          @media (min-width: 641px) {
+            .slideease-container-${uniqueId}[data-effect="product-showcase"] .slick-slide:not(.slick-center) .se-product-card {
+              transform: scale(0.82);
+              opacity: 0.72;
+            }
+            .slideease-container-${uniqueId}[data-effect="product-showcase"] .slick-slide:not(.slick-center) .se-product-card__body {
+              padding: 0.7rem 0.75rem 0.85rem;
+            }
+            .slideease-container-${uniqueId}[data-effect="product-showcase"] .slick-center .se-product-card {
+              transform: scale(1);
+              opacity: 1;
+              z-index: 2;
+              position: relative;
+            }
+            .slideease-container-${uniqueId}[data-effect="product-showcase"] .slick-center .se-product-card__title {
+              font-size: calc(var(--se-product-title-size, 16px) + 1px);
+            }
           }
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-copy,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-copy,
@@ -1219,44 +1319,276 @@
             padding: 0.65rem 0.35rem;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
           }
-          .slideease-container-${uniqueId} .se-logo-cell {
-            height: var(--se-height); display: flex; align-items: center; justify-content: center; padding: 0.55rem 0.45rem;
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .slick-list {
+            overflow: hidden;
           }
-          .slideease-container-${uniqueId} .se-logo-card {
-            width: 100%; max-width: 160px; height: calc(var(--se-height) - 1.1rem); min-height: 56px;
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .slick-slide {
+            overflow: hidden;
+            box-sizing: border-box;
+          }
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .slick-slide > div {
+            overflow: hidden;
+            max-width: 100%;
+          }
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-cell {
+            height: var(--se-height); display: flex; align-items: center; justify-content: center;
+            padding: 0.55rem 0.45rem; box-sizing: border-box; width: 100%; max-width: 100%;
+            overflow: hidden;
+          }
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-card {
+            width: 100%; max-width: 100%; height: auto;
+            min-height: calc(var(--se-logo-height, 64px) + 1.4rem);
+            max-height: calc(var(--se-height) - 0.5rem);
             display: flex; align-items: center; justify-content: center;
-            background: #fff; border-radius: 14px; padding: 0.7rem 1rem;
+            background: #fff; border-radius: 14px; padding: 0.7rem 0.85rem;
             border: 1px solid rgba(23, 15, 73, 0.07);
             box-shadow: 0 6px 18px rgba(23, 15, 73, 0.07);
             transition: transform 0.25s var(--se-ease, ease), box-shadow 0.25s ease;
+            overflow: hidden;
+            box-sizing: border-box;
           }
-          .slideease-container-${uniqueId} .se-logo-card:hover {
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 24px rgba(23, 15, 73, 0.1);
           }
-          .slideease-container-${uniqueId} .se-logo-cell img {
-            max-width: 140px; max-height: 64px; width: auto; height: auto; object-fit: contain;
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-cell img {
+            max-width: 100%;
+            max-height: var(--se-logo-height, 64px);
+            width: auto; height: auto; object-fit: contain;
             filter: none; opacity: 1; display: block;
           }
-          .slideease-container-${uniqueId} .se-logo-fallback {
+          .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-fallback {
             display: block; width: 70%; height: 55%; border-radius: 8px;
             background: linear-gradient(135deg, #ffd6a5, #c4b5fd, #93c5fd);
           }
-          .slideease-container-${uniqueId} .se-story { position: relative; overflow: hidden; height: var(--se-render-height); background: #111; }
-          .slideease-container-${uniqueId} .se-story__media { position: absolute; inset: 0; }
-          .slideease-container-${uniqueId} .se-story__media .se-media { width: 100%; height: 100%; object-fit: cover; }
-          .slideease-container-${uniqueId} .se-story__label {
-            position: absolute; left: 1rem; bottom: 1rem; z-index: 2; color: #fff; font-weight: 700;
-            text-shadow: 0 8px 24px rgba(0,0,0,0.45); font-size: 1.05rem;
+          @media (max-width: 640px) {
+            .slideease-container-${uniqueId}[data-effect="logo-grid"] {
+              padding: 0.55rem 0.4rem;
+            }
+            .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-cell {
+              padding: 0.4rem 0.45rem;
+            }
+            .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-card {
+              padding: 0.5rem 0.55rem;
+              min-height: calc(min(44px, var(--se-logo-height, 64px)) + 0.9rem);
+              border-radius: 12px;
+            }
+            .slideease-container-${uniqueId}[data-effect="logo-grid"] .se-logo-cell img {
+              max-width: 100%;
+              max-height: min(44px, var(--se-logo-height, 64px));
+            }
+          }
+          .slideease-container-${uniqueId} .se-story-focus {
+            position: relative; overflow: hidden; height: var(--se-render-height); background: #111;
+            box-shadow: 0 10px 28px rgba(18, 24, 38, 0.14);
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-story-focus__copy {
+            padding: 0.9rem !important;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-eyebrow {
+            font-size: 0.7rem;
+            margin: 0 0 0.35rem;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-heading {
+            font-size: 1.4rem;
+            max-width: 100%;
+            margin: 0 0 0.4rem;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-desc {
+            font-size: 0.92rem;
+            margin: 0 0 0.8rem;
+            -webkit-line-clamp: 2;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-copy-plate {
+            gap: 0.15rem;
+            max-width: 100%;
+          }
+          .slideease-container-${uniqueId}.se-root--stories {
+            --se-render-height: var(--se-height);
+            overflow: visible;
+            max-width: 100%;
+            margin-inline: auto;
+            padding: 0.25rem 0.5rem 0.5rem;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-rings {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 0 4px 12px;
+            scrollbar-width: thin;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-ring {
+            border: none;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            text-align: center;
+            width: 72px;
+            flex: 0 0 auto;
+            font: inherit;
+            color: #170f49;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-ring__avatar {
+            display: block;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            padding: 3px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #d1d5db, #9ca3af);
+            box-sizing: border-box;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-ring.is-active .se-stories-ring__avatar {
+            background: linear-gradient(135deg, #ed8104, #170f49);
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-ring__img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #fff;
+            background: #f3f4f6;
+            box-sizing: border-box;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-ring__img img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-ring__label {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #170f49;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-stage {
+            position: relative;
+            max-width: 360px;
+            width: 100%;
+            margin: 0 auto;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-progress {
+            height: 3px;
+            background: #e7e7e7;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 10px;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-progress__bar {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: #ed8104;
+            border-radius: inherit;
+            transition: width 0.3s ease;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-slider,
+          .slideease-container-${uniqueId}.se-root--stories .slick-list,
+          .slideease-container-${uniqueId}.se-root--stories .slick-track,
+          .slideease-container-${uniqueId}.se-root--stories .slick-slide,
+          .slideease-container-${uniqueId}.se-root--stories .slick-slide > div,
+          .slideease-container-${uniqueId}.se-root--stories [data-slideease-slide-id] {
+            height: var(--se-render-height) !important;
+            min-height: var(--se-render-height) !important;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-nav {
+            width: 34px;
+            height: 34px;
+            opacity: 0.95;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-nav--prev { left: 10px; }
+          .slideease-container-${uniqueId}.se-root--stories .se-nav--next { right: 10px; }
+          .slideease-container-${uniqueId}.se-root--stories .se-progress { display: none !important; }
+          .slideease-container-${uniqueId}.se-root--stories .slideease-dots-${uniqueId} { display: none !important; }
+          @media (max-width: 640px) {
+            .slideease-container-${uniqueId}.se-root--stories .se-stories-rings {
+              justify-content: center;
+            }
           }
           .slideease-container-${uniqueId} .se-announce {
-            min-height: var(--se-height); display: flex; align-items: center; justify-content: center; gap: 0.85rem;
-            padding: 0.65rem 1rem; flex-wrap: wrap; text-align: center;
+            height: var(--se-height, 48px) !important;
+            min-height: var(--se-height, 48px) !important;
+            max-height: var(--se-height, 48px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0 2.75rem;
+            flex-wrap: wrap;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
           }
-          .slideease-container-${uniqueId} .se-announce__text { font-weight: 600; font-size: 0.95rem; }
+          .slideease-container-${uniqueId} .se-announce__text {
+            font-weight: 600;
+            font-size: 0.92rem;
+            line-height: 1.3;
+          }
+          .slideease-container-${uniqueId} .se-announce__ctas {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            align-items: center;
+          }
           .slideease-container-${uniqueId} .se-announce__cta {
-            display: inline-flex; padding: 0.28rem 0.7rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.45);
-            color: inherit; text-decoration: none; font-size: 0.78rem; font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.45);
+            color: inherit;
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1.2;
+            background: transparent;
+          }
+          /* Announcement only — slim bar, height from settings */
+          .slideease-container-${uniqueId}.se-root--announce {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: visible;
+            --se-render-height: var(--se-height, 48px);
+          }
+          .slideease-container-${uniqueId}.se-root--announce .se-slider,
+          .slideease-container-${uniqueId}.se-root--announce .slick-list,
+          .slideease-container-${uniqueId}.se-root--announce .slick-track,
+          .slideease-container-${uniqueId}.se-root--announce .slick-slide,
+          .slideease-container-${uniqueId}.se-root--announce .slick-slide > div,
+          .slideease-container-${uniqueId}.se-root--announce [data-slideease-slide-id] {
+            height: var(--se-height, 48px) !important;
+            min-height: var(--se-height, 48px) !important;
+            max-height: var(--se-height, 48px);
+          }
+          .slideease-container-${uniqueId}.se-root--announce .slick-list {
+            width: 100% !important;
+          }
+          .slideease-container-${uniqueId}.se-root--announce .se-nav {
+            width: 28px;
+            height: 28px;
+            opacity: 0.92;
+            border: 1px solid rgba(255,255,255,0.35);
+            box-shadow: none;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+          }
+          .slideease-container-${uniqueId}.se-root--announce .se-nav--prev { left: 8px; }
+          .slideease-container-${uniqueId}.se-root--announce .se-nav--next { right: 8px; }
+          .slideease-container-${uniqueId}.se-root--announce .se-nav svg {
+            width: 14px;
+            height: 14px;
+          }
+          .slideease-container-${uniqueId}.se-root--announce .slideease-dots-${uniqueId},
+          .slideease-container-${uniqueId}.se-root--announce .se-progress {
+            display: none !important;
           }
           .slideease-container-${uniqueId} .se-frame--boxed { max-width: 100%; margin-inline: auto; }
     `
@@ -1279,11 +1611,14 @@
       slickConfig.slidesToScroll = visible
       if (slides.length <= show) slickConfig.infinite = false
     }
-    const frameHeight = resolveFrameHeight(settings)
+    const frameHeight =
+      effect === "announcement"
+        ? Math.min(Math.max(Number(settings.height) || 48, 36), 120)
+        : resolveFrameHeight(settings)
     const isProductLayout = ["product-carousel", "product-showcase", "collection-rail"].includes(effect)
     const showArrows =
       settings.arrows !== false &&
-      !["marquee", "logo-grid", "announcement"].includes(effect)
+      !["marquee", "logo-grid"].includes(effect)
     const showProgress =
       Boolean(settings.autoplay) &&
       Boolean(settings.progressBar) &&
@@ -1354,6 +1689,10 @@
     const productStyleVars = isProductLayout
       ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;`
       : ""
+    const logoWidth = Math.min(Math.max(Number(settings.logoWidth ?? 140), 40), 280)
+    const logoHeight = Math.min(Math.max(Number(settings.logoHeight ?? 64), 24), 160)
+    const logoStyleVars =
+      effect === "logo-grid" ? `--se-logo-width:${logoWidth}px;--se-logo-height:${logoHeight}px;` : ""
     const ctaStyleVars = `--se-cta-pad:${ctaPad}px;--se-cta-font-size:${ctaFontSize}px;--se-cta-radius:${ctaRadius}px;--se-cta-border-width:${ctaBorderWidth}px;--se-m-cta-font-size:${mobileCtaFontSize}px;`
     const heroStyleVars = !isProductLayout
       ? `--se-heading-size:${headingFontSize}px;--se-subheading-size:${subheadingFontSize}px;--se-desc-size:${descriptionFontSize}px;--se-m-heading-size:${mobileHeadingFontSize}px;--se-m-subheading-size:${mobileSubheadingFontSize}px;--se-m-desc-size:${mobileDescriptionFontSize}px;--se-heading-color:${headingColor};--se-subheading-color:${subheadingColor};--se-desc-color:${descriptionColor};--se-copy-gap:${copyGap}px;--se-pagination-offset:${paginationOffset}px;--se-progress-color:${progressBarColor};`
@@ -1371,7 +1710,9 @@
         "logo-grid",
         "testimonials",
       ].includes(effect) || Number(settings.slidesToShow) > 1
-    const isUtilityCompact = ["announcement", "logo-grid", "testimonials"].includes(effect)
+    const isUtilityCompact = ["logo-grid", "testimonials"].includes(effect)
+    const isStories = effect === "stories"
+    const isAnnounce = effect === "announcement"
     const testimonialWidth = Math.min(Math.max(Number(settings.width) || 1100, 320), 1600)
     const widthStyleVar = effect === "testimonials" ? `--se-width:${testimonialWidth}px;` : ""
 
@@ -1389,24 +1730,46 @@
           .join("")}</div>`
         : ""
 
+    const storiesRings = isStories
+      ? `<div class="se-stories-rings" role="tablist" aria-label="Stories">${slides
+          .map((slide, i) => {
+            const thumb = escapeHtml(safeUrl(slide.imageUrl) || "")
+            const label = escapeHtml(slide.heading || slide.title || `Story ${i + 1}`)
+            return `<button type="button" class="se-stories-ring${i === 0 ? " is-active" : ""}" data-story-index="${i}" role="tab" aria-selected="${i === 0 ? "true" : "false"}">
+              <span class="se-stories-ring__avatar"><span class="se-stories-ring__img">${thumb ? `<img src="${thumb}" alt="" loading="lazy" />` : ""}</span></span>
+              <span class="se-stories-ring__label">${label}</span>
+            </button>`
+          })
+          .join("")}</div>`
+      : ""
+    const storiesProgress = isStories
+      ? `<div class="se-stories-progress" aria-hidden="true"><span class="se-stories-progress__bar" style="width:${
+          slides.length ? Math.round(100 / slides.length) : 100
+        }%"></span></div>`
+      : ""
+    const arrowsHtml = showArrows
+      ? `
+          <button type="button" class="slideease-prev-${uniqueId} se-nav se-nav--prev" aria-label="Previous slide">${CHEVRON_LEFT}</button>
+          <button type="button" class="slideease-next-${uniqueId} se-nav se-nav--next" aria-label="Next slide">${CHEVRON_RIGHT}</button>
+        `
+      : ""
+    const sliderHtml = `<div id="${uniqueId}" class="slideease-slider-${uniqueId} se-slider">
+          ${slides.map((slide) => renderSlide(slide, settings, effect)).join("")}
+        </div>`
+
     insertAdjacent(`
-      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${effect === "announcement" ? " se-root--announce" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}" aria-roledescription="carousel">
+      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : isStories ? " se-root--stories" : isAnnounce ? " se-root--announce" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}${logoStyleVars}" aria-roledescription="carousel">
         ${
           ["product-carousel", "product-showcase", "collection-rail"].includes(effect) && settings.sectionHeading
             ? `<h2 class="se-section-heading">${escapeHtml(settings.sectionHeading)}</h2>`
             : ""
         }
+        ${storiesRings}
         ${
-          showArrows
-            ? `
-          <button type="button" class="slideease-prev-${uniqueId} se-nav se-nav--prev" aria-label="Previous slide">${CHEVRON_LEFT}</button>
-          <button type="button" class="slideease-next-${uniqueId} se-nav se-nav--next" aria-label="Next slide">${CHEVRON_RIGHT}</button>
-        `
-            : ""
+          isStories
+            ? `<div class="se-stories-stage">${arrowsHtml}${storiesProgress}${sliderHtml}</div>`
+            : `${arrowsHtml}${sliderHtml}`
         }
-        <div id="${uniqueId}" class="slideease-slider-${uniqueId} se-slider">
-          ${slides.map((slide) => renderSlide(slide, settings, effect)).join("")}
-        </div>
         ${showProgress ? `<div class="se-progress" aria-hidden="true"><span class="se-progress__bar"></span></div>` : ""}
         ${thumbs}
         <style>
@@ -1422,6 +1785,12 @@
             font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: #0f172a;
             isolation: isolate;
+          }
+          .slideease-container-${uniqueId}.se-root--stories {
+            --se-render-height: var(--se-height);
+          }
+          .slideease-container-${uniqueId}.se-root--announce {
+            --se-render-height: var(--se-height, 48px);
           }
           .slideease-container-${uniqueId}.se-root--hero {
             width: 100%;
@@ -1467,6 +1836,10 @@
             height: clamp(320px, 42vw, calc(var(--se-height) * 0.85));
             min-height: 300px;
             box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+          }
+          .slideease-container-${uniqueId}[data-effect="autoplay"].se-root--multi .slideease-frame {
+            box-shadow: none;
+            background: transparent;
           }
           .slideease-container-${uniqueId}.se-root--multi .se-copy {
             padding: clamp(0.9rem, 2vw, 1.5rem);
@@ -1920,6 +2293,20 @@
           .slideease-container-${uniqueId}[data-effect="variable-width"] .slideease-frame {
             border-radius: 14px;
           }
+          .slideease-container-${uniqueId}[data-effect="autoplay"] {
+            background: transparent !important;
+          }
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .se-slider,
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .slick-list,
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .slick-track,
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .slick-slide,
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .slick-slide > div {
+            background: transparent !important;
+          }
+          .slideease-container-${uniqueId}[data-effect="autoplay"] .slideease-frame {
+            background: transparent;
+            box-shadow: none;
+          }
           .slideease-container-${uniqueId}[data-effect="cards-stack"] .slideease-frame {
             box-shadow: 0 24px 60px rgba(15,23,42,0.28);
           }
@@ -1933,6 +2320,12 @@
           @media (max-width: 768px) {
             .slideease-container-${uniqueId}.se-root {
               --se-render-height: clamp(380px, 72vw, var(--se-height));
+            }
+            .slideease-container-${uniqueId}.se-root--stories {
+              --se-render-height: min(280px, var(--se-height));
+            }
+            .slideease-container-${uniqueId}.se-root--announce {
+              --se-render-height: var(--se-height, 48px);
             }
             .slideease-container-${uniqueId} .slideease-frame {
               height: var(--se-render-height);
@@ -2090,6 +2483,31 @@
         document.querySelector(`.slideease-prev-${uniqueId}`)?.addEventListener("click", () => $slider.slick("slickPrev"))
         document.querySelector(`.slideease-next-${uniqueId}`)?.addEventListener("click", () => $slider.slick("slickNext"))
 
+        const syncStoriesUi = (current) => {
+          if (!isStories || !root) return
+          const idx = Math.max(0, Number(current) || 0)
+          root.querySelectorAll(".se-stories-ring").forEach((ring, i) => {
+            const active = i === idx
+            ring.classList.toggle("is-active", active)
+            ring.setAttribute("aria-selected", active ? "true" : "false")
+          })
+          const bar = root.querySelector(".se-stories-progress__bar")
+          if (bar && slides.length) {
+            bar.style.width = `${Math.round(((idx + 1) / slides.length) * 100)}%`
+          }
+        }
+
+        if (isStories && root) {
+          root.querySelectorAll(".se-stories-ring").forEach((ring) => {
+            ring.addEventListener("click", () => {
+              const idx = Number(ring.getAttribute("data-story-index"))
+              if (!Number.isFinite(idx)) return
+              $slider.slick("slickGoTo", idx)
+            })
+          })
+          syncStoriesUi(0)
+        }
+
         restartProgress()
         $slider.on("beforeChange", () => {
           if (root) root.classList.remove("se-progress-run")
@@ -2098,6 +2516,7 @@
           const slide = slides[current]
           if (slide?.id) trackEvent("view", slide.id)
           restartProgress()
+          syncStoriesUi(current)
         })
 
         document.addEventListener("shopify:section:unload", () => {

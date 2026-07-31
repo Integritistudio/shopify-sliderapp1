@@ -125,6 +125,9 @@ export default function StyleSettingsForm({
 
   const show = getSettingsCapabilities(sliderType)
   const isTestimonials = sliderType === "testimonials"
+  const isStories = sliderType === "stories"
+  const isLogoGrid = sliderType === "logo-grid"
+  const isAnnounce = sliderType === "announcement"
   const isProductType = show.productSource
   const heightMin = sliderType === "announcement" ? 36 : sliderType === "logo-grid" ? 80 : 160
 
@@ -246,9 +249,12 @@ export default function StyleSettingsForm({
   }
 
   const showBehaviourToggles = show.autoplay || show.arrows || show.dots || show.infinite
-  const showNavColors = show.arrowColor || show.dotColor
-  const showLayoutRow = show.height || show.borderRadius
-  const showSlidesRow = show.slidesToShow || show.autoplaySpeed
+  // Stories: pair arrow color with Image fit so the row isn't half-empty
+  const showStoriesArrowWithFit = isStories && show.objectFit && show.arrowColor
+  const showNavColors = !isAnnounce && ((show.arrowColor && !showStoriesArrowWithFit) || show.dotColor)
+  // Logo Grid / Announcement use their own paired layout — skip generic half-empty rows
+  const showLayoutRow = !isLogoGrid && !isAnnounce && (show.height || show.borderRadius)
+  const showSlidesRow = !isStories && !isLogoGrid && !isAnnounce && (show.slidesToShow || show.autoplaySpeed)
   const showMobileSection = show.mobileSlides || show.mobileHeroText || show.mobileCtaFont
 
   return (
@@ -629,11 +635,17 @@ export default function StyleSettingsForm({
           {show.height ? (
             <ClampedNumberField
               label="Height (px)"
-              helpText={isTestimonials ? "Applied as the height of each testimonial card" : undefined}
-              value={settings.height ?? (isTestimonials ? 280 : 640)}
+              helpText={
+                isTestimonials
+                  ? "Applied as the height of each testimonial card"
+                  : isStories
+                    ? "Focus frame height under the story rings"
+                    : undefined
+              }
+              value={settings.height ?? (isTestimonials ? 280 : isStories ? 420 : 640)}
               min={heightMin}
-              max={isTestimonials ? 520 : 900}
-              fallback={isTestimonials ? 280 : 640}
+              max={isTestimonials ? 520 : isStories ? 420 : 900}
+              fallback={isTestimonials ? 280 : isStories ? 420 : 640}
               onChange={(value) => update("height", value)}
               disabled={disabled}
             />
@@ -643,16 +655,117 @@ export default function StyleSettingsForm({
           {show.borderRadius ? (
             <ClampedNumberField
               label="Corner radius (px)"
-              value={settings.borderRadius ?? 0}
+              value={settings.borderRadius ?? (isStories ? 18 : 0)}
               min={0}
               max={40}
-              fallback={0}
+              fallback={isStories ? 18 : 0}
               onChange={(value) => update("borderRadius", value)}
               disabled={disabled}
             />
           ) : (
             <div />
           )}
+        </FormLayout.Group>
+      ) : null}
+
+      {isLogoGrid ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Row height (px)"
+            value={settings.height ?? 140}
+            min={80}
+            max={240}
+            fallback={140}
+            onChange={(value) => update("height", value)}
+            disabled={disabled}
+          />
+          <ClampedNumberField
+            label="Logos to show"
+            value={settings.slidesToShow ?? 5}
+            min={1}
+            max={12}
+            fallback={5}
+            onChange={(value) => update("slidesToShow", value)}
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {isLogoGrid ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Logo width (px)"
+            value={settings.logoWidth ?? 140}
+            min={40}
+            max={280}
+            fallback={140}
+            onChange={(value) => update("logoWidth", value)}
+            disabled={disabled}
+          />
+          <ClampedNumberField
+            label="Logo height (px)"
+            value={settings.logoHeight ?? 64}
+            min={24}
+            max={160}
+            fallback={64}
+            onChange={(value) => update("logoHeight", value)}
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {isAnnounce ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Height (px)"
+            value={settings.height ?? 48}
+            min={36}
+            max={120}
+            fallback={48}
+            onChange={(value) => update("height", value)}
+            disabled={disabled}
+          />
+          <ColorField
+            label="Arrow color"
+            value={settings.arrowColor || "#ffffff"}
+            onChange={(value) => update("arrowColor", value)}
+            fallback="#ffffff"
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {isAnnounce && show.autoplaySpeed && settings.autoplay ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Autoplay speed (ms)"
+            value={settings.autoplaySpeed ?? 4000}
+            min={0}
+            max={60000}
+            fallback={4000}
+            onChange={(value) => update("autoplaySpeed", value)}
+            disabled={disabled}
+          />
+          <ColorField
+            label="Bar background"
+            value={settings.ctaBackground || "#1a2f4a"}
+            onChange={(value) => update("ctaBackground", value)}
+            fallback="#1a2f4a"
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {isAnnounce && !(show.autoplaySpeed && settings.autoplay) ? (
+        <FormLayout.Group>
+          <ColorField
+            label="Bar background"
+            value={settings.ctaBackground || "#1a2f4a"}
+            onChange={(value) => update("ctaBackground", value)}
+            fallback="#1a2f4a"
+            disabled={disabled}
+          />
+          <div />
         </FormLayout.Group>
       ) : null}
 
@@ -684,7 +797,17 @@ export default function StyleSettingsForm({
             onChange={(value) => update("objectFit", value)}
             disabled={disabled}
           />
-          <div />
+          {showStoriesArrowWithFit ? (
+            <ColorField
+              label="Arrow color"
+              value={settings.arrowColor || "#ffffff"}
+              onChange={(value) => update("arrowColor", value)}
+              fallback="#ffffff"
+              disabled={disabled}
+            />
+          ) : (
+            <div />
+          )}
         </FormLayout.Group>
       ) : null}
 
@@ -730,9 +853,24 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
+      {isStories && show.autoplaySpeed && settings.autoplay ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Autoplay speed (ms)"
+            value={settings.autoplaySpeed ?? 3000}
+            min={0}
+            max={60000}
+            fallback={3000}
+            onChange={(value) => update("autoplaySpeed", value)}
+            disabled={disabled}
+          />
+          <div />
+        </FormLayout.Group>
+      ) : null}
+
       {showNavColors ? (
         <FormLayout.Group>
-          {show.arrowColor ? (
+          {show.arrowColor && !showStoriesArrowWithFit ? (
             <TextField
               label="Arrow color"
               value={settings.arrowColor || "#ffffff"}
@@ -755,20 +893,17 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {show.ctaBackgroundOnly && !show.ctaPrimary && !show.shopNowButton ? (
-        <>
-          <Text variant="headingSm">Bar style</Text>
-          <FormLayout.Group>
-            <ColorField
-              label="Background"
-              value={settings.ctaBackground || "#1a2f4a"}
-              onChange={(value) => update("ctaBackground", value)}
-              fallback="#1a2f4a"
-              disabled={disabled}
-            />
-            <div />
-          </FormLayout.Group>
-        </>
+      {show.ctaBackgroundOnly && !show.ctaPrimary && !show.shopNowButton && !isAnnounce ? (
+        <FormLayout.Group>
+          <ColorField
+            label="Background"
+            value={settings.ctaBackground || "#1a2f4a"}
+            onChange={(value) => update("ctaBackground", value)}
+            fallback="#1a2f4a"
+            disabled={disabled}
+          />
+          <div />
+        </FormLayout.Group>
       ) : null}
 
       {show.ctaPrimary || show.shopNowButton ? (
@@ -1115,26 +1250,49 @@ export default function StyleSettingsForm({
       {showMobileSection ? <Text variant="headingSm">Mobile overrides</Text> : null}
 
       {show.mobileSlides ? (
-        <FormLayout.Group>
-          <ClampedNumberField
-            label="Mobile slides to show"
-            value={settings.mobile?.slidesToShow ?? 1}
-            min={1}
-            max={isTestimonials ? 3 : 12}
-            fallback={1}
-            onChange={(value) => updateMobile("slidesToShow", value)}
-            disabled={disabled}
-          />
-          <ClampedNumberField
-            label="Mobile slides to scroll"
-            value={settings.mobile?.slidesToScroll ?? 1}
-            min={1}
-            max={12}
-            fallback={1}
-            onChange={(value) => updateMobile("slidesToScroll", value)}
-            disabled={disabled}
-          />
-        </FormLayout.Group>
+        isLogoGrid ? (
+          <FormLayout.Group>
+            <ClampedNumberField
+              label="Mobile logos to show"
+              value={Math.min(settings.mobile?.slidesToShow ?? 2, 2)}
+              min={1}
+              max={2}
+              fallback={2}
+              onChange={(value) => updateMobile("slidesToShow", Math.min(value, 2))}
+              disabled={disabled}
+            />
+            <ClampedNumberField
+              label="Mobile logos to scroll"
+              value={settings.mobile?.slidesToScroll ?? 1}
+              min={1}
+              max={2}
+              fallback={1}
+              onChange={(value) => updateMobile("slidesToScroll", value)}
+              disabled={disabled}
+            />
+          </FormLayout.Group>
+        ) : (
+          <FormLayout.Group>
+            <ClampedNumberField
+              label="Mobile slides to show"
+              value={settings.mobile?.slidesToShow ?? 1}
+              min={1}
+              max={isTestimonials ? 3 : 12}
+              fallback={1}
+              onChange={(value) => updateMobile("slidesToShow", value)}
+              disabled={disabled}
+            />
+            <ClampedNumberField
+              label="Mobile slides to scroll"
+              value={settings.mobile?.slidesToScroll ?? 1}
+              min={1}
+              max={12}
+              fallback={1}
+              onChange={(value) => updateMobile("slidesToScroll", value)}
+              disabled={disabled}
+            />
+          </FormLayout.Group>
+        )
       ) : null}
 
       {show.mobileHeroText ? (
