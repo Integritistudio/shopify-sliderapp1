@@ -87,7 +87,7 @@ export default function UserGuide() {
               </Text>
               <Text>
                 If files do not appear or uploads fail, reinstall the app so it can request{" "}
-                <strong>read_files</strong> and <strong>write_files</strong>. Contact support at info@integriti.io.
+                <strong>read_files</strong> and <strong>write_files</strong>. Contact support at info@integritistudio.com.
               </Text>
             </Stack>
           </Card>

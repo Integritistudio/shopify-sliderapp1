@@ -87,7 +87,7 @@ router.post("/sliders/:sliderId/slides", async (req, res) => {
     if (gate.denied) return
     const slideCount = gate.slideCount
 
-    const errors = validateSlideInput(payload)
+    const errors = validateSlideInput(payload, { sliderType: slider.sliderType })
     if (errors.length) {
       return res.status(400).json({ error: errors[0], details: errors })
     }
@@ -229,8 +229,10 @@ router.put("/sliders/:sliderId/slides/:slideId", async (req, res) => {
         title: payload.title ?? slide.title,
         ctaUrl: payload.ctaUrl,
         overlayOpacity: payload.overlayOpacity,
+        mediaType: payload.mediaType ?? slide.mediaType,
+        videoUrl: payload.videoUrl ?? slide.videoUrl,
       },
-      { partial: true },
+      { partial: true, sliderType: slider.sliderType },
     )
     if (errors.length) {
       return res.status(400).json({ error: errors[0], details: errors })

@@ -61,12 +61,20 @@ export function pickSlidePayload(body = {}) {
   }
 }
 
-export function validateSlideInput(payload, { partial = false } = {}) {
+export function validateSlideInput(payload, { partial = false, sliderType = null } = {}) {
   const errors = []
   const mediaType = payload.mediaType || "image"
+  const isAnnouncement = sliderType === "announcement"
 
   if (!partial || payload.imageUrl !== undefined || payload.videoUrl !== undefined) {
-    if (mediaType === "video") {
+    if (isAnnouncement) {
+      // Announcement bars are text-first; imageUrl is optional.
+      if (payload.imageUrl && String(payload.imageUrl).trim()) {
+        if (!isValidHttpUrl(payload.imageUrl) && !String(payload.imageUrl).startsWith("/")) {
+          errors.push("imageUrl must be a valid http(s) URL")
+        }
+      }
+    } else if (mediaType === "video") {
       if (!payload.videoUrl && !payload.imageUrl) {
         errors.push("videoUrl or poster imageUrl is required for video slides")
       }
