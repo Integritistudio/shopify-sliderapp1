@@ -944,7 +944,7 @@
             <div class="se-media-wrap">${renderMedia(slide, settings)}</div>
             <div class="se-overlay" aria-hidden="true">
               <span class="se-overlay__tint" style="background:${escapeHtml(overlayColor)};opacity:${overlayOpacity};"></span>
-              <span class="se-overlay__grade"></span>
+              <span class="se-overlay__grade" style="opacity:${overlayOpacity};"></span>
             </div>
             ${
               hasCopy
@@ -1249,15 +1249,7 @@
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-copy--right {
             justify-content: flex-end;
           }
-          .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-overlay__tint,
-          .slideease-container-${uniqueId}[data-effect="hero-video"] .se-overlay__tint,
-          .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-overlay__tint,
-          .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-overlay__tint {
-            opacity: 1 !important;
-            background:
-              linear-gradient(90deg, rgba(11,13,18,0.72) 0%, rgba(11,13,18,0.35) 48%, rgba(11,13,18,0.18) 100%),
-              linear-gradient(180deg, rgba(11,13,18,0.12) 0%, rgba(11,13,18,0.55) 100%) !important;
-          }
+          /* Hero overlays use slide overlayColor + overlayOpacity (inline on .se-overlay__tint / __grade) */
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-eyebrow,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-eyebrow,
           .slideease-container-${uniqueId}[data-hero-anim="hero-video"] .se-eyebrow,
