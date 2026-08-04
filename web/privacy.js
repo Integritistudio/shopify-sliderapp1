@@ -1,5 +1,5 @@
 /**
- * Shopify inbound webhook handlers: privacy + app lifecycle + subscriptions.
+ * Shopify inbound webhook handlers: privacy + app lifecycle + subscriptions + catalog sync.
  */
 import { DeliveryMethod } from "@shopify/shopify-api"
 import { Slider, ShopAffiliate, ShopPlan } from "./models/index.js"
@@ -13,6 +13,10 @@ import {
 import { sendUninstall } from "./utils/portalWebhook.js"
 import { upsertShopPlanCache } from "./utils/shopPlanCache.js"
 import { handleSubscriptionUpdate } from "./utils/subscriptionBilling.js"
+import {
+  handleProductWebhook,
+  handleCollectionWebhook,
+} from "./utils/productSliderSync.js"
 
 /**
  * @type {{[key: string]: import("@shopify/shopify-api").WebhookHandler}}
@@ -147,6 +151,52 @@ export default {
         })
       } catch (error) {
         console.error("APP_SUBSCRIPTIONS_UPDATE handler error:", error)
+      }
+    },
+  },
+
+  /**
+   * Catalog sync: keep product-slider slide snapshots fresh when Shopify
+   * products/collections change. Isolated from privacy/lifecycle handlers.
+   */
+  PRODUCTS_UPDATE: {
+    deliveryMethod: DeliveryMethod.Http,
+    callbackUrl: "/api/webhooks",
+    callback: async (topic, shop, body, webhookId) => {
+      try {
+        const payload = JSON.parse(body)
+        console.log("PRODUCTS_UPDATE received:", shop, webhookId, payload?.id)
+        await handleProductWebhook(shop, payload)
+      } catch (error) {
+        console.error("PRODUCTS_UPDATE handler error:", error)
+      }
+    },
+  },
+
+  PRODUCTS_DELETE: {
+    deliveryMethod: DeliveryMethod.Http,
+    callbackUrl: "/api/webhooks",
+    callback: async (topic, shop, body, webhookId) => {
+      try {
+        const payload = JSON.parse(body)
+        console.log("PRODUCTS_DELETE received:", shop, webhookId, payload?.id)
+        await handleProductWebhook(shop, payload)
+      } catch (error) {
+        console.error("PRODUCTS_DELETE handler error:", error)
+      }
+    },
+  },
+
+  COLLECTIONS_UPDATE: {
+    deliveryMethod: DeliveryMethod.Http,
+    callbackUrl: "/api/webhooks",
+    callback: async (topic, shop, body, webhookId) => {
+      try {
+        const payload = JSON.parse(body)
+        console.log("COLLECTIONS_UPDATE received:", shop, webhookId, payload?.id)
+        await handleCollectionWebhook(shop, payload)
+      } catch (error) {
+        console.error("COLLECTIONS_UPDATE handler error:", error)
       }
     },
   },

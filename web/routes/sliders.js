@@ -19,6 +19,7 @@ import {
 import { SLIDE_ABSOLUTE_CEILING } from "../utils/plans.js"
 import { resolveShopPlan } from "../utils/resolveShopPlan.js"
 import { upsertShopPlanCache } from "../utils/shopPlanCache.js"
+import { replaceWithProductSlides } from "../utils/productSliderSync.js"
 
 const router = express.Router()
 
@@ -34,34 +35,6 @@ function serializeSlider(slider) {
       description: slide.description || "",
     })),
   }
-}
-
-async function replaceWithProductSlides(slider, products, { showPrice = true } = {}) {
-  await Slide.destroy({ where: { SliderId: slider.id } })
-  if (!products.length) return
-  await Slide.bulkCreate(
-    products.map((product, index) => ({
-      ...DEFAULT_SLIDE_FIELDS,
-      imageUrl: product.imageUrl || "",
-      title: product.title,
-      heading: product.title,
-      description: showPrice ? product.price || "" : "",
-      ctaText: "Shop now",
-      ctaUrl: product.url,
-      ctaResourceType: "product",
-      ctaResourceId: product.id,
-      variantId: product.variantId || null,
-      availableForSale: product.availableForSale !== false,
-      subheading: product.handle || "",
-      imageAlt: product.imageAlt || product.title,
-      textAlign: "center",
-      textColor: "#170f49",
-      overlayOpacity: 0,
-      position: index,
-      isVisible: true,
-      SliderId: slider.id,
-    })),
-  )
 }
 
 async function loadSerializedSlider(id, shop) {
