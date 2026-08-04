@@ -52,7 +52,7 @@ function SlidersIndexContent() {
     message: "",
     requiredPlanId: "standard",
   })
-  const [reviewOpen, setReviewOpen] = useState(true)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [pendingSliderId, setPendingSliderId] = useState(null)
 
   const openUpgrade = ({ title, message, requiredPlanId }) => {
@@ -131,7 +131,6 @@ function SlidersIndexContent() {
   }
 
   const createSlider = async (name, sliderType) => {
-    const isFirstSlider = sliders.length === 0
     const response = await fetch("/api/sliders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -153,24 +152,12 @@ function SlidersIndexContent() {
     setShowCreate(false)
     refreshPlan()
 
-    if (isFirstSlider) {
-      let alreadyShown = false
-      try {
-        const onboardingRes = await fetch("/api/onboarding")
-        if (onboardingRes.ok) {
-          const onboarding = await onboardingRes.json()
-          alreadyShown = Boolean(onboarding?.reviewPromptShown)
-        }
-      } catch {
-        // ignore — still show prompt for first create
-      }
-
-      if (!alreadyShown) {
-        markReviewPromptShown()
-        setPendingSliderId(data.id)
-        setReviewOpen(true)
-        return
-      }
+    // Server decides: first slider for this shop AND review not shown yet
+    if (data.showReviewPrompt) {
+      markReviewPromptShown()
+      setPendingSliderId(data.id)
+      setReviewOpen(true)
+      return
     }
 
     navigate(`/sliders/${data.id}`)
@@ -235,15 +222,19 @@ function SlidersIndexContent() {
 
   if (loading) {
     return (
-      <Page fullWidth>
-        <div className="se-loading">
-          <Spinner size="large" />
-        </div>
-      </Page>
+      <>
+        <Page fullWidth>
+          <div className="se-loading">
+            <Spinner size="large" />
+          </div>
+        </Page>
+        <ReviewPromptModal open={reviewOpen} onClose={continueAfterReviewPrompt} />
+      </>
     )
   }
 
   return (
+    <>
     <Page fullWidth>
       <div className="se-page">
         <div className="se-dashboard-stack">
@@ -451,6 +442,7 @@ function SlidersIndexContent() {
 
       <ReviewPromptModal open={reviewOpen} onClose={continueAfterReviewPrompt} />
     </Page>
+    </>
   )
 }
 

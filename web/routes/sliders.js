@@ -154,6 +154,9 @@ router.post("/sliders", async (req, res) => {
 
     const brandKit = await BrandKit.findOne({ where: { shop } })
 
+    const priorCount = await Slider.count({ where: { shop } })
+    const isFirstSlider = priorCount === 0
+
     const slider = await Slider.create({
       name: sanitizePlainText(name, 120),
       sliderType: type,
@@ -190,6 +193,25 @@ router.post("/sliders", async (req, res) => {
       ...(slider.status === "published" ? { publishedSlider: true } : {}),
     })
 
+    let showReviewPrompt = false
+    if (isFirstSlider) {
+      try {
+        const [onboarding] = await ShopOnboarding.findOrCreate({
+          where: { shop },
+          defaults: { shop },
+        })
+        if (!onboarding.reviewPromptShown) {
+          onboarding.reviewPromptShown = true
+          await onboarding.save()
+          showReviewPrompt = true
+        }
+      } catch (error) {
+        console.warn("Review prompt flag skipped:", error.message)
+        // Still offer the prompt on first create if persistence fails
+        showReviewPrompt = true
+      }
+    }
+
     const created = await Slider.findOne({
       where: { id: slider.id, shop },
       include: [
@@ -206,7 +228,11 @@ router.post("/sliders", async (req, res) => {
       ],
     })
 
-    res.status(201).json(serializeSlider(created))
+    res.status(201).json({
+      ...serializeSlider(created),
+      isFirstSlider,
+      showReviewPrompt,
+    })
   } catch (error) {
     console.error("Error creating slider:", error)
     res.status(500).json({ error: "Failed to create slider" })

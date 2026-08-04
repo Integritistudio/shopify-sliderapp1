@@ -4,15 +4,25 @@ import { Text } from "@shopify/polaris"
 
 export const REVIEW_URL = "https://apps.shopify.com/slideease"
 
+function openReviewPage() {
+  try {
+    const opener = window.top || window
+    const popup = opener.open(REVIEW_URL, "_blank", "noopener,noreferrer")
+    if (popup) return
+  } catch {
+    // cross-origin iframe may block top.open
+  }
+  window.open(REVIEW_URL, "_blank", "noopener,noreferrer")
+}
+
 /**
  * One-time ask for an App Store review after the merchant creates their first slider.
- * Uses the same no-backdrop card style as UpgradeModal (hideBackdrop).
  */
 export default function ReviewPromptModal({ open, onClose }) {
   if (!open) return null
 
   const handleReview = () => {
-    window.open(REVIEW_URL, "_blank", "noopener,noreferrer")
+    openReviewPage()
     onClose?.()
   }
 
