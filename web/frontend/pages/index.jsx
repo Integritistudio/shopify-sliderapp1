@@ -6,6 +6,7 @@ import { Page, Stack, Text, Spinner, TextField, Banner } from "@shopify/polaris"
 import { ToastProvider, useToast } from "../contexts/toast-context"
 import CreateSliderPanel from "../components/create-slider-panel"
 import OnboardingChecklist from "../components/onboarding-checklist"
+import ReviewPromptModal from "../components/review-prompt-modal"
 import UpgradeModal from "../components/upgrade-modal"
 import { getSliderTypeInfo } from "../utils/sliderConfig"
 import { canCreateSlider } from "../utils/plans"
@@ -51,6 +52,8 @@ function SlidersIndexContent() {
     message: "",
     requiredPlanId: "standard",
   })
+  const [reviewOpen, setReviewOpen] = useState(true)
+  const [pendingSliderId, setPendingSliderId] = useState(null)
 
   const openUpgrade = ({ title, message, requiredPlanId }) => {
     setUpgradeMeta({
@@ -112,7 +115,23 @@ function SlidersIndexContent() {
     setShowCreate((open) => !open)
   }
 
+  const markReviewPromptShown = () => {
+    fetch("/api/onboarding", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewPromptShown: true }),
+    }).catch(() => {})
+  }
+
+  const continueAfterReviewPrompt = () => {
+    setReviewOpen(false)
+    const id = pendingSliderId
+    setPendingSliderId(null)
+    if (id) navigate(`/sliders/${id}`)
+  }
+
   const createSlider = async (name, sliderType) => {
+    const isFirstSlider = sliders.length === 0
     const response = await fetch("/api/sliders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -133,6 +152,27 @@ function SlidersIndexContent() {
     showToast(`Slider "${data.name}" created`)
     setShowCreate(false)
     refreshPlan()
+
+    if (isFirstSlider) {
+      let alreadyShown = false
+      try {
+        const onboardingRes = await fetch("/api/onboarding")
+        if (onboardingRes.ok) {
+          const onboarding = await onboardingRes.json()
+          alreadyShown = Boolean(onboarding?.reviewPromptShown)
+        }
+      } catch {
+        // ignore — still show prompt for first create
+      }
+
+      if (!alreadyShown) {
+        markReviewPromptShown()
+        setPendingSliderId(data.id)
+        setReviewOpen(true)
+        return
+      }
+    }
+
     navigate(`/sliders/${data.id}`)
   }
 
@@ -408,6 +448,8 @@ function SlidersIndexContent() {
         pricingUrl={pricingUrl}
         hideBackdrop
       />
+
+      <ReviewPromptModal open={reviewOpen} onClose={continueAfterReviewPrompt} />
     </Page>
   )
 }

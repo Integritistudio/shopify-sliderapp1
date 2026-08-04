@@ -39,7 +39,13 @@ const ShopOnboarding = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    reviewPromptShown: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
+
   {
     tableName: "ShopOnboardings",
     timestamps: true,

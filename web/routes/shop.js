@@ -93,7 +93,14 @@ router.put("/onboarding", async (req, res) => {
       where: { shop: req.shop },
       defaults: { shop: req.shop },
     })
-    for (const key of ["createdSlider", "addedSlide", "publishedSlider", "embeddedTheme", "dismissed"]) {
+    for (const key of [
+      "createdSlider",
+      "addedSlide",
+      "publishedSlider",
+      "embeddedTheme",
+      "dismissed",
+      "reviewPromptShown",
+    ]) {
       if (req.body[key] !== undefined) row[key] = Boolean(req.body[key])
     }
     await row.save()

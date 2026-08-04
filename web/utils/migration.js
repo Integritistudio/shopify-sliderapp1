@@ -556,6 +556,27 @@ const migrations = {
       if (table.installStatus) await queryInterface.removeColumn("ShopAffiliates", "installStatus")
     },
   },
+
+  "016-review-prompt-shown": {
+    up: async (queryInterface) => {
+      const table = await queryInterface.describeTable("ShopOnboardings").catch(() => null)
+      if (!table) return
+      if (!table.reviewPromptShown) {
+        await queryInterface.addColumn("ShopOnboardings", "reviewPromptShown", {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const table = await queryInterface.describeTable("ShopOnboardings").catch(() => null)
+      if (!table) return
+      if (table.reviewPromptShown) {
+        await queryInterface.removeColumn("ShopOnboardings", "reviewPromptShown")
+      }
+    },
+  },
 }
 
 // Run pending migrations
