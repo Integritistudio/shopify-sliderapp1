@@ -14,6 +14,21 @@ const Slide = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    hoverImageUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "",
+    },
+    compareAtPrice: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "",
+    },
+    saleDiscountPercent: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
     title: {
       type: DataTypes.TEXT,
       allowNull: false,

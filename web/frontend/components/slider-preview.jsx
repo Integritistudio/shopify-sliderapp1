@@ -432,8 +432,43 @@ function HeroFrame({ slide, settings, compact, heightOverride, boxed = false, vi
 
 function ProductCard({ slide, settings, compact = false, featured = false, reserveTitleSpace = true }) {
   const imageUrl = safeUrl(slide.imageUrl)
+  const hoverImageUrl = safeUrl(slide.hoverImageUrl)
   const title = slide.heading || slide.title || "Product"
   const price = slide.description || ""
+  const salesBadgeMode = String(settings.salesBadgeMode || "automatic").toLowerCase()
+  const saleDiscountPercent = Number(slide.saleDiscountPercent)
+  const salesBadgeFormat = String(settings.salesBadgeFormat || "percent-off").toLowerCase()
+  const salesBadgeText =
+    settings.salesBadgeText == null
+      ? salesBadgeFormat === "custom"
+        ? "{percent}% OFF"
+        : "OFF"
+      : String(settings.salesBadgeText)
+  const salesBadgePadding = Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)
+  const salesBadgeBackground = settings.salesBadgeBackground || "#170f49"
+  const quickAddBackground = settings.quickAddBackground || "#170f49"
+  const quickAddText = String(settings.quickAddText || "").trim()
+  const quickAddIconUrl = safeUrl(settings.quickAddIconUrl)
+  const quickAddTextSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
+  const formatSaleBadge = (percent) => {
+    const n = Math.round(Number(percent))
+    if (!Number.isFinite(n) || n <= 0) return ""
+    switch (salesBadgeFormat) {
+      case "percent":
+        return `${n}%`
+      case "save-percent":
+        return `Save ${n}%`
+      case "custom":
+        return (salesBadgeText.trim() || "{percent}% OFF").replace(/\{percent\}/gi, String(n))
+      case "percent-off":
+      default:
+        return `${n}% ${salesBadgeText.trim() || "OFF"}`
+    }
+  }
+  const saleBadgeLabel =
+    salesBadgeMode !== "off" && Number.isFinite(saleDiscountPercent) && saleDiscountPercent > 0
+      ? formatSaleBadge(saleDiscountPercent)
+      : ""
   const titleSize = compact
     ? Math.max(12, Math.round((settings.productTitleFontSize ?? 16) * 0.85))
     : settings.productTitleFontSize ?? 16
@@ -478,7 +513,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
   }
   return (
     <div
-      className="se-preview-product-card"
+      className={`se-preview-product-card${hoverImageUrl ? " se-preview-product-card--has-hover" : ""}`}
       style={{
         background: "#fff",
         border: "1px solid #e7e7e7",
@@ -490,9 +525,116 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
         boxShadow: "none",
       }}
     >
-      <div style={{ aspectRatio: "1 / 1.05", background: "#f3f4f6", overflow: "hidden" }}>
+      <div style={{ position: "relative", aspectRatio: "1 / 1.05", background: "#f3f4f6", overflow: "hidden" }}>
         {imageUrl ? (
-          <img src={imageUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <img
+            src={imageUrl}
+            alt={title}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : null}
+        {hoverImageUrl ? (
+          <img
+            className="se-preview-product-card__hover-img"
+            src={hoverImageUrl}
+            alt=""
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+              opacity: 0,
+              pointerEvents: "none",
+              transition: "opacity 0.25s ease",
+            }}
+          />
+        ) : null}
+        {saleBadgeLabel ? (
+          <span
+            className="se-preview-product-card__badge"
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: 10,
+              left: 10,
+              zIndex: 2,
+              pointerEvents: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: salesBadgePadding,
+              borderRadius: 4,
+              background: salesBadgeBackground,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              lineHeight: 1.2,
+              textTransform: "uppercase",
+            }}
+          >
+            {saleBadgeLabel}
+          </span>
+        ) : null}
+        {!isSoldOut ? (
+          <span
+            className="se-preview-product-card__quick-add"
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              right: 10,
+              bottom: 10,
+              zIndex: 3,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: salesBadgePadding,
+              borderRadius: 4,
+              background: quickAddBackground,
+              color: "#fff",
+              fontSize: quickAddTextSize,
+              fontWeight: 700,
+              letterSpacing: "0.02em",
+              lineHeight: 1,
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              opacity: 0,
+              transform: "translateY(8px)",
+              pointerEvents: "none",
+              transition: "opacity 0.2s ease, transform 0.2s ease",
+            }}
+          >
+            {quickAddText ? (
+              quickAddText
+            ) : quickAddIconUrl ? (
+              <img
+                src={quickAddIconUrl}
+                alt=""
+                style={{ width: quickAddTextSize, height: quickAddTextSize, objectFit: "contain", display: "block" }}
+              />
+            ) : (
+              <svg
+                width={quickAddTextSize}
+                height={quickAddTextSize}
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 5h2l1.2 9.2a2 2 0 0 0 2 1.8h8.6a2 2 0 0 0 2-1.7L20 8H7"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="10" cy="20" r="1.4" fill="currentColor" />
+                <circle cx="17" cy="20" r="1.4" fill="currentColor" />
+              </svg>
+            )}
+          </span>
         ) : null}
       </div>
       <div
@@ -847,10 +989,18 @@ const EFFECT_STYLES = `
 }
 .se-split-panel--left { left: 0; animation: seSplitLeft 0.75s cubic-bezier(0.65,0,0.35,1) forwards; }
 .se-split-panel--right { right: 0; animation: seSplitRight 0.75s cubic-bezier(0.65,0,0.35,1) forwards; }
+@media (hover: hover) and (pointer: fine) {
+  .se-preview-product-card--has-hover:hover .se-preview-product-card__hover-img { opacity: 1 !important; }
+  .se-preview-product-card:hover .se-preview-product-card__quick-add {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .se-fx-fade, .se-fx-slide, .se-fx-zoom, .se-fx-flip, .se-fx-cube, .se-fx-rise .se-rise-content > *,
   .se-fx-ken img, .se-fx-parallax img, .se-fx-blur, .se-fx-wipe,
   .se-split-panel--left, .se-split-panel--right { animation: none !important; }
+  .se-preview-product-card__hover-img { transition: none !important; }
 }
 `
 

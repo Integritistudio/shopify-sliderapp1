@@ -487,7 +487,106 @@ export default function StyleSettingsForm({
           >
             Sold out {settings.showSoldOut === false ? "Off" : "On"}
           </Button>
+          <Button
+            pressed={(settings.salesBadgeMode || "automatic") !== "off"}
+            onClick={() =>
+              update(
+                "salesBadgeMode",
+                (settings.salesBadgeMode || "automatic") === "off" ? "automatic" : "off",
+              )
+            }
+            disabled={disabled}
+          >
+            Sales badge {(settings.salesBadgeMode || "automatic") === "off" ? "Off" : "On"}
+          </Button>
         </div>
+      ) : null}
+
+      {show.productSource && (settings.salesBadgeMode || "automatic") !== "off" ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Sales badge padding (px)"
+            value={settings.salesBadgePadding ?? 8}
+            min={0}
+            max={24}
+            fallback={8}
+            onChange={(value) => update("salesBadgePadding", value)}
+            disabled={disabled}
+          />
+          <SeSelect
+            label="Sales badge format"
+            options={[
+              { label: "20% OFF", value: "percent-off" },
+              { label: "20%", value: "percent" },
+              { label: "Save 20%", value: "save-percent" },
+              { label: "Custom text", value: "custom" },
+            ]}
+            value={settings.salesBadgeFormat || "percent-off"}
+            onChange={(value) => update("salesBadgeFormat", value || "percent-off")}
+            disabled={disabled}
+          />
+          <TextField
+            label={
+              (settings.salesBadgeFormat || "percent-off") === "custom"
+                ? "Sales badge text (use {percent})"
+                : "Sales badge text"
+            }
+            value={
+              settings.salesBadgeText ??
+              ((settings.salesBadgeFormat || "percent-off") === "custom" ? "{percent}% OFF" : "OFF")
+            }
+            onChange={(value) => update("salesBadgeText", value)}
+            placeholder={
+              (settings.salesBadgeFormat || "percent-off") === "custom" ? "{percent}% OFF" : "OFF"
+            }
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <ColorField
+            label="Sales badge background"
+            value={settings.salesBadgeBackground || "#170f49"}
+            onChange={(value) => update("salesBadgeBackground", value)}
+            fallback="#170f49"
+            disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.productSource ? (
+        <FormLayout.Group>
+          <TextField
+            label="Quick add icon URL"
+            value={settings.quickAddIconUrl || ""}
+            onChange={(value) => update("quickAddIconUrl", value)}
+            placeholder="https://… (optional)"
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <ColorField
+            label="Quick add background"
+            value={settings.quickAddBackground || "#170f49"}
+            onChange={(value) => update("quickAddBackground", value)}
+            fallback="#170f49"
+            disabled={disabled}
+          />
+          <TextField
+            label="Quick add text"
+            value={settings.quickAddText || ""}
+            onChange={(value) => update("quickAddText", value)}
+            placeholder="Leave blank for icon"
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <ClampedNumberField
+            label="Quick add text size (px)"
+            value={settings.quickAddTextSize ?? 11}
+            min={8}
+            max={24}
+            fallback={11}
+            onChange={(value) => update("quickAddTextSize", value)}
+            disabled={disabled}
+          />
+        </FormLayout.Group>
       ) : null}
 
       {show.productSource && settings.showAddToCart !== false ? (

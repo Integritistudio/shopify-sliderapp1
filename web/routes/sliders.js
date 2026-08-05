@@ -351,6 +351,12 @@ router.post("/sliders/:id/duplicate", async (req, res) => {
       await Slide.bulkCreate(
         slides.map((slide, index) => ({
           imageUrl: slide.imageUrl,
+          hoverImageUrl: slide.hoverImageUrl || "",
+          compareAtPrice: slide.compareAtPrice || "",
+          saleDiscountPercent:
+            Number.isFinite(Number(slide.saleDiscountPercent)) && Number(slide.saleDiscountPercent) > 0
+              ? Math.round(Number(slide.saleDiscountPercent))
+              : null,
           title: slide.title,
           description: slide.description || "",
           heading: slide.heading || "",

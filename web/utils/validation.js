@@ -30,6 +30,9 @@ export function normalizeShopDomain(shop) {
 export function pickSlidePayload(body = {}) {
   return {
     imageUrl: body.imageUrl,
+    hoverImageUrl: body.hoverImageUrl,
+    compareAtPrice: body.compareAtPrice,
+    saleDiscountPercent: body.saleDiscountPercent,
     title: body.title,
     description: body.description,
     heading: body.heading,

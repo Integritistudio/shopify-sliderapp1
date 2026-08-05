@@ -35,6 +35,12 @@ export async function replaceWithProductSlides(slider, products, { showPrice = t
     products.map((product, index) => ({
       ...DEFAULT_SLIDE_FIELDS,
       imageUrl: product.imageUrl || "",
+      hoverImageUrl: product.hoverImageUrl || "",
+      compareAtPrice: product.compareAtPrice || "",
+      saleDiscountPercent:
+        Number.isFinite(Number(product.saleDiscountPercent)) && Number(product.saleDiscountPercent) > 0
+          ? Math.round(Number(product.saleDiscountPercent))
+          : null,
       title: product.title,
       heading: product.title,
       description: showPrice ? product.price || "" : "",

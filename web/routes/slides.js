@@ -23,6 +23,9 @@ async function findShopSlider(sliderId, shop) {
 function applySlideFields(slide, payload) {
   const fields = [
     "imageUrl",
+    "hoverImageUrl",
+    "compareAtPrice",
+    "saleDiscountPercent",
     "title",
     "description",
     "heading",
@@ -61,6 +64,10 @@ function applySlideFields(slide, payload) {
         slide[field] = sanitizePlainText(payload[field], 2000)
       } else if (field === "overlayOpacity") {
         slide[field] = Number(payload[field])
+      } else if (field === "saleDiscountPercent") {
+        const percent = Number(payload[field])
+        slide[field] =
+          Number.isFinite(percent) && percent > 0 ? Math.round(percent) : null
       } else if (field === "isVisible" || field === "ctaOpenInNewTab" || field === "cta2OpenInNewTab") {
         slide[field] = Boolean(payload[field])
       } else if (field === "position") {

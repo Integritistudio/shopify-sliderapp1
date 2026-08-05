@@ -577,6 +577,54 @@ const migrations = {
       }
     },
   },
+
+  "017-slide-hover-image-url": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (!columns.hoverImageUrl) {
+        await queryInterface.addColumn("Slides", "hoverImageUrl", {
+          type: DataTypes.TEXT,
+          allowNull: true,
+          defaultValue: "",
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (columns.hoverImageUrl) {
+        await queryInterface.removeColumn("Slides", "hoverImageUrl")
+      }
+    },
+  },
+
+  "018-slide-sales-badge-fields": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (!columns.compareAtPrice) {
+        await queryInterface.addColumn("Slides", "compareAtPrice", {
+          type: DataTypes.TEXT,
+          allowNull: true,
+          defaultValue: "",
+        })
+      }
+      if (!columns.saleDiscountPercent) {
+        await queryInterface.addColumn("Slides", "saleDiscountPercent", {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+          defaultValue: null,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (columns.saleDiscountPercent) {
+        await queryInterface.removeColumn("Slides", "saleDiscountPercent")
+      }
+      if (columns.compareAtPrice) {
+        await queryInterface.removeColumn("Slides", "compareAtPrice")
+      }
+    },
+  },
 }
 
 // Run pending migrations

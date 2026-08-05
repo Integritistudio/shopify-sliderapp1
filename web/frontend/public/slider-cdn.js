@@ -46,6 +46,20 @@
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   const CHEVRON_RIGHT =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  const QUICK_ADD_CART_ICON =
+    '<svg class="se-product-card__quick-add-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 5h2l1.2 9.2a2 2 0 0 0 2 1.8h8.6a2 2 0 0 0 2-1.7L20 8H7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/></svg>'
+  const QUICK_ADD_CHECK_ICON =
+    '<svg class="se-product-card__quick-add-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+  function buildQuickAddContent(settings = {}) {
+    const text = String(settings.quickAddText || "").trim()
+    if (text) return escapeHtml(text)
+    const iconUrl = safeUrl(settings.quickAddIconUrl)
+    if (iconUrl) {
+      return `<img class="se-product-card__quick-add-icon" src="${escapeHtml(iconUrl)}" alt="" />`
+    }
+    return QUICK_ADD_CART_ICON
+  }
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -324,6 +338,10 @@
 
   function markAtcSoldOut(btn, label = "Sold out") {
     if (!btn) return
+    if (btn.classList.contains("se-product-card__quick-add")) {
+      btn.remove()
+      return
+    }
     btn.textContent = label
     btn.disabled = true
     btn.setAttribute("aria-disabled", "true")
@@ -331,6 +349,146 @@
     btn.dataset.seBusy = "0"
     btn.classList.add("se-product-card__atc--soldout")
     btn.removeAttribute("data-variant-id")
+  }
+
+  function normalizeSalesBadgeMode(mode) {
+    const value = String(mode || "").trim().toLowerCase()
+    if (value === "off") return "off"
+    return "automatic"
+  }
+
+  function calculateSaleDiscountPercent(price, compareAtPrice) {
+    const priceAmount = Number(price)
+    const compareAmount = Number(compareAtPrice)
+    if (
+      !Number.isFinite(priceAmount) ||
+      !Number.isFinite(compareAmount) ||
+      compareAmount <= 0 ||
+      compareAmount <= priceAmount
+    ) {
+      return null
+    }
+    const discountPercentage = Math.round(((compareAmount - priceAmount) / compareAmount) * 100)
+    return discountPercentage > 0 ? discountPercentage : null
+  }
+
+  function saleDiscountFromStorefrontVariant(variant) {
+    if (!variant) return null
+    // Ajax product.js prices are in cents.
+    return calculateSaleDiscountPercent(
+      Number(variant.price) / 100,
+      Number(variant.compare_at_price) / 100,
+    )
+  }
+
+  function normalizeSalesBadgeFormat(format) {
+    const value = String(format || "").trim().toLowerCase()
+    if (
+      value === "percent-off" ||
+      value === "percent" ||
+      value === "save-percent" ||
+      value === "custom"
+    ) {
+      return value
+    }
+    return "percent-off"
+  }
+
+  function formatSaleBadgeLabel(discountPercent, options = {}) {
+    const percent = Number(discountPercent)
+    if (!Number.isFinite(percent) || percent <= 0) return ""
+    const n = Math.round(percent)
+    const format = normalizeSalesBadgeFormat(options.format)
+    const text = String(options.text == null ? "OFF" : options.text).trim()
+    switch (format) {
+      case "percent":
+        return `${n}%`
+      case "save-percent":
+        return `Save ${n}%`
+      case "custom": {
+        const template = text || "{percent}% OFF"
+        return template.replace(/\{percent\}/gi, String(n))
+      }
+      case "percent-off":
+      default:
+        return `${n}% ${text || "OFF"}`
+    }
+  }
+
+  function getSalesBadgeLabelOptions(root) {
+    return {
+      format: root?.getAttribute("data-sales-badge-format") || "percent-off",
+      text: root?.getAttribute("data-sales-badge-text") ?? "OFF",
+    }
+  }
+
+  function updateProductSalesBadge(card, discountPercent, options = {}) {
+    if (!card) return
+    const media = card.querySelector(".se-product-card__media")
+    if (!media) return
+    let badge = media.querySelector(".se-product-card__badge")
+    const label = formatSaleBadgeLabel(discountPercent, options)
+    if (!label) {
+      badge?.remove()
+      return
+    }
+    if (!badge) {
+      badge = document.createElement("span")
+      badge.className = "se-product-card__badge"
+      badge.setAttribute("aria-hidden", "true")
+      media.appendChild(badge)
+    }
+    badge.textContent = label
+  }
+
+  function pickStorefrontVariant(product, preferredVariantId = "") {
+    const variants = product?.variants || []
+    if (!variants.length) return null
+    const preferredId = String(preferredVariantId || "").replace(/\D/g, "")
+    if (preferredId) {
+      const matched = variants.find(
+        (item) => String(item?.id || "").replace(/\D/g, "") === preferredId,
+      )
+      if (matched) return matched
+    }
+    return (
+      variants.find((item) => item?.available) ||
+      (product?.available ? variants[0] : null) ||
+      variants[0] ||
+      null
+    )
+  }
+
+  async function refreshSalesBadges(root) {
+    if (!root || normalizeSalesBadgeMode(root.getAttribute("data-sales-badge-mode")) !== "automatic") {
+      return
+    }
+    const cards = [...root.querySelectorAll(".se-product-card[data-product-handle]")]
+    await Promise.all(
+      cards.map(async (card) => {
+        const handle = String(card.getAttribute("data-product-handle") || "").trim()
+        if (!handle) return
+        try {
+          const response = await fetch(`${storeRoot()}products/${encodeURIComponent(handle)}.js`, {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          })
+          if (!response.ok) return
+          const product = await response.json()
+          const preferredVariantId =
+            card.getAttribute("data-variant-id") ||
+            card.querySelector(".se-product-card__atc")?.getAttribute("data-variant-id") ||
+            ""
+          const selected = pickStorefrontVariant(product, preferredVariantId)
+          if (selected?.id) {
+            card.setAttribute("data-variant-id", String(selected.id).replace(/\D/g, ""))
+          }
+          updateProductSalesBadge(card, saleDiscountFromStorefrontVariant(selected), getSalesBadgeLabelOptions(root))
+        } catch {
+          // Keep synced snapshot badge
+        }
+      }),
+    )
   }
 
   async function refreshAtcAvailability(root, { soldOutLabel = "Sold out", showSoldOut = true } = {}) {
@@ -351,12 +509,25 @@
           const availableVariant = variants.find((item) => item?.available)
           const available = Boolean(product.available) && Boolean(availableVariant)
           if (!available) {
+            if (btn.classList.contains("se-product-card__quick-add")) {
+              btn.remove()
+              return
+            }
             if (showSoldOut) markAtcSoldOut(btn, soldOutLabel)
             else btn.remove()
             return
           }
           const id = String(availableVariant.id || "").replace(/\D/g, "")
-          if (id) btn.setAttribute("data-variant-id", id)
+          if (id) {
+            btn.setAttribute("data-variant-id", id)
+            const card = btn.closest(".se-product-card")
+            if (card) {
+              card.setAttribute("data-variant-id", id)
+              card.querySelectorAll(".se-product-card__atc:not([data-sold-out='1'])").forEach((el) => {
+                el.setAttribute("data-variant-id", id)
+              })
+            }
+          }
         } catch {
           // keep synced state
         }
@@ -772,10 +943,19 @@
 
     if (["product-carousel", "product-showcase", "collection-rail"].includes(effect)) {
       const imageUrl = escapeHtml(safeUrl(slide.imageUrl) || "")
+      const hoverImageUrl = escapeHtml(safeUrl(slide.hoverImageUrl) || "")
       const showPrice = settings.showPrice !== false
       const showShopNow = settings.showShopNow !== false
       const showAddToCart = settings.showAddToCart !== false
       const showSoldOut = settings.showSoldOut !== false
+      const salesBadgeMode = normalizeSalesBadgeMode(settings.salesBadgeMode)
+      const salesBadgeFormat = normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+      const salesBadgeText =
+        settings.salesBadgeText == null
+          ? salesBadgeFormat === "custom"
+            ? "{percent}% OFF"
+            : "OFF"
+          : String(settings.salesBadgeText)
       const shopLabel = escapeHtml(slide.ctaText || "Shop now")
       const soldOutLabel = escapeHtml(settings.soldOutText || "Sold out")
       const atcLabel = escapeHtml(settings.addToCartText || "Add to cart")
@@ -784,6 +964,14 @@
         productHandleFromUrl(slide.ctaUrl || ctaHref || "") ||
         String(slide.subheading || "").trim()
       const isSoldOut = slide.availableForSale === false
+      const saleDiscountPercent = Number(slide.saleDiscountPercent)
+      const saleBadgeLabel =
+        salesBadgeMode === "automatic" && Number.isFinite(saleDiscountPercent) && saleDiscountPercent > 0
+          ? formatSaleBadgeLabel(saleDiscountPercent, {
+              format: salesBadgeFormat,
+              text: salesBadgeText,
+            })
+          : ""
       const actions = []
       if (showAddToCart && (variantId || productHandle || isSoldOut)) {
         if (isSoldOut) {
@@ -803,14 +991,30 @@
           `<a class="se-product-card__shop slideease-cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>${shopLabel}</a>`,
         )
       }
+      const badgeHtml = saleBadgeLabel
+        ? `<span class="se-product-card__badge" aria-hidden="true">${escapeHtml(saleBadgeLabel)}</span>`
+        : ""
+      const canQuickAdd = !isSoldOut && Boolean(variantId || productHandle)
+      const quickAddContent = buildQuickAddContent(settings)
+      const quickAddHtml = canQuickAdd
+        ? `<button type="button" class="se-product-card__atc se-product-card__quick-add" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(slide.id)}" data-show-sold-out="${showSoldOut ? "1" : "0"}" aria-label="Quick Add">${quickAddContent}</button>`
+        : ""
+      const mediaInner = imageUrl
+        ? `<img class="se-product-card__img se-product-card__img--primary" src="${imageUrl}" alt="${escapeHtml(slide.imageAlt || heading)}" loading="lazy" />${
+            hoverImageUrl
+              ? `<img class="se-product-card__img se-product-card__img--hover" src="${hoverImageUrl}" alt="" aria-hidden="true" loading="lazy" />`
+              : ""
+          }${badgeHtml}`
+        : badgeHtml
       return `
         <div data-slideease-slide-id="${escapeHtml(slide.id)}">
           <div class="se-product-pad">
-            <article class="se-product-card se-frame-${escapeHtml(effect)}">
+            <article class="se-product-card se-frame-${escapeHtml(effect)}${hoverImageUrl ? " se-product-card--has-hover" : ""}${canQuickAdd ? " se-product-card--quick-add" : ""}" data-product-handle="${escapeHtml(productHandle)}" data-variant-id="${escapeHtml(variantId)}">
               <div class="se-product-card__link">
-                <a class="se-product-card__media-link" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>
-                  <div class="se-product-card__media">${imageUrl ? `<img src="${imageUrl}" alt="${escapeHtml(slide.imageAlt || heading)}" loading="lazy" />` : ""}</div>
-                </a>
+                <div class="se-product-card__media">
+                  <a class="se-product-card__media-link" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>${mediaInner}</a>
+                  ${quickAddHtml}
+                </div>
                 <div class="se-product-card__body">
                   <h3 class="se-product-card__title">${escapeHtml(heading || "Product")}</h3>
                   ${showPrice && description ? `<p class="se-product-card__price">${escapeHtml(description)}</p>` : ""}
@@ -1045,9 +1249,25 @@
           }
           .slideease-container-${uniqueId} .se-product-card:hover { box-shadow: none; }
           .slideease-container-${uniqueId} .se-product-card__link { display: flex; flex-direction: column; height: 100%; flex: 1; color: inherit; text-decoration: none; }
-          .slideease-container-${uniqueId} .se-product-card__media-link { display: block; color: inherit; text-decoration: none; }
-          .slideease-container-${uniqueId} .se-product-card__media { aspect-ratio: 1 / 1.05; background: #f3f4f6; overflow: hidden; flex-shrink: 0; }
-          .slideease-container-${uniqueId} .se-product-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .slideease-container-${uniqueId} .se-product-card__media-link { display: block; height: 100%; color: inherit; text-decoration: none; position: relative; z-index: 1; }
+          .slideease-container-${uniqueId} .se-product-card__media { position: relative; aspect-ratio: 1 / 1.05; background: #f3f4f6; overflow: hidden; flex-shrink: 0; }
+          .slideease-container-${uniqueId} .se-product-card__media img,
+          .slideease-container-${uniqueId} .se-product-card__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .slideease-container-${uniqueId} .se-product-card__img--hover {
+            position: absolute; inset: 0; opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+          }
+          @media (hover: hover) and (pointer: fine) {
+            .slideease-container-${uniqueId} .se-product-card--has-hover:hover .se-product-card__img--hover { opacity: 1; }
+          }
+          .slideease-container-${uniqueId} .se-product-card__badge {
+            position: absolute; top: 10px; left: 10px; z-index: 2; pointer-events: none;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: var(--se-sales-badge-pad, 8px); border-radius: 4px;
+            background: var(--se-sales-badge-bg, #170f49); color: #fff;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.2;
+            text-transform: uppercase;
+          }
           .slideease-container-${uniqueId} .se-product-card__body {
             padding: 0.9rem 1rem 1.1rem; color: #170f49;
             display: flex; flex-direction: column; flex: 1 1 auto;
@@ -1089,6 +1309,46 @@
             font-size: var(--se-cta-font-size, 16px); font-weight: 650;
             line-height: 1; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
             text-decoration: none; cursor: pointer; font-family: inherit;
+          }
+          /* Must follow ATC rules so Quick Add matches sales badge sizing (not CTA button sizing). */
+          .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add {
+            position: absolute; right: 10px; bottom: 10px; z-index: 3;
+            width: auto; min-width: 0; height: auto; margin: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: var(--se-sales-badge-pad, 8px);
+            border-radius: 4px;
+            border: none;
+            background: var(--se-quick-add-bg, var(--se-sales-badge-bg, #170f49));
+            color: #fff;
+            box-shadow: none;
+            font-size: var(--se-quick-add-size, 11px); font-weight: 700; letter-spacing: 0.02em; line-height: 1;
+            text-transform: uppercase; white-space: nowrap;
+            opacity: 0; transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+          }
+          .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add .se-product-card__quick-add-icon,
+          .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add svg {
+            display: block; width: var(--se-quick-add-size, 11px); height: var(--se-quick-add-size, 11px);
+            object-fit: contain;
+          }
+          .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add:hover:not(:disabled) {
+            background: var(--se-quick-add-bg, var(--se-sales-badge-bg, #170f49));
+            color: #fff;
+            border: none;
+          }
+          .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add:disabled {
+            opacity: 0.85; cursor: wait;
+          }
+          @media (hover: hover) and (pointer: fine) {
+            .slideease-container-${uniqueId} .se-product-card--quick-add:hover .se-product-card__atc.se-product-card__quick-add {
+              opacity: 1; transform: translateY(0); pointer-events: auto;
+            }
+          }
+          @media (hover: none), (pointer: coarse) {
+            .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add {
+              opacity: 1; transform: none; pointer-events: auto;
+            }
           }
           .slideease-container-${uniqueId} .se-product-card__atc:hover:not(:disabled) {
             background: var(--se-atc-hover-bg, #170f49);
@@ -1678,8 +1938,12 @@
     const atcBorder = escapeHtml(settings.atcBorderColor || "#170f49")
     const atcHoverBg = escapeHtml(settings.atcHoverBackground || "#170f49")
     const atcHoverColor = escapeHtml(settings.atcHoverTextColor || "#ffffff")
+    const salesBadgePad = Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)
+    const salesBadgeBg = escapeHtml(settings.salesBadgeBackground || "#170f49")
+    const quickAddBg = escapeHtml(settings.quickAddBackground || "#170f49")
+    const quickAddSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
     const productStyleVars = isProductLayout
-      ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;`
+      ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;--se-sales-badge-pad:${salesBadgePad}px;--se-sales-badge-bg:${salesBadgeBg};--se-quick-add-bg:${quickAddBg};--se-quick-add-size:${quickAddSize}px;`
       : ""
     const logoWidth = Math.min(Math.max(Number(settings.logoWidth ?? 140), 40), 280)
     const logoHeight = Math.min(Math.max(Number(settings.logoHeight ?? 64), 24), 160)
@@ -1705,6 +1969,21 @@
     const isUtilityCompact = ["logo-grid", "testimonials"].includes(effect)
     const isStories = effect === "stories"
     const isAnnounce = effect === "announcement"
+    const salesBadgeMode = isProductLayout
+      ? normalizeSalesBadgeMode(settings.salesBadgeMode)
+      : "off"
+    const salesBadgeFormat = isProductLayout
+      ? normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+      : "percent-off"
+    const salesBadgeText = isProductLayout
+      ? String(
+          settings.salesBadgeText == null
+            ? salesBadgeFormat === "custom"
+              ? "{percent}% OFF"
+              : "OFF"
+            : settings.salesBadgeText,
+        )
+      : "OFF"
     const testimonialWidth = Math.min(Math.max(Number(settings.width) || 1100, 320), 1600)
     const widthStyleVar = effect === "testimonials" ? `--se-width:${testimonialWidth}px;` : ""
 
@@ -1750,7 +2029,7 @@
         </div>`
 
     insertAdjacent(`
-      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : isStories ? " se-root--stories" : isAnnounce ? " se-root--announce" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}${logoStyleVars}" aria-roledescription="carousel">
+      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : isStories ? " se-root--stories" : isAnnounce ? " se-root--announce" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}${logoStyleVars}" aria-roledescription="carousel">
         ${
           ["product-carousel", "product-showcase", "collection-rail"].includes(effect) && settings.sectionHeading
             ? `<h2 class="se-section-heading">${escapeHtml(settings.sectionHeading)}</h2>`
@@ -2347,6 +2626,11 @@
             .slideease-container-${uniqueId} .se-product-card__atc {
               font-size: var(--se-m-cta-font-size, var(--se-cta-font-size, 14px));
             }
+            .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add {
+              font-size: var(--se-quick-add-size, 11px);
+              padding: var(--se-sales-badge-pad, 8px);
+              border-radius: 4px;
+            }
             .slideease-container-${uniqueId} .se-copy {
               padding: 1.25rem;
               padding-bottom: calc(3rem + var(--se-pagination-offset, 16px));
@@ -2387,7 +2671,9 @@
     if (root) {
       const soldOutLabel = settings.soldOutText || "Sold out"
       const showSoldOut = settings.showSoldOut !== false
-      refreshAtcAvailability(root, { soldOutLabel, showSoldOut })
+      Promise.resolve(refreshAtcAvailability(root, { soldOutLabel, showSoldOut }))
+        .then(() => refreshSalesBadges(root))
+        .catch(() => {})
       root.addEventListener(
         "click",
         async (event) => {
@@ -2403,10 +2689,21 @@
           ) {
             return
           }
-          const original = btn.textContent
+          const isQuickAdd = btn.classList.contains("se-product-card__quick-add")
+          const originalHtml = btn.innerHTML
+          const originalText = btn.textContent
+          const quickAddDefault = buildQuickAddContent(settings)
           btn.dataset.seBusy = "1"
           btn.disabled = true
-          btn.textContent = "Adding…"
+          if (isQuickAdd) {
+            btn.innerHTML = String(settings.quickAddText || "").trim()
+              ? "…"
+              : QUICK_ADD_CART_ICON
+            btn.setAttribute("aria-label", "Adding to cart")
+            btn.classList.add("se-product-card__quick-add--busy")
+          } else {
+            btn.textContent = "Adding…"
+          }
           try {
             const variantId = await resolveVariantId({
               variantId: btn.getAttribute("data-variant-id"),
@@ -2414,21 +2711,54 @@
             })
             await addVariantToCart(variantId, 1)
             trackEvent("add_to_cart", btn.getAttribute("data-slide-id"))
-            btn.textContent = "Added"
+            if (isQuickAdd) {
+              btn.innerHTML = String(settings.quickAddText || "").trim()
+                ? "Added"
+                : QUICK_ADD_CHECK_ICON
+              btn.setAttribute("aria-label", "Added to cart")
+            } else {
+              btn.textContent = "Added"
+            }
             setTimeout(() => {
-              btn.textContent = original
+              if (isQuickAdd) {
+                btn.innerHTML = quickAddDefault
+                btn.setAttribute("aria-label", "Quick Add")
+                btn.classList.remove("se-product-card__quick-add--busy")
+              } else {
+                btn.textContent = originalText
+              }
               btn.disabled = false
               btn.dataset.seBusy = "0"
             }, 1200)
           } catch (error) {
             const message = String(error?.message || "")
+            const card = btn.closest?.(".se-product-card")
             if (/sold out/i.test(message)) {
-              if (showSoldOut) markAtcSoldOut(btn, soldOutLabel)
-              else btn.remove()
+              card
+                ?.querySelectorAll(".se-product-card__quick-add")
+                .forEach((quickBtn) => quickBtn.remove())
+              const bodyAtc = card?.querySelector(
+                ".se-product-card__atc:not(.se-product-card__quick-add)",
+              )
+              if (bodyAtc) {
+                if (showSoldOut) markAtcSoldOut(bodyAtc, soldOutLabel)
+                else bodyAtc.remove()
+              } else if (!isQuickAdd) {
+                if (showSoldOut) markAtcSoldOut(btn, soldOutLabel)
+                else btn.remove()
+              } else {
+                btn.remove()
+              }
+            } else if (isQuickAdd) {
+              btn.innerHTML = originalHtml || quickAddDefault
+              btn.setAttribute("aria-label", "Quick Add")
+              btn.disabled = false
+              btn.dataset.seBusy = "0"
+              btn.classList.remove("se-product-card__quick-add--busy")
             } else {
               btn.textContent = "Unavailable"
               setTimeout(() => {
-                btn.textContent = original
+                btn.textContent = originalText
                 btn.disabled = false
                 btn.dataset.seBusy = "0"
               }, 1800)

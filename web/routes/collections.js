@@ -1,6 +1,7 @@
 import express from "express"
 import shopify from "../shopify.js"
 import { extractShop } from "../middleware/auth.js"
+import { calculateSaleDiscountPercent } from "../utils/salesBadge.js"
 
 const router = express.Router()
 
@@ -43,6 +44,16 @@ const COLLECTION_PRODUCTS_QUERY = `
               url
               altText
             }
+            media(first: 5) {
+              nodes {
+                ... on MediaImage {
+                  image {
+                    url
+                    altText
+                  }
+                }
+              }
+            }
             priceRangeV2 {
               minVariantPrice {
                 amount
@@ -59,6 +70,8 @@ const COLLECTION_PRODUCTS_QUERY = `
               nodes {
                 id
                 availableForSale
+                price
+                compareAtPrice
               }
             }
           }
@@ -79,6 +92,16 @@ const PRODUCTS_BY_IDS_QUERY = `
           url
           altText
         }
+        media(first: 5) {
+          nodes {
+            ... on MediaImage {
+              image {
+                url
+                altText
+              }
+            }
+          }
+        }
         priceRangeV2 {
           minVariantPrice {
             amount
@@ -95,6 +118,8 @@ const PRODUCTS_BY_IDS_QUERY = `
           nodes {
             id
             availableForSale
+            price
+            compareAtPrice
           }
         }
       }
@@ -122,6 +147,16 @@ function variantNumericId(gid) {
   return match ? match[1] : null
 }
 
+function sameImageUrl(a, b) {
+  if (!a || !b) return false
+  if (a === b) return true
+  try {
+    return new URL(a).pathname === new URL(b).pathname
+  } catch {
+    return false
+  }
+}
+
 function mapProduct(node) {
   const price = node.priceRangeV2?.minVariantPrice
   const compare = node.compareAtPriceRange?.minVariantCompareAtPrice
@@ -130,14 +165,28 @@ function mapProduct(node) {
     variants.find((variant) => variant?.availableForSale) || variants[0] || null
   const availableForSale =
     variants.length > 0 ? variants.some((variant) => variant?.availableForSale) : true
+  const mediaUrls = (node.media?.nodes || []).map((n) => n.image?.url).filter(Boolean)
+  const imageUrl = node.featuredImage?.url || mediaUrls[0] || ""
+  const hoverImageUrl = mediaUrls.find((url) => !sameImageUrl(url, imageUrl)) || ""
+  // Sale badge uses the selected (preferred) variant prices — not product min ranges.
+  const selectedPrice = preferred?.price ?? price?.amount
+  const selectedCompare = preferred?.compareAtPrice ?? compare?.amount
+  const saleDiscountPercent = calculateSaleDiscountPercent(selectedPrice, selectedCompare)
+  const compareAtPrice = preferred?.compareAtPrice
+    ? formatMoney(preferred.compareAtPrice, price?.currencyCode || "USD")
+    : compare
+      ? formatMoney(compare.amount, compare.currencyCode)
+      : ""
   return {
     id: node.id,
     title: node.title,
     handle: node.handle,
-    imageUrl: node.featuredImage?.url || "",
+    imageUrl,
+    hoverImageUrl,
     imageAlt: node.featuredImage?.altText || node.title || "",
     price: price ? formatMoney(price.amount, price.currencyCode) : "",
-    compareAtPrice: compare ? formatMoney(compare.amount, compare.currencyCode) : "",
+    compareAtPrice,
+    saleDiscountPercent,
     url: `/products/${node.handle}`,
     variantId: variantNumericId(preferred?.id),
     availableForSale,
