@@ -499,6 +499,20 @@ export default function StyleSettingsForm({
           >
             Sales badge {(settings.salesBadgeMode || "automatic") === "off" ? "Off" : "On"}
           </Button>
+          <Button
+            pressed={settings.productCardTransparent === true}
+            onClick={() => update("productCardTransparent", settings.productCardTransparent !== true)}
+            disabled={disabled}
+          >
+            Transparent cards {settings.productCardTransparent === true ? "On" : "Off"}
+          </Button>
+          <Button
+            pressed={settings.productCardBorder !== false}
+            onClick={() => update("productCardBorder", settings.productCardBorder === false)}
+            disabled={disabled}
+          >
+            Card border {settings.productCardBorder === false ? "Off" : "On"}
+          </Button>
         </div>
       ) : null}
 
@@ -726,6 +740,13 @@ export default function StyleSettingsForm({
             onChange={(value) => update("paginationGap", value)}
             disabled={disabled}
           />
+          <ColorField
+            label="Product card background"
+            value={settings.productCardBackground || "#ffffff"}
+            onChange={(value) => update("productCardBackground", value)}
+            fallback="#ffffff"
+            disabled={disabled || settings.productCardTransparent === true}
+          />
         </FormLayout.Group>
       ) : null}
 
@@ -809,6 +830,47 @@ export default function StyleSettingsForm({
             fallback={64}
             onChange={(value) => update("logoHeight", value)}
             disabled={disabled}
+          />
+        </FormLayout.Group>
+      ) : null}
+
+      {isLogoGrid ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Button
+            pressed={settings.logoGridFullWidth !== false}
+            onClick={() => update("logoGridFullWidth", settings.logoGridFullWidth === false)}
+            disabled={disabled}
+          >
+            Full width {settings.logoGridFullWidth === false ? "Off" : "On"}
+          </Button>
+          <Button
+            pressed={settings.logoGridTransparent === true}
+            onClick={() => update("logoGridTransparent", settings.logoGridTransparent !== true)}
+            disabled={disabled}
+          >
+            Transparent background {settings.logoGridTransparent === true ? "On" : "Off"}
+          </Button>
+        </div>
+      ) : null}
+
+      {isLogoGrid ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Grid width (px)"
+            helpText="Used when Full width is Off"
+            value={settings.width ?? 1100}
+            min={320}
+            max={1600}
+            fallback={1100}
+            onChange={(value) => update("width", value)}
+            disabled={disabled || settings.logoGridFullWidth !== false}
+          />
+          <ColorField
+            label="Grid background"
+            value={settings.logoGridBackground || "#f7f2ff"}
+            onChange={(value) => update("logoGridBackground", value)}
+            fallback="#f7f2ff"
+            disabled={disabled || settings.logoGridTransparent === true}
           />
         </FormLayout.Group>
       ) : null}

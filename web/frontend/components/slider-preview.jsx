@@ -515,8 +515,8 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
     <div
       className={`se-preview-product-card${hoverImageUrl ? " se-preview-product-card--has-hover" : ""}`}
       style={{
-        background: "#fff",
-        border: "1px solid #e7e7e7",
+        background: settings.productCardTransparent ? "transparent" : settings.productCardBackground || "#ffffff",
+        border: settings.productCardBorder === false ? "none" : "1px solid #e7e7e7",
         borderRadius: Number(settings.borderRadius ?? 14),
         overflow: "hidden",
         height: "100%",
@@ -1523,15 +1523,26 @@ export default function SliderPreview({
       const logoH = Math.min(Math.max(Number(mergedSettings.logoHeight ?? 64), 24), 160)
       const cardW = compact ? Math.round(logoW * 0.78) : logoW
       const cardH = compact ? Math.round(logoH * 0.9) : logoH
+      const logoGridFullWidth = mergedSettings.logoGridFullWidth !== false
+      const logoGridWidth = Math.min(Math.max(Number(mergedSettings.width) || 1100, 320), 1600)
+      const logoGridTransparent = mergedSettings.logoGridTransparent === true
+      const logoGridCustomBg = String(mergedSettings.logoGridBackground || "").trim()
+      const logoGridBg = logoGridTransparent
+        ? "transparent"
+        : logoGridCustomBg || "linear-gradient(120deg, #fff8f0 0%, #f7f2ff 48%, #eef8ff 100%)"
       return (
         <div
           style={{
             overflow: "hidden",
             borderRadius: 16,
-            border: "1px solid #ebe4f5",
-            background: "linear-gradient(120deg, #fff8f0 0%, #f7f2ff 48%, #eef8ff 100%)",
+            border: logoGridTransparent ? "none" : "1px solid #ebe4f5",
+            background: logoGridBg,
             padding: compact ? "0.85rem 0" : "1.15rem 0",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
+            boxShadow: logoGridTransparent ? "none" : "inset 0 1px 0 rgba(255,255,255,0.8)",
+            maxWidth: logoGridFullWidth ? "100%" : Math.min(logoGridWidth, 1600),
+            width: "100%",
+            marginInline: "auto",
+            boxSizing: "border-box",
           }}
         >
           <div

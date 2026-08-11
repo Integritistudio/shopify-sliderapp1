@@ -1244,7 +1244,7 @@
           .slideease-container-${uniqueId} .se-product-pad { padding: 0 10px; height: 100%; display: flex; width: 100%; box-sizing: border-box; }
           .slideease-container-${uniqueId} .se-product-card {
             display: flex; flex-direction: column; height: 100%; width: 100%;
-            background: #fff; border: 1px solid #e7e7e7; border-radius: 14px; overflow: hidden;
+            background: var(--se-product-card-bg, #fff); border: var(--se-product-card-border, 1px solid #e7e7e7); border-radius: 14px; overflow: hidden;
             box-shadow: none;
           }
           .slideease-container-${uniqueId} .se-product-card:hover { box-shadow: none; }
@@ -1566,10 +1566,14 @@
           }
           .slideease-container-${uniqueId}[data-effect="logo-grid"] {
             border-radius: 16px;
-            border: 1px solid #ebe4f5;
-            background: linear-gradient(120deg, #fff8f0 0%, #f7f2ff 48%, #eef8ff 100%);
+            border: var(--se-logo-grid-border, 1px solid #ebe4f5);
+            background: var(--se-logo-grid-bg, linear-gradient(120deg, #fff8f0 0%, #f7f2ff 48%, #eef8ff 100%));
             padding: 0.65rem 0.35rem;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+            box-shadow: var(--se-logo-grid-shadow, inset 0 1px 0 rgba(255,255,255,0.8));
+            max-width: var(--se-logo-grid-max, 100%);
+            width: 100%;
+            margin-inline: auto;
+            box-sizing: border-box;
           }
           .slideease-container-${uniqueId}[data-effect="logo-grid"] .slick-list {
             overflow: hidden;
@@ -1942,13 +1946,33 @@
     const salesBadgeBg = escapeHtml(settings.salesBadgeBackground || "#170f49")
     const quickAddBg = escapeHtml(settings.quickAddBackground || "#170f49")
     const quickAddSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
+    const productCardBg = settings.productCardTransparent
+      ? "transparent"
+      : escapeHtml(settings.productCardBackground || "#ffffff")
+    const productCardBorder = settings.productCardBorder === false ? "none" : "1px solid #e7e7e7"
     const productStyleVars = isProductLayout
-      ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;--se-sales-badge-pad:${salesBadgePad}px;--se-sales-badge-bg:${salesBadgeBg};--se-quick-add-bg:${quickAddBg};--se-quick-add-size:${quickAddSize}px;`
+      ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-card-bg:${productCardBg};--se-product-card-border:${productCardBorder};--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;--se-sales-badge-pad:${salesBadgePad}px;--se-sales-badge-bg:${salesBadgeBg};--se-quick-add-bg:${quickAddBg};--se-quick-add-size:${quickAddSize}px;`
       : ""
     const logoWidth = Math.min(Math.max(Number(settings.logoWidth ?? 140), 40), 280)
     const logoHeight = Math.min(Math.max(Number(settings.logoHeight ?? 64), 24), 160)
+    const logoGridFullWidth = settings.logoGridFullWidth !== false
+    const logoGridWidth = Math.min(Math.max(Number(settings.width) || 1100, 320), 1600)
+    const logoGridTransparent = settings.logoGridTransparent === true
+    const logoGridCustomBg = String(settings.logoGridBackground || "").trim()
+    const logoGridBg = logoGridTransparent
+      ? "transparent"
+      : logoGridCustomBg
+        ? escapeHtml(logoGridCustomBg)
+        : ""
+    const logoGridBorder = logoGridTransparent ? "none" : "1px solid #ebe4f5"
+    const logoGridShadow = logoGridTransparent ? "none" : "inset 0 1px 0 rgba(255,255,255,0.8)"
+    const logoGridMax = logoGridFullWidth ? "100%" : `min(100%, ${logoGridWidth}px)`
     const logoStyleVars =
-      effect === "logo-grid" ? `--se-logo-width:${logoWidth}px;--se-logo-height:${logoHeight}px;` : ""
+      effect === "logo-grid"
+        ? `--se-logo-width:${logoWidth}px;--se-logo-height:${logoHeight}px;--se-logo-grid-max:${logoGridMax};--se-logo-grid-border:${logoGridBorder};--se-logo-grid-shadow:${logoGridShadow};${
+            logoGridBg ? `--se-logo-grid-bg:${logoGridBg};` : ""
+          }`
+        : ""
     const ctaStyleVars = `--se-cta-pad:${ctaPad}px;--se-cta-font-size:${ctaFontSize}px;--se-cta-radius:${ctaRadius}px;--se-cta-border-width:${ctaBorderWidth}px;--se-m-cta-font-size:${mobileCtaFontSize}px;`
     const heroStyleVars = !isProductLayout
       ? `--se-heading-size:${headingFontSize}px;--se-subheading-size:${subheadingFontSize}px;--se-desc-size:${descriptionFontSize}px;--se-m-heading-size:${mobileHeadingFontSize}px;--se-m-subheading-size:${mobileSubheadingFontSize}px;--se-m-desc-size:${mobileDescriptionFontSize}px;--se-heading-color:${headingColor};--se-subheading-color:${subheadingColor};--se-desc-color:${descriptionColor};--se-copy-gap:${copyGap}px;--se-pagination-offset:${paginationOffset}px;--se-progress-color:${progressBarColor};`
