@@ -17,6 +17,7 @@ import {
   handleProductWebhook,
   handleCollectionWebhook,
 } from "./utils/productSliderSync.js"
+import { handleCollectionCarouselWebhook } from "./utils/collectionSliderSync.js"
 
 /**
  * @type {{[key: string]: import("@shopify/shopify-api").WebhookHandler}}
@@ -173,6 +174,20 @@ export default {
     },
   },
 
+  PRODUCTS_CREATE: {
+    deliveryMethod: DeliveryMethod.Http,
+    callbackUrl: "/api/webhooks",
+    callback: async (topic, shop, body, webhookId) => {
+      try {
+        const payload = JSON.parse(body)
+        console.log("PRODUCTS_CREATE received:", shop, webhookId, payload?.id)
+        await handleProductWebhook(shop, payload)
+      } catch (error) {
+        console.error("PRODUCTS_CREATE handler error:", error)
+      }
+    },
+  },
+
   PRODUCTS_DELETE: {
     deliveryMethod: DeliveryMethod.Http,
     callbackUrl: "/api/webhooks",
@@ -195,8 +210,23 @@ export default {
         const payload = JSON.parse(body)
         console.log("COLLECTIONS_UPDATE received:", shop, webhookId, payload?.id)
         await handleCollectionWebhook(shop, payload)
+        await handleCollectionCarouselWebhook(shop, payload, { deleted: false })
       } catch (error) {
         console.error("COLLECTIONS_UPDATE handler error:", error)
+      }
+    },
+  },
+
+  COLLECTIONS_DELETE: {
+    deliveryMethod: DeliveryMethod.Http,
+    callbackUrl: "/api/webhooks",
+    callback: async (topic, shop, body, webhookId) => {
+      try {
+        const payload = JSON.parse(body)
+        console.log("COLLECTIONS_DELETE received:", shop, webhookId, payload?.id)
+        await handleCollectionCarouselWebhook(shop, payload, { deleted: true })
+      } catch (error) {
+        console.error("COLLECTIONS_DELETE handler error:", error)
       }
     },
   },

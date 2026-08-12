@@ -25,6 +25,7 @@ const CAPABILITY_DEFAULTS = {
   heroText: false,
   heroPaginationChrome: false,
   productSource: false,
+  collectionSource: false,
   productTypography: false,
   shopNowButton: false,
   atcButton: false,
@@ -89,6 +90,28 @@ const PRODUCT_CAPABILITIES = caps({
   slideCtaFields: true,
 })
 
+/** Premium coverflow — product data + its own nav/chrome (not Slick arrows/dots) */
+const PREMIUM_COVERFLOW_CAPABILITIES = caps({
+  autoplay: true,
+  autoplaySpeed: true,
+  infinite: true,
+  productSource: true,
+  shopNowButton: true,
+  atcButton: true,
+  slideCtaFields: true,
+})
+
+/** Collection carousel — multi-collection sync + own 3D chrome (separate from product 3D) */
+const COLLECTION_CAROUSEL_CAPABILITIES = caps({
+  autoplay: true,
+  autoplaySpeed: true,
+  arrows: true,
+  dots: true,
+  infinite: true,
+  collectionSource: true,
+  slideCtaFields: true,
+})
+
 /** Legacy / motion effects — same editable surface as heroes */
 const LEGACY_CAPABILITIES = HERO_CAPABILITIES
 
@@ -101,6 +124,9 @@ const TYPE_CAPABILITIES = {
   "product-carousel": PRODUCT_CAPABILITIES,
   "product-showcase": PRODUCT_CAPABILITIES,
   "collection-rail": PRODUCT_CAPABILITIES,
+  "premium-coverflow": PREMIUM_COVERFLOW_CAPABILITIES,
+  "premium-circular": PREMIUM_COVERFLOW_CAPABILITIES,
+  "collection-carousel": COLLECTION_CAROUSEL_CAPABILITIES,
 
   testimonials: caps({
     autoplay: true,

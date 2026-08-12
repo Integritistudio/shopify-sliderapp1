@@ -703,6 +703,880 @@ function SectionHeading({ text, compact, fontSize, gap }) {
   )
 }
 
+/** Collection carousel preview — separate from Premium product 3D engines */
+function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
+  const ink = "#141210"
+  const showNav = settings.arrows !== false && slides.length > 1
+  const showDots = settings.dots !== false && slides.length > 1
+  const showCount = settings.showItemCount !== false
+  const overlay = Number(settings.c3Overlay ?? 0.55)
+  const radius = Number(settings.borderRadius ?? 4)
+  const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+  const sectionBgCustom = String(settings.sectionBackground || "").trim()
+  const sectionBg = sectionBgTransparent
+    ? "transparent"
+    : sectionBgCustom ||
+      "radial-gradient(85% 60% at 50% 0%, rgba(255,255,255,0.55) 0%, transparent 58%), linear-gradient(168deg, #ece8e2 0%, #d8d2c8 100%)"
+
+  const sideCount = compact ? 1 : Math.max(1, Math.floor(((Number(settings.visibleSlides) || 5) - 1) / 2))
+  // Match storefront CSS: --c3-slide-width: min(38vw, 360px)
+  const cardWidth = compact ? 240 : 340
+  const spacingX = compact ? 168 : 250
+
+  const wrapIndex = (i) => {
+    const len = slides.length
+    if (!len) return 0
+    return ((i % len) + len) % len
+  }
+
+  const offsetFor = (slideIndex, activeIndex) => {
+    const len = slides.length
+    if (settings.infinite === false) return slideIndex - activeIndex
+    let offset = slideIndex - activeIndex
+    const half = Math.floor(len / 2)
+    if (offset > half) offset -= len
+    if (offset < -half) offset += len
+    return offset
+  }
+
+  const formatCount = (raw) => {
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 0) return ""
+    return `${Math.round(n)} ${Math.round(n) === 1 ? "item" : "items"}`
+  }
+
+  const hasHeader = Boolean(
+    String(settings.sectionSubheading || "").trim() ||
+      String(settings.sectionHeading || "").trim() ||
+      String(settings.sectionDescription || "").trim(),
+  )
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 12,
+        background: sectionBg,
+        color: ink,
+        padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.5rem 0.5rem 2.75rem",
+        fontFamily: '"Manrope", "Helvetica Neue", sans-serif',
+      }}
+    >
+      {hasHeader ? (
+        <header style={{ textAlign: "center", marginBottom: compact ? 16 : 28, paddingInline: 12 }}>
+          {settings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.24em",
+                textTransform: "uppercase",
+                color: "#8a6a3d",
+                marginBottom: 8,
+              }}
+            >
+              {settings.sectionSubheading}
+            </div>
+          ) : null}
+          {settings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: '"Cormorant Garamond", "Times New Roman", serif',
+                fontSize: compact ? 28 : 40,
+                fontWeight: 500,
+                lineHeight: 1.05,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {settings.sectionHeading}
+            </h2>
+          ) : null}
+          {settings.sectionDescription ? (
+            <p
+              style={{
+                margin: "10px auto 0",
+                maxWidth: 420,
+                fontSize: compact ? 13 : 15,
+                lineHeight: 1.55,
+                color: "#6a645c",
+              }}
+            >
+              {settings.sectionDescription}
+            </p>
+          ) : null}
+        </header>
+      ) : null}
+
+      <div
+        style={{
+          position: "relative",
+          height: cardWidth * 1.4 + (compact ? 36 : 64),
+          perspective: Number(settings.c3Perspective) || 1400,
+        }}
+      >
+        {slides.map((slide, i) => {
+          const offset = offsetFor(i, index)
+          const abs = Math.abs(offset)
+          if (abs > sideCount) return null
+          const dir = offset === 0 ? 0 : offset > 0 ? 1 : -1
+          const x = offset * spacingX * 0.72
+          const z = abs === 0 ? 48 : -90 - abs * 40
+          const rotateY = -dir * Math.min(abs, 1) * 34 - dir * Math.max(abs - 1, 0) * 12
+          const scale = abs === 0 ? 1 : Math.max(0.72, 0.9 - abs * 0.08)
+          const title = slide.heading || slide.title || "Collection"
+          const description = String(slide.description || "").trim()
+          const imageUrl = String(slide.imageUrl || "").trim()
+          const countLabel = showCount ? formatCount(slide.subheading) : ""
+          const ctaText = slide.ctaText || settings.exploreCtaText || "Explore Collection"
+          return (
+            <div
+              key={slide.id || i}
+              onClick={() => abs > 0 && onGoTo(wrapIndex(i))}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: cardWidth,
+                transform: `translate(-50%, -50%) translate3d(${x}px, 0, ${z}px) rotateY(${rotateY}deg) scale(${scale})`,
+                transformOrigin: "center center",
+                transition: "transform 450ms cubic-bezier(0.22, 1, 0.36, 1), opacity 450ms ease",
+                opacity: abs > sideCount ? 0 : 1 - abs * 0.08,
+                zIndex: 20 - abs,
+                cursor: abs === 0 ? "default" : "pointer",
+                filter: abs === 0 ? "none" : "brightness(0.78) saturate(0.88)",
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "3 / 4",
+                  borderRadius: radius,
+                  overflow: "hidden",
+                  background: "#2a2622",
+                  color: "#fff",
+                  boxShadow:
+                    abs === 0
+                      ? "0 8px 20px rgba(20,18,16,0.12), 0 28px 56px rgba(20,18,16,0.22)"
+                      : "0 14px 32px rgba(20,18,16,0.14)",
+                }}
+              >
+                {imageUrl ? (
+                  <img
+                    src={safeUrl(imageUrl)}
+                    alt={title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      transform: abs === 0 ? "scale(1)" : "scale(1.06)",
+                      display: "block",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      background: "linear-gradient(160deg, #3a342e 0%, #1e1b18 100%)",
+                    }}
+                  />
+                )}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: `linear-gradient(180deg, rgba(20,18,16,${overlay * 0.15}) 0%, rgba(20,18,16,${overlay * 0.35}) 45%, rgba(20,18,16,${overlay * 1.05}) 100%)`,
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    padding: compact ? "0.85rem 0.8rem 1rem" : "1.1rem 1rem 1.15rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: 4,
+                  }}
+                >
+                  {countLabel ? (
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        color: "rgba(255,255,255,0.7)",
+                      }}
+                    >
+                      {countLabel}
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      fontFamily: '"Cormorant Garamond", "Times New Roman", serif',
+                      fontSize: compact ? 18 : 24,
+                      fontWeight: 500,
+                      lineHeight: 1.15,
+                    }}
+                  >
+                    {title}
+                  </div>
+                  {abs === 0 && description ? (
+                    <div style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.78)", maxWidth: "28ch" }}>
+                      {description}
+                    </div>
+                  ) : null}
+                  {abs === 0 && settings.showShopNow !== false ? (
+                    <span
+                      style={{
+                        marginTop: 8,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        minHeight: 32,
+                        padding: "6px 12px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        color: ink,
+                        background: "#fff",
+                        border: "1px solid #fff",
+                      }}
+                    >
+                      {ctaText}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {(showNav || showDots) && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18, marginTop: 8 }}>
+          {showNav ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 11 }}>
+              <button
+                type="button"
+                onClick={onPrev}
+                aria-label="Previous collection"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(20,18,16,0.08)",
+                  background: "rgba(255,255,255,0.55)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: ink,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M10.2 2.2 4.4 8l5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                aria-label="Next collection"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(20,18,16,0.08)",
+                  background: "rgba(255,255,255,0.55)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: ink,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M5.8 2.2 11.6 8l-5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          ) : null}
+          {showDots ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+              {slides.map((slide, i) => (
+                <button
+                  key={slide.id || i}
+                  type="button"
+                  aria-label={`Go to collection ${i + 1}`}
+                  onClick={() => onGoTo(i)}
+                  style={{
+                    width: i === index ? 20 : 6.5,
+                    height: 6.5,
+                    borderRadius: 999,
+                    border: 0,
+                    padding: 0,
+                    cursor: "pointer",
+                    background: i === index ? ink : "rgba(20,18,16,0.2)",
+                    transition: "width 200ms ease, background 200ms ease",
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Standalone Premium coverflow / circular preview — does NOT reuse ProductCard / NavArrows / Slick dots */
+function PremiumCoverflowPreview({
+  slides,
+  index,
+  settings,
+  compact,
+  onPrev,
+  onNext,
+  onGoTo,
+  variant = "coverflow",
+}) {
+  const circular = variant === "circular"
+  // Mirrors the palette/typography each engine ships in its own stylesheet
+  const ink = circular ? "#121417" : "#1a1816"
+  const inkRgb = circular ? "31,41,51" : "26,24,22"
+  const surface = circular ? "#f4f5f7" : "#f7f5f1"
+  const surfaceAlt = circular ? "#e6e9ee" : "#e4e0d9"
+  const inkSoft = circular ? "#98a4b0" : "#9a948c"
+  const metal = circular ? "#9a8660" : "#8a6a3d"
+  const displayFont = circular
+    ? '"Libre Baskerville", Georgia, "Times New Roman", serif'
+    : '"Cormorant Garamond", Georgia, "Times New Roman", serif'
+  const bodyFont = circular
+    ? 'Outfit, "Helvetica Neue", Arial, sans-serif'
+    : 'Manrope, "Helvetica Neue", sans-serif'
+  const stageRef = useRef(null)
+  const [stageWidth, setStageWidth] = useState(compact ? 280 : 980)
+  const showPrice = settings.showPrice !== false
+  const showShopNow = settings.showShopNow !== false
+  const showAddToCart = settings.showAddToCart !== false
+  const shopLabel = "View product"
+  const ctaBg = settings.ctaBackground || ink
+  const ctaColor = settings.ctaTextColor || surface
+  const ctaBorder = settings.ctaBorderColor || ctaBg
+  const atcBg = settings.atcBackground || ctaBg
+  const atcColor = settings.atcTextColor || ctaColor
+  const atcBorder = settings.atcBorderColor || atcBg
+  const btnRadius = Math.min(Math.max(Number(settings.ctaBorderRadius ?? 1), 0), 50)
+  const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+  const sectionBgCustom = String(settings.sectionBackground || "").trim()
+  const defaultSectionBg = circular
+    ? "radial-gradient(90% 70% at 50% 18%, rgba(255,255,255,0.65) 0%, transparent 58%), linear-gradient(168deg, #e8e9eb 0%, #d5d7db 100%)"
+    : "radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.55) 0%, transparent 55%), linear-gradient(165deg, #ece8e2 0%, #d9d4cc 100%)"
+  const sectionBackground = sectionBgTransparent
+    ? "transparent"
+    : sectionBgCustom
+      ? sectionBgCustom
+      : defaultSectionBg
+  const len = slides.length
+  const sideCount = compact ? 1 : circular ? 3 : 2
+  const visibleOffsets = []
+  for (let o = -sideCount; o <= sideCount; o += 1) visibleOffsets.push(o)
+
+  useEffect(() => {
+    const el = stageRef.current
+    if (!el || typeof ResizeObserver === "undefined") return undefined
+    const update = () => setStageWidth(Math.max(el.clientWidth || 0, compact ? 240 : 640))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [compact])
+
+  // Match storefront CSS: coverflow --cf-slide-width min(42vw, 340) / mobile min(72vw, 280)
+  // circular --pcc-card-width min(38vw, 300) / mobile min(68vw, 260)
+  const slideWidth = circular
+    ? compact
+      ? Math.min(Math.round(stageWidth * 0.68), 260)
+      : Math.min(Math.round(stageWidth * 0.38), 300)
+    : compact
+      ? Math.min(Math.round(stageWidth * 0.72), 280)
+      : Math.min(Math.round(stageWidth * 0.42), 340)
+  // Circular geometry mirrors premium-circular.js DEFAULTS + its <=749px breakpoint caps
+  const spacing = circular
+    ? compact
+      ? 132
+      : 210
+    : compact
+      ? Math.min(Math.round(slideWidth * (280 / 340)), 210)
+      : Math.round(slideWidth * (280 / 340))
+  const depth = circular ? (compact ? 230 : 420) : compact ? 140 : 180
+  const rotation = circular ? (compact ? 16 : 22) : compact ? 42 : 48
+  const arcCurvature = compact ? 14 : 18
+  const sideScale = circular ? (compact ? 0.9 : 0.88) : compact ? 0.82 : 0.78
+  const scaleStep = circular ? 0.06 : 0.1
+  const stagePadY = compact ? 36 : Math.round(Math.min(72, Math.max(40, slideWidth * 0.16)))
+  const stageHeight = Math.round(slideWidth * (circular ? 1.6 : 1.55) + stagePadY * 2)
+
+  const slideAt = (offset) => {
+    if (!len) return null
+    return slides[((index + offset) % len + len) % len]
+  }
+
+  const transformFor = (offset) => {
+    const abs = Math.abs(offset)
+    const dir = offset === 0 ? 0 : offset > 0 ? 1 : -1
+    if (circular) {
+      // Mirror premium-circular.js _transformForOffset
+      const angleDeg = offset * arcCurvature
+      const angleRad = (angleDeg * Math.PI) / 180
+      const arcX = Math.sin(angleRad) * depth
+      const arcZ = (Math.cos(angleRad) - 1) * depth
+      const blend = 0.55
+      const x = offset * spacing * (1 - blend) + arcX * blend
+      let rotateY =
+        -dir * Math.min(abs * rotation, rotation + Math.max(0, abs - 1) * (rotation * 0.35))
+      rotateY = rotateY * 0.55 + -angleDeg * 0.45
+      const scale =
+        abs < 1
+          ? 1 - (1 - sideScale) * abs
+          : Math.max(sideScale - scaleStep * (abs - 1), 0.62)
+      return {
+        transform: `translate(-50%, -50%) translateX(${x}px) translateZ(${arcZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+        opacity: abs > sideCount ? 0 : 1,
+        zIndex: 20 - abs,
+        filter: abs === 0 ? "none" : "saturate(0.9) brightness(0.98)",
+      }
+    }
+    // Mirror premium-coverflow.js _transformForOffset
+    const rot =
+      -dir * rotation * Math.min(abs, 1) - dir * rotation * 0.35 * Math.max(abs - 1, 0)
+    let scale = Math.max(sideScale - scaleStep * Math.max(abs - 1, 0), 0.55)
+    if (abs < 1) scale = 1 - (1 - sideScale) * abs
+    return {
+      transform: `translate(-50%, -50%) translateX(${offset * spacing}px) translateZ(${-depth * abs}px) rotateY(${rot}deg) scale(${scale})`,
+      opacity: abs > sideCount ? 0 : 1,
+      zIndex: 20 - abs,
+      filter: abs === 0 ? "none" : "saturate(0.88) brightness(0.97)",
+    }
+  }
+
+  const formatBadge = (slide) => {
+    const mode = String(settings.salesBadgeMode || "automatic")
+    if (mode === "off") return ""
+    const n = Number(slide.saleDiscountPercent)
+    if (!Number.isFinite(n) || n <= 0) return ""
+    const text = String(settings.salesBadgeText || "OFF").trim() || "OFF"
+    const format = String(settings.salesBadgeFormat || "percent-off")
+    if (format === "percent") return `${Math.round(n)}%`
+    if (format === "save-percent") return `Save ${Math.round(n)}%`
+    if (format === "custom") {
+      return (text || "{percent}% OFF").replace(/\{percent\}/gi, String(Math.round(n)))
+    }
+    return `${Math.round(n)}% ${text}`
+  }
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 4,
+        background: sectionBackground,
+        padding: compact ? "28px 0 24px" : "48px 0 40px",
+        color: ink,
+        fontFamily: bodyFont,
+      }}
+    >
+      <div
+        ref={stageRef}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: stageHeight,
+          perspective: circular ? (compact ? 900 : 1400) : compact ? 1000 : 1200,
+          perspectiveOrigin: "50% 45%",
+          overflow: "visible",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            transformStyle: "preserve-3d",
+          }}
+        >
+          {visibleOffsets.map((offset) => {
+            const slide = slideAt(offset)
+            if (!slide) return null
+            const active = offset === 0
+            const title = slide.heading || slide.title || "Product"
+            const imageUrl = safeUrl(slide.imageUrl)
+            const hoverImageUrl = safeUrl(slide.hoverImageUrl)
+            const compareAt = String(slide.compareAtPrice || "").trim()
+            const price = String(slide.description || "").trim()
+            const badge = formatBadge(slide)
+            const tf = transformFor(offset)
+            const canQuickAdd = slide.availableForSale !== false && Boolean(slide.variantId || slide.ctaUrl || slide.subheading)
+            return (
+              <div
+                key={`${slide.id}-off-${offset}`}
+                role={active ? undefined : "button"}
+                tabIndex={active ? -1 : 0}
+                onClick={() => {
+                  if (!active) onGoTo?.((((index + offset) % len) + len) % len)
+                }}
+                onKeyDown={(e) => {
+                  if (!active && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault()
+                    onGoTo?.((((index + offset) % len) + len) % len)
+                  }
+                }}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  width: slideWidth,
+                  margin: 0,
+                  transformStyle: "preserve-3d",
+                  transition: circular
+                    ? "transform 650ms cubic-bezier(0.22, 1, 0.36, 1), opacity 650ms ease, filter 650ms ease"
+                    : "transform 620ms cubic-bezier(0.22, 1, 0.36, 1), opacity 620ms ease, filter 620ms ease",
+                  cursor: active ? "default" : "pointer",
+                  ...tf,
+                }}
+              >
+                <article
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    width: "100%",
+                    background: circular ? "#ffffff" : surface,
+                    border: `1px solid rgba(${inkRgb},0.09)`,
+                    borderRadius: circular ? 4 : 2,
+                    overflow: "hidden",
+                    boxShadow: active
+                      ? `0 ${circular ? 30 : 28}px ${circular ? 60 : 56}px rgba(${inkRgb}, 0.22)`
+                      : `0 ${circular ? 16 : 18}px ${circular ? 38 : 40}px rgba(${inkRgb}, 0.14)`,
+                  }}
+                >
+                  <div
+                    className={hoverImageUrl ? "se-preview-pcf-media has-hover" : "se-preview-pcf-media"}
+                    style={{ position: "relative", aspectRatio: "4 / 5", background: surfaceAlt, overflow: "hidden" }}
+                  >
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={title}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          transform: active ? "scale(1)" : "scale(1.01)",
+                        }}
+                      />
+                    ) : null}
+                    {hoverImageUrl ? (
+                      <img
+                        className="se-preview-pcf-hover-img"
+                        src={hoverImageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          opacity: 0,
+                          pointerEvents: "none",
+                          transition: "opacity 0.25s ease",
+                        }}
+                      />
+                    ) : null}
+                    {badge ? (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          left: 10,
+                          zIndex: 2,
+                          padding: "4px 7px",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: "0.14em",
+                          textTransform: "uppercase",
+                          color: surface,
+                          background: badge.toLowerCase().includes("sale") || badge.includes("%") ? metal : ink,
+                          borderRadius: 1,
+                        }}
+                      >
+                        {badge}
+                      </span>
+                    ) : null}
+                    {canQuickAdd && active ? (
+                      <span
+                        className="se-preview-pcf-quick-add"
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          right: 10,
+                          bottom: 10,
+                          zIndex: 3,
+                          padding: 6,
+                          borderRadius: 4,
+                          background: settings.quickAddBackground || "#170f49",
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          opacity: 0,
+                          transition: "opacity 0.18s ease",
+                        }}
+                      >
+                        {String(settings.quickAddText || "").trim() || "＋"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      gap: 9,
+                      padding: compact ? "14px 14px 16px" : "18px 18px 20px",
+                      opacity: active ? 1 : 0.72,
+                    }}
+                  >
+                    <h4
+                      style={{
+                        margin: 0,
+                        fontFamily: displayFont,
+                        fontSize: compact ? 18 : circular ? 20 : 22,
+                        fontWeight: circular ? 400 : 500,
+                        lineHeight: 1.25,
+                        letterSpacing: "0.01em",
+                        color: ink,
+                      }}
+                    >
+                      {title}
+                    </h4>
+                    {showPrice && price ? (
+                      <p
+                        style={{
+                          margin: 0,
+                          display: "flex",
+                          alignItems: "baseline",
+                          justifyContent: "center",
+                          gap: 8,
+                          fontSize: compact ? 12 : 13,
+                          fontWeight: 600,
+                          letterSpacing: "0.04em",
+                          color: ink,
+                        }}
+                      >
+                        <span>{price}</span>
+                        {compareAt ? (
+                          <span style={{ fontWeight: 500, color: inkSoft, textDecoration: "line-through" }}>
+                            {compareAt}
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    {showAddToCart || showShopNow ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 7,
+                          width: "100%",
+                          marginTop: 4,
+                        }}
+                      >
+                        {showAddToCart ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              flex: "0 0 auto",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              minHeight: compact ? 36 : 40,
+                              padding: compact ? "8px 14px" : "10px 20px",
+                              fontSize: compact ? 10 : 11,
+                              fontWeight: 700,
+                              letterSpacing: "0.16em",
+                              textTransform: "uppercase",
+                              color: atcColor,
+                              background: atcBg,
+                              border: `1px solid ${atcBorder}`,
+                              borderRadius: btnRadius,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {settings.addToCartText || "Add to cart"}
+                          </span>
+                        ) : null}
+                        {showShopNow ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              flex: "0 0 auto",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              minHeight: compact ? 36 : 40,
+                              padding: compact ? "8px 14px" : "10px 20px",
+                              fontSize: compact ? 10 : 11,
+                              fontWeight: 700,
+                              letterSpacing: "0.16em",
+                              textTransform: "uppercase",
+                              color: ctaColor,
+                              background: ctaBg,
+                              border: `1px solid ${ctaBorder}`,
+                              borderRadius: btnRadius,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {slide.ctaText || shopLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {len > 1 ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: compact ? 12 : 16,
+            marginTop: compact ? 8 : 12,
+          }}
+        >
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              type="button"
+              aria-label="Previous product"
+              onClick={onPrev}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                border: `1px solid rgba(${inkRgb},0.09)`,
+                background: circular ? "rgba(255,255,255,0.72)" : "rgba(247,245,241,0.72)",
+                color: ink,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M10.2 2.2 4.4 8l5.8 5.8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Next product"
+              onClick={onNext}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                border: `1px solid rgba(${inkRgb},0.09)`,
+                background: circular ? "rgba(255,255,255,0.72)" : "rgba(247,245,241,0.72)",
+                color: ink,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                <path
+                  d="M5.8 2.2 11.6 8l-5.8 5.8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6, maxWidth: 280 }}>
+            {slides.map((slide, i) => {
+              const active = i === index
+              return (
+                <button
+                  key={`${circular ? "pcc" : "pcf"}-dot-${slide.id}-${i}`}
+                  type="button"
+                  aria-label={`Go to product ${i + 1}`}
+                  aria-current={active ? "true" : undefined}
+                  onClick={() => onGoTo?.(i)}
+                  style={{
+                    width: active ? 18 : 7,
+                    height: 7,
+                    padding: 0,
+                    border: 0,
+                    borderRadius: 999,
+                    background: active ? ink : `rgba(${inkRgb},0.22)`,
+                    cursor: "pointer",
+                    transition: "width 200ms ease, background-color 200ms ease",
+                  }}
+                />
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function NavArrows({ onPrev, onNext, settings, show, offset = 10, variant = "default" }) {
   if (!show) return null
   const soft = variant === "soft"
@@ -995,6 +1869,8 @@ const EFFECT_STYLES = `
     opacity: 1 !important;
     transform: translateY(0) !important;
   }
+  .se-preview-pcf-media.has-hover:hover .se-preview-pcf-hover-img { opacity: 1 !important; }
+  .se-preview-pcf-media:hover .se-preview-pcf-quick-add { opacity: 1 !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .se-fx-fade, .se-fx-slide, .se-fx-zoom, .se-fx-flip, .se-fx-cube, .se-fx-rise .se-rise-content > *,
@@ -1332,6 +2208,35 @@ export default function SliderPreview({
           <NavArrows onPrev={goPrev} onNext={goNext} settings={mergedSettings} show={showArrows} />
           {renderDots()}
         </div>
+      )
+    }
+
+    if (effect === "premium-coverflow" || effect === "premium-circular") {
+      return (
+        <PremiumCoverflowPreview
+          slides={visibleSlides}
+          index={index}
+          settings={mergedSettings}
+          compact={compact}
+          onPrev={goPrev}
+          onNext={goNext}
+          onGoTo={(i) => setIndex(i)}
+          variant={effect === "premium-circular" ? "circular" : "coverflow"}
+        />
+      )
+    }
+
+    if (effect === "collection-carousel") {
+      return (
+        <CollectionCarouselPreview
+          slides={visibleSlides}
+          index={index}
+          settings={mergedSettings}
+          compact={compact}
+          onPrev={goPrev}
+          onNext={goNext}
+          onGoTo={(i) => setIndex(i)}
+        />
       )
     }
 

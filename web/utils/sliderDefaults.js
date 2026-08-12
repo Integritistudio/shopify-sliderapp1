@@ -9,6 +9,9 @@ export const SLIDER_TYPES = [
   { value: "product-carousel", label: "Product Carousel", description: "Multi-card product strip synced from a collection", group: "Product" },
   { value: "product-showcase", label: "Product Showcase", description: "Large featured product with soft side peeks", group: "Product" },
   { value: "collection-rail", label: "Collection Rail", description: "Compact product cards from one Shopify collection", group: "Product" },
+  { value: "premium-coverflow", label: "3D Coverflow", description: "Editorial 3D product carousel with depth and motion", group: "Premium" },
+  { value: "collection-carousel", label: "Collection Carousel", description: "3D carousel of Shopify collections with image and description", group: "Premium" },
+  { value: "premium-circular", label: "3D Circular", description: "Products arranged on a quiet arc of light and depth", group: "Premium" },
   { value: "testimonials", label: "Testimonials", description: "Quote cards with avatar, author, and soft motion", group: "Utility" },
   { value: "logo-grid", label: "Logo Grid", description: "Brand logo strip for partners and press", group: "Utility" },
   { value: "stories", label: "Story Rings", description: "Instagram-style story circles with a focus frame", group: "Utility" },
@@ -23,7 +26,15 @@ export const SLIDER_TYPES = [
   { value: "cards-stack", label: "Deck Stack", description: "Cards peel forward from a stacked deck", group: "Motion" },
 ]
 
-export const PRODUCT_SLIDER_TYPES = ["product-carousel", "product-showcase", "collection-rail"]
+export const PRODUCT_SLIDER_TYPES = [
+  "product-carousel",
+  "product-showcase",
+  "collection-rail",
+  "premium-coverflow",
+  "premium-circular",
+]
+export const PREMIUM_SLIDER_TYPES = ["premium-coverflow", "premium-circular"]
+export const COLLECTION_SLIDER_TYPES = ["collection-carousel"]
 
 export const DEFAULT_SLIDER_SETTINGS = {
   autoplay: false,
@@ -97,6 +108,23 @@ export const DEFAULT_SLIDER_SETTINGS = {
   addToCartText: "Add to cart",
   soldOutText: "Sold out",
   sectionHeading: "",
+  sectionSubheading: "",
+  sectionDescription: "",
+  sectionBackground: "",
+  sectionBackgroundTransparent: false,
+  collectionIds: [],
+  showItemCount: true,
+  exploreCtaText: "Explore Collection",
+  c3Perspective: 1400,
+  c3Depth: 200,
+  c3Rotation: 42,
+  c3Scale: 0.78,
+  c3ScaleStep: 0.09,
+  c3Spacing: 250,
+  c3Overlay: 0.55,
+  visibleSlides: 5,
+  tabletVisibleSlides: 3,
+  mobileVisibleSlides: 3,
   sectionHeadingFontSize: 28,
   sectionHeadingGap: 16,
   productTitleFontSize: 16,
@@ -238,6 +266,115 @@ export function settingsFromPreset(sliderType = "fade") {
         sectionHeading: "Shop the collection",
         mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: false },
       }
+    case "premium-coverflow":
+      return {
+        ...base,
+        effect: "premium-coverflow",
+        transition: "coverflow",
+        height: 640,
+        borderRadius: 2,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        autoplay: false,
+        autoplaySpeed: 4200,
+        arrows: true,
+        dots: true,
+        infinite: true,
+        productLimit: 8,
+        showPrice: true,
+        showShopNow: true,
+        showAddToCart: false,
+        ctaBackground: "#1a1816",
+        ctaTextColor: "#f7f5f1",
+        ctaBorderColor: "#1a1816",
+        ctaHoverBackground: "transparent",
+        ctaHoverTextColor: "#1a1816",
+        ctaBorderRadius: 1,
+        atcBorderRadius: 1,
+        sectionBackgroundTransparent: false,
+        sectionBackground: "",
+        sectionSubheading: "New season",
+        sectionHeading: "The Edit",
+        sectionDescription:
+          "A curated selection of signature pieces — explore in three-dimensional depth.",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
+    case "premium-circular":
+      return {
+        ...base,
+        effect: "premium-circular",
+        transition: "coverflow",
+        height: 640,
+        borderRadius: 2,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        autoplay: false,
+        autoplaySpeed: 4500,
+        arrows: true,
+        dots: true,
+        infinite: true,
+        productLimit: 8,
+        showPrice: true,
+        showShopNow: true,
+        showAddToCart: false,
+        ctaBackground: "#121417",
+        ctaTextColor: "#f4f5f7",
+        ctaBorderColor: "#121417",
+        ctaHoverBackground: "transparent",
+        ctaHoverTextColor: "#121417",
+        ctaBorderRadius: 1,
+        atcBorderRadius: 1,
+        sectionBackgroundTransparent: false,
+        sectionBackground: "",
+        sectionSubheading: "Atelier collection",
+        sectionHeading: "In the Round",
+        sectionDescription: "Signature pieces arranged along a quiet arc of light and depth.",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
+    case "collection-carousel":
+      return {
+        ...base,
+        effect: "collection-carousel",
+        transition: "coverflow",
+        height: 640,
+        borderRadius: 4,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        autoplay: false,
+        autoplaySpeed: 4800,
+        speed: 700,
+        arrows: true,
+        dots: true,
+        infinite: true,
+        showPrice: false,
+        showShopNow: true,
+        showAddToCart: false,
+        showItemCount: true,
+        exploreCtaText: "Explore Collection",
+        collectionIds: [],
+        c3Perspective: 1400,
+        c3Depth: 200,
+        c3Rotation: 42,
+        c3Scale: 0.78,
+        c3ScaleStep: 0.09,
+        c3Spacing: 250,
+        c3Overlay: 0.55,
+        visibleSlides: 5,
+        tabletVisibleSlides: 3,
+        mobileVisibleSlides: 3,
+        ctaBackground: "#ffffff",
+        ctaTextColor: "#141210",
+        ctaBorderColor: "#ffffff",
+        ctaHoverBackground: "transparent",
+        ctaHoverTextColor: "#ffffff",
+        ctaBorderRadius: 1,
+        sectionBackgroundTransparent: false,
+        sectionBackground: "",
+        sectionSubheading: "",
+        sectionHeading: "",
+        sectionDescription: "",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
     case "testimonials":
       return {
         ...base,
@@ -366,7 +503,10 @@ export function mergeSliderSettings(sliderType, settings = {}) {
   // Keep product button sizing equal (Shop now + Add to cart)
   const sharedPad = Number(merged.ctaPadding ?? merged.atcPadding ?? 12)
   const sharedFont = Number(merged.ctaFontSize ?? merged.atcFontSize ?? 16)
-  const sharedRadius = Number(merged.ctaBorderRadius ?? merged.atcBorderRadius ?? 50)
+  const resolvedType = resolveSliderType(sliderType)
+  const radiusFallback =
+    PREMIUM_SLIDER_TYPES.includes(resolvedType) || COLLECTION_SLIDER_TYPES.includes(resolvedType) ? 1 : 50
+  const sharedRadius = Number(merged.ctaBorderRadius ?? merged.atcBorderRadius ?? radiusFallback)
   merged.ctaPadding = sharedPad
   merged.atcPadding = sharedPad
   merged.ctaFontSize = sharedFont

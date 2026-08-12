@@ -22,7 +22,13 @@ export const CURATED_PRESET_ORDER = [
   "stories",
   "announcement",
   "marquee",
+  "premium-coverflow",
+  "collection-carousel",
+  "premium-circular",
 ]
+
+/** Presets unlocked only on Pro (not included in Free/Standard slices). */
+export const PRO_ONLY_PRESETS = ["premium-coverflow", "premium-circular", "collection-carousel"]
 
 export const PLAN_IDS = ["free", "standard", "pro"]
 
@@ -163,9 +169,10 @@ export function placementGuidance(planId) {
 }
 
 export function isPresetAllowed(planId, sliderType) {
+  const resolved = resolveSliderType(sliderType)
+  if (PRO_ONLY_PRESETS.includes(resolved) && planId !== "pro") return false
   const plan = getPlan(planId)
   if (plan.allowedPresets == null) return true
-  const resolved = resolveSliderType(sliderType)
   return plan.allowedPresets.includes(resolved)
 }
 

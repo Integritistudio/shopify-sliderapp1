@@ -10,6 +10,7 @@ import {
   applyAffiliateCode,
   upsertShopAffiliate,
 } from "../utils/shopAffiliate.js"
+import { ensureWebhooksRegistered } from "../utils/registerWebhooks.js"
 
 const router = express.Router()
 
@@ -25,6 +26,11 @@ router.get("/billing/plan", async (req, res) => {
     const session = res.locals.shopify?.session
     const shop = req.shop
     const planHandleHint = req.query.plan_handle || req.query.planHandle || null
+
+    if (session) {
+      // Keep catalog webhooks pointed at the current tunnel/app URL
+      ensureWebhooksRegistered(session).catch(() => {})
+    }
 
     const resolved = await resolveShopPlan(session, { planHandleHint })
     if (shop) {

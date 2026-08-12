@@ -127,6 +127,26 @@ const PRODUCTS_BY_IDS_QUERY = `
   }
 `
 
+const COLLECTIONS_BY_IDS_QUERY = `
+  query collectionsByIds($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      ... on Collection {
+        id
+        title
+        handle
+        description
+        productsCount {
+          count
+        }
+        image {
+          url
+          altText
+        }
+      }
+    }
+  }
+`
+
 function formatMoney(amount, currencyCode = "USD") {
   const value = Number(amount)
   if (!Number.isFinite(value)) return ""
@@ -207,6 +227,41 @@ function normalizeProductGid(id) {
   if (value.startsWith("gid://")) return value
   if (/^\d+$/.test(value)) return `gid://shopify/Product/${value}`
   return value
+}
+
+function mapCollection(node) {
+  if (!node) return null
+  const productsCount =
+    typeof node.productsCount === "number"
+      ? node.productsCount
+      : node.productsCount?.count ?? 0
+  return {
+    id: node.id,
+    title: node.title,
+    handle: node.handle,
+    description: node.description || "",
+    productsCount,
+    imageUrl: node.image?.url || "",
+    imageAlt: node.image?.altText || node.title || "",
+    url: node.handle ? `/collections/${node.handle}` : "",
+  }
+}
+
+export async function fetchCollectionsByIds(session, collectionIds = []) {
+  const ids = [...new Set((collectionIds || []).map(normalizeCollectionGid).filter(Boolean))].slice(0, 50)
+  if (!ids.length) return []
+
+  const client = new shopify.api.clients.Graphql({ session })
+  const response = await client.request(COLLECTIONS_BY_IDS_QUERY, {
+    variables: { ids },
+  })
+  const byId = new Map()
+  for (const node of response.data?.nodes || []) {
+    const mapped = mapCollection(node)
+    if (mapped?.id) byId.set(mapped.id, mapped)
+  }
+  // Preserve merchant selection order
+  return ids.map((id) => byId.get(id) || byId.get(normalizeCollectionGid(id))).filter(Boolean)
 }
 
 export async function fetchProductsByIds(session, productIds = []) {

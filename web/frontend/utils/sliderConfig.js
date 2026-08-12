@@ -53,6 +53,27 @@ export const SLIDER_TYPES = [
     group: "Product",
   },
   {
+    value: "premium-coverflow",
+    label: "3D Coverflow",
+    description: "Editorial 3D product carousel with depth and motion",
+    color: "new",
+    group: "Premium",
+  },
+  {
+    value: "collection-carousel",
+    label: "3D Collection Carousel",
+    description: "3D carousel of Shopify collections with image and description",
+    color: "new",
+    group: "Premium",
+  },
+  {
+    value: "premium-circular",
+    label: "3D Circular",
+    description: "Products arranged on a quiet arc of light and depth",
+    color: "new",
+    group: "Premium",
+  },
+  {
     value: "testimonials",
     label: "Testimonials",
     description: "Quote cards with avatar, author, and soft motion",
@@ -161,6 +182,23 @@ export const DEFAULT_SLIDER_SETTINGS = {
   addToCartText: "Add to cart",
   soldOutText: "Sold out",
   sectionHeading: "",
+  sectionSubheading: "",
+  sectionDescription: "",
+  sectionBackground: "",
+  sectionBackgroundTransparent: false,
+  collectionIds: [],
+  showItemCount: true,
+  exploreCtaText: "Explore Collection",
+  c3Perspective: 1400,
+  c3Depth: 200,
+  c3Rotation: 42,
+  c3Scale: 0.78,
+  c3ScaleStep: 0.09,
+  c3Spacing: 250,
+  c3Overlay: 0.55,
+  visibleSlides: 5,
+  tabletVisibleSlides: 3,
+  mobileVisibleSlides: 3,
   sectionHeadingFontSize: 28,
   sectionHeadingGap: 16,
   productTitleFontSize: 16,
@@ -198,10 +236,18 @@ export const DEFAULT_SLIDER_SETTINGS = {
   },
 }
 
-export const PRODUCT_SLIDER_TYPES = ["product-carousel", "product-showcase", "collection-rail"]
+export const PRODUCT_SLIDER_TYPES = [
+  "product-carousel",
+  "product-showcase",
+  "collection-rail",
+  "premium-coverflow",
+  "premium-circular",
+]
+export const PREMIUM_SLIDER_TYPES = ["premium-coverflow", "premium-circular"]
+export const COLLECTION_SLIDER_TYPES = ["collection-carousel"]
 export const HERO_SLIDER_TYPES = ["hero-fullwidth", "hero-boxed", "autoplay", "center"]
 export const UTILITY_SLIDER_TYPES = ["testimonials", "logo-grid", "stories", "announcement", "marquee"]
-export const SLIDER_TYPE_GROUPS = ["Hero", "Product", "Utility"]
+export const SLIDER_TYPE_GROUPS = ["Hero", "Product", "Premium", "Utility"]
 
 /** Entrance / layout animations available on Hero presets only */
 export const HERO_ANIMATION_OPTIONS = [
@@ -348,6 +394,114 @@ export function settingsFromPreset(sliderType = "fade") {
         showPrice: true,
         sectionHeading: "Shop the collection",
         mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: false },
+      }
+    case "premium-coverflow":
+      return {
+        ...base,
+        effect: "premium-coverflow",
+        transition: "coverflow",
+        height: 640,
+        borderRadius: 2,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        autoplay: false,
+        autoplaySpeed: 4200,
+        arrows: true,
+        dots: true,
+        infinite: true,
+        productLimit: 8,
+        showPrice: true,
+        showShopNow: true,
+        showAddToCart: false,
+        ctaBackground: "#1a1816",
+        ctaTextColor: "#f7f5f1",
+        ctaBorderColor: "#1a1816",
+        ctaHoverBackground: "transparent",
+        ctaHoverTextColor: "#1a1816",
+        ctaBorderRadius: 1,
+        atcBorderRadius: 1,
+        sectionBackgroundTransparent: false,
+        sectionBackground: "",
+        sectionSubheading: "New season",
+        sectionHeading: "The Edit",
+        sectionDescription: "A curated selection of signature pieces — explore in three-dimensional depth.",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
+    case "premium-circular":
+      return {
+        ...base,
+        effect: "premium-circular",
+        transition: "coverflow",
+        height: 640,
+        borderRadius: 2,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        autoplay: false,
+        autoplaySpeed: 4500,
+        arrows: true,
+        dots: true,
+        infinite: true,
+        productLimit: 8,
+        showPrice: true,
+        showShopNow: true,
+        showAddToCart: false,
+        ctaBackground: "#121417",
+        ctaTextColor: "#f4f5f7",
+        ctaBorderColor: "#121417",
+        ctaHoverBackground: "transparent",
+        ctaHoverTextColor: "#121417",
+        ctaBorderRadius: 1,
+        atcBorderRadius: 1,
+        sectionBackgroundTransparent: false,
+        sectionBackground: "",
+        sectionSubheading: "Atelier collection",
+        sectionHeading: "In the Round",
+        sectionDescription: "Signature pieces arranged along a quiet arc of light and depth.",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
+      }
+    case "collection-carousel":
+      return {
+        ...base,
+        effect: "collection-carousel",
+        transition: "coverflow",
+        height: 640,
+        borderRadius: 4,
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        autoplay: false,
+        autoplaySpeed: 4800,
+        speed: 700,
+        arrows: true,
+        dots: true,
+        infinite: true,
+        showPrice: false,
+        showShopNow: true,
+        showAddToCart: false,
+        showItemCount: true,
+        exploreCtaText: "Explore Collection",
+        collectionIds: [],
+        c3Perspective: 1400,
+        c3Depth: 200,
+        c3Rotation: 42,
+        c3Scale: 0.78,
+        c3ScaleStep: 0.09,
+        c3Spacing: 250,
+        c3Overlay: 0.55,
+        visibleSlides: 5,
+        tabletVisibleSlides: 3,
+        mobileVisibleSlides: 3,
+        ctaBackground: "#ffffff",
+        ctaTextColor: "#141210",
+        ctaBorderColor: "#ffffff",
+        ctaHoverBackground: "transparent",
+        ctaHoverTextColor: "#ffffff",
+        ctaBorderRadius: 1,
+        sectionBackgroundTransparent: false,
+        sectionBackground: "",
+        sectionSubheading: "",
+        sectionHeading: "",
+        sectionDescription: "",
+        mobile: { slidesToShow: 1, slidesToScroll: 1, arrows: true, dots: true },
       }
     case "testimonials":
       return {
@@ -511,7 +665,10 @@ export function mergeSliderSettings(sliderType, settings = {}) {
   // Keep product button sizing equal (Shop now + Add to cart)
   const sharedPad = Number(merged.ctaPadding ?? merged.atcPadding ?? 12)
   const sharedFont = Number(merged.ctaFontSize ?? merged.atcFontSize ?? 16)
-  const sharedRadius = Number(merged.ctaBorderRadius ?? merged.atcBorderRadius ?? 50)
+  const resolvedType = resolveSliderType(sliderType)
+  const radiusFallback =
+    PREMIUM_SLIDER_TYPES.includes(resolvedType) || COLLECTION_SLIDER_TYPES.includes(resolvedType) ? 1 : 50
+  const sharedRadius = Number(merged.ctaBorderRadius ?? merged.atcBorderRadius ?? radiusFallback)
   merged.ctaPadding = sharedPad
   merged.atcPadding = sharedPad
   merged.ctaFontSize = sharedFont
@@ -900,6 +1057,159 @@ export const SAMPLE_SLIDES_BY_TYPE = {
 
 SAMPLE_SLIDES_BY_TYPE["product-showcase"] = SAMPLE_SLIDES_BY_TYPE["product-carousel"]
 SAMPLE_SLIDES_BY_TYPE["collection-rail"] = SAMPLE_SLIDES_BY_TYPE["product-carousel"]
+SAMPLE_SLIDES_BY_TYPE["premium-coverflow"] = [
+  {
+    id: "pcf1",
+    imageUrl: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=800&q=80",
+    title: "Aurora Silk Wrap Dress",
+    heading: "Aurora Silk Wrap Dress",
+    description: "$248.00",
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+  {
+    id: "pcf2",
+    imageUrl: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=800&q=80",
+    title: "Noir Cashmere Coat",
+    heading: "Noir Cashmere Coat",
+    description: "$520.00",
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+  {
+    id: "pcf3",
+    imageUrl: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80",
+    title: "Linen Tailored Blazer",
+    heading: "Linen Tailored Blazer",
+    description: "$186.00",
+    compareAtPrice: "$240.00",
+    saleDiscountPercent: 23,
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+  {
+    id: "pcf4",
+    imageUrl: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=800&q=80",
+    title: "Ivory Merino Knit",
+    heading: "Ivory Merino Knit",
+    description: "$168.00",
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+  {
+    id: "pcf5",
+    imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=800&q=80",
+    title: "Sculpted Leather Tote",
+    heading: "Sculpted Leather Tote",
+    description: "$390.00",
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+  {
+    id: "pcf6",
+    imageUrl: "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80",
+    title: "Atelier Wool Trouser",
+    heading: "Atelier Wool Trouser",
+    description: "$210.00",
+    compareAtPrice: "$255.00",
+    saleDiscountPercent: 18,
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+  {
+    id: "pcf7",
+    imageUrl: "https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?auto=format&fit=crop&w=800&q=80",
+    title: "Celeste Evening Heel",
+    heading: "Celeste Evening Heel",
+    description: "$295.00",
+    ctaText: "View product",
+    ctaUrl: "#",
+    isVisible: true,
+  },
+]
+
+SAMPLE_SLIDES_BY_TYPE["premium-circular"] = SAMPLE_SLIDES_BY_TYPE["premium-coverflow"]
+
+SAMPLE_SLIDES_BY_TYPE["collection-carousel"] = [
+  {
+    id: "c3-1",
+    imageUrl: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=1000&q=80",
+    title: "Ready to Wear",
+    heading: "Ready to Wear",
+    description: "Fluid silhouettes for day into evening.",
+    subheading: "48",
+    ctaText: "Explore Collection",
+    ctaUrl: "#",
+    ctaResourceType: "collection",
+    isVisible: true,
+  },
+  {
+    id: "c3-2",
+    imageUrl: "https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=1000&q=80",
+    title: "Outerwear",
+    heading: "Outerwear",
+    description: "Architectural coats for city winters.",
+    subheading: "22",
+    ctaText: "Explore Collection",
+    ctaUrl: "#",
+    ctaResourceType: "collection",
+    isVisible: true,
+  },
+  {
+    id: "c3-3",
+    imageUrl: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1000&q=80",
+    title: "Tailoring",
+    heading: "Tailoring",
+    description: "Soft structure in washed linen and wool.",
+    subheading: "31",
+    ctaText: "Explore Collection",
+    ctaUrl: "#",
+    ctaResourceType: "collection",
+    isVisible: true,
+  },
+  {
+    id: "c3-4",
+    imageUrl: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=1000&q=80",
+    title: "Knitwear",
+    heading: "Knitwear",
+    description: "Fine-gauge merino and cashmere layers.",
+    subheading: "19",
+    ctaText: "Explore Collection",
+    ctaUrl: "#",
+    ctaResourceType: "collection",
+    isVisible: true,
+  },
+  {
+    id: "c3-5",
+    imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=1000&q=80",
+    title: "Accessories",
+    heading: "Accessories",
+    description: "Leather, metal, and finishing details.",
+    subheading: "36",
+    ctaText: "Explore Collection",
+    ctaUrl: "#",
+    ctaResourceType: "collection",
+    isVisible: true,
+  },
+  {
+    id: "c3-6",
+    imageUrl: "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1000&q=80",
+    title: "Evening",
+    heading: "Evening",
+    description: "Quiet glamour for rooms that dim themselves.",
+    subheading: "14",
+    ctaText: "Explore Collection",
+    ctaUrl: "#",
+    ctaResourceType: "collection",
+    isVisible: true,
+  },
+]
 
 export function getSampleSlidesForType(sliderType) {
   const resolved = resolveSliderType(sliderType)

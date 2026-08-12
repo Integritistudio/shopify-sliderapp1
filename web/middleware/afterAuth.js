@@ -3,8 +3,8 @@
  * Only mints a new install event_id when the shop is not currently installed
  * (first install or reinstall after uninstall). OAuth re-entry reuses the same id.
  */
-import shopify from "../shopify.js"
 import { ensureShopIdentity, notifyPortalInstall } from "../utils/shopAffiliate.js"
+import { ensureWebhooksRegistered } from "../utils/registerWebhooks.js"
 
 export async function afterAuth(req, res, next) {
   try {
@@ -14,7 +14,7 @@ export async function afterAuth(req, res, next) {
     }
 
     try {
-      await shopify.registerWebhooks({ session })
+      await ensureWebhooksRegistered(session, { force: true })
     } catch (error) {
       console.warn("registerWebhooks failed:", error?.message || error)
     }

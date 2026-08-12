@@ -43,7 +43,16 @@ app.get(
   afterAuth,
   shopify.redirectToShopifyOrAppRoot(),
 )
-app.post(shopify.config.webhooks.path, shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers }))
+app.post(
+  shopify.config.webhooks.path,
+  (req, res, next) => {
+    const topic = req.get("x-shopify-topic") || "?"
+    const shopHeader = req.get("x-shopify-shop-domain") || "?"
+    console.log(`[webhooks] incoming POST topic=${topic} shop=${shopHeader}`)
+    next()
+  },
+  shopify.processWebhooks({ webhookHandlers: PrivacyWebhookHandlers }),
+)
 
 // Sync and migrate database when server starts
 syncDatabase().then(migrateDatabase)

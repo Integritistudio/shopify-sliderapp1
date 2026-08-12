@@ -19,7 +19,7 @@ import SliderPreview from "../../components/slider-preview"
 import StyleSettingsForm from "../../components/style-settings-form"
 import SlideEditorPanel from "../../components/slide-editor-panel"
 import SeSelect from "../../components/se-select"
-import { getSliderTypeInfo, mergeSliderSettings, PRODUCT_SLIDER_TYPES } from "../../utils/sliderConfig"
+import { getSliderTypeInfo, mergeSliderSettings, PRODUCT_SLIDER_TYPES, COLLECTION_SLIDER_TYPES } from "../../utils/sliderConfig"
 import { scrollPreviewIntoView } from "../../utils/scrollPreview"
 import { SLIDE_SOFT_LIMIT } from "../../utils/limits"
 import { canAddSlide, effectiveMaxSlides, placementGuidance } from "../../utils/plans"
@@ -170,6 +170,37 @@ function SliderEditorContent() {
   const softLimitHit = slides.length >= SLIDE_SOFT_LIMIT
   const planLimitHit = !canAddSlide({ planId, currentSlideCount: slides.length }).ok
   const isProductSlider = PRODUCT_SLIDER_TYPES.includes(sliderType)
+  const isCollectionSlider = COLLECTION_SLIDER_TYPES.includes(sliderType)
+  const isSyncedCatalogSlider = isProductSlider || isCollectionSlider
+  const catalogLabel = isCollectionSlider ? "Collections" : isProductSlider ? "Products" : "Slides"
+  const catalogManageLabel = isCollectionSlider ? "Manage collections" : "Manage products"
+  const catalogEmptyTitle = isCollectionSlider
+    ? "No collections yet"
+    : isProductSlider
+      ? "No products yet"
+      : "No slides yet"
+  const catalogEmptyHint = isCollectionSlider
+    ? "Open Style & behavior to select the collections shown in this carousel."
+    : isProductSlider
+      ? "Open Style & behavior to select products or sync a collection."
+      : "Add a slide with Shopify Files, CTAs, and overlays. Preview updates below."
+  const catalogSelectLabel = isCollectionSlider ? "Select collections" : "Select products"
+  const catalogBannerTitle = isCollectionSlider
+    ? "Collection data comes from Shopify"
+    : "Product data comes from Shopify"
+  const catalogBannerBody = isCollectionSlider
+    ? "Title, image, and description are pulled from each collection. Use Style & behavior to choose which collections appear."
+    : "Title, image, and price are pulled from your catalog. Use Style & behavior to select products or sync a collection."
+  const catalogListHint = isSyncedCatalogSlider
+    ? isCollectionSlider
+      ? "Managed from Style & behavior — pick collections to show"
+      : "Managed from Style & behavior — pick products or sync a collection"
+    : "Drag ⋮⋮ the slide lifts and others shift up or down"
+  const catalogRemoveConfirm = isCollectionSlider
+    ? "Remove this collection from the slider?"
+    : isProductSlider
+      ? "Remove this product from the slider?"
+      : "Delete this slide permanently?"
 
   const saveSliderMeta = async (overrides = {}) => {
     setSaving(true)
@@ -432,7 +463,7 @@ function SliderEditorContent() {
   }, [onSlidePointerMove])
 
   const beginSlideDrag = (e, slide) => {
-    if (isProductSlider || e.button !== 0) return
+    if (isSyncedCatalogSlider || e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
 
@@ -513,7 +544,7 @@ function SliderEditorContent() {
   }
 
   const tabs = [
-    { id: "slides", content: `Slides (${slides.length})` },
+    { id: "slides", content: `${catalogLabel} (${slides.length})` },
     { id: "style", content: "Style & behavior" },
     { id: "publish", content: "Publish" },
     { id: "metrics", content: "Metrics" },
@@ -597,16 +628,14 @@ function SliderEditorContent() {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div>
                       <Text variant="headingSm" as="h3">
-                        {isProductSlider ? "Products" : "Slides"}
+                        {catalogLabel}
                       </Text>
                       <Text variant="bodySm" color="subdued">
-                        {isProductSlider
-                          ? "Managed from Style & behavior — pick products or sync a collection"
-                          : "Drag ⋮⋮ the slide lifts and others shift up or down"}
+                        {catalogListHint}
                       </Text>
                     </div>
-                    {isProductSlider ? (
-                      <Button onClick={() => setSelectedTab(1)}>Manage products</Button>
+                    {isSyncedCatalogSlider ? (
+                      <Button onClick={() => setSelectedTab(1)}>{catalogManageLabel}</Button>
                     ) : (
                       <Button primary onClick={openAddSlide} disabled={planLimitHit}>
                         Add slide
@@ -614,12 +643,9 @@ function SliderEditorContent() {
                     )}
                   </div>
 
-                  {isProductSlider && (
-                    <Banner status="info" title="Product data comes from Shopify">
-                      <p>
-                        Title, image, and price are pulled from your catalog. Use Style & behavior to select products or
-                        sync a collection, and set an optional section heading like “Featured products”.
-                      </p>
+                  {isSyncedCatalogSlider && (
+                    <Banner status="info" title={catalogBannerTitle}>
+                      <p>{catalogBannerBody}</p>
                     </Banner>
                   )}
 
@@ -627,18 +653,14 @@ function SliderEditorContent() {
                     <div className="se-empty" style={{ padding: "2rem 1.25rem" }}>
                       <div className="se-empty__icon">+</div>
                       <Text variant="headingSm" as="h3">
-                        {isProductSlider ? "No products yet" : "No slides yet"}
+                        {catalogEmptyTitle}
                       </Text>
                       <div style={{ margin: "0.5rem 0 1rem" }}>
-                        <Text color="subdued">
-                          {isProductSlider
-                            ? "Open Style & behavior to select products or sync a collection."
-                            : "Add a slide with Shopify Files, CTAs, and overlays. Preview updates below."}
-                        </Text>
+                        <Text color="subdued">{catalogEmptyHint}</Text>
                       </div>
-                      {isProductSlider ? (
+                      {isSyncedCatalogSlider ? (
                         <Button primary onClick={() => setSelectedTab(1)}>
-                          Select products
+                          {catalogSelectLabel}
                         </Button>
                       ) : (
                         <Button primary onClick={openAddSlide}>
@@ -649,7 +671,7 @@ function SliderEditorContent() {
                   )}
 
                   {displaySlides.map((slide, index) => {
-                    const selected = !isProductSlider && String(panelMode) === String(slide.id)
+                    const selected = !isSyncedCatalogSlider && String(panelMode) === String(slide.id)
                     const confirming = confirmDeleteId === slide.id
                     const isDragging = draggingId === slide.id
                     return (
@@ -683,7 +705,7 @@ function SliderEditorContent() {
                           }}
                         >
                           <div style={{ display: "flex", gap: 12, alignItems: "center", minWidth: 0 }}>
-                            {!isProductSlider && (
+                            {!isSyncedCatalogSlider && (
                               <div
                                 onPointerDown={(e) => beginSlideDrag(e, slide)}
                                 style={{
@@ -704,9 +726,9 @@ function SliderEditorContent() {
                             )}
                             <div
                               style={{
-                                width: isProductSlider ? 64 : 72,
-                                height: isProductSlider ? 64 : 54,
-                                borderRadius: isProductSlider ? 10 : 10,
+                                width: isSyncedCatalogSlider ? 64 : 72,
+                                height: isSyncedCatalogSlider ? 64 : 54,
+                                borderRadius: 10,
                                 overflow: "hidden",
                                 background: "#f1f5f9",
                                 flexShrink: 0,
@@ -727,9 +749,19 @@ function SliderEditorContent() {
                                 {slide.heading || slide.title}
                               </Text>
                               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                                {isProductSlider ? (
+                                {isSyncedCatalogSlider ? (
                                   <>
-                                    {slide.description ? <Badge>{slide.description}</Badge> : null}
+                                    {isCollectionSlider && slide.subheading ? (
+                                      <Badge>{`${slide.subheading} items`}</Badge>
+                                    ) : null}
+                                    {slide.description ? (
+                                      <Badge>
+                                        {isCollectionSlider
+                                          ? String(slide.description).slice(0, 40) +
+                                            (String(slide.description).length > 40 ? "…" : "")
+                                          : slide.description}
+                                      </Badge>
+                                    ) : null}
                                     <Text color="subdued">#{index + 1}</Text>
                                   </>
                                 ) : (
@@ -745,7 +777,7 @@ function SliderEditorContent() {
                           </div>
 
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {!isProductSlider && (
+                            {!isSyncedCatalogSlider && (
                               <>
                                 <Button
                                   size="slim"
@@ -777,7 +809,7 @@ function SliderEditorContent() {
 
                         {!isDragging && confirming && (
                           <div className="se-danger-bar">
-                            <Text>{isProductSlider ? "Remove this product from the slider?" : "Delete this slide permanently?"}</Text>
+                            <Text>{catalogRemoveConfirm}</Text>
                             <div style={{ display: "flex", gap: 8 }}>
                               <Button size="slim" onClick={() => setConfirmDeleteId(null)}>
                                 Keep
@@ -869,7 +901,7 @@ function SliderEditorContent() {
                       document.body,
                     )}
 
-                  {!isProductSlider && (
+                  {!isSyncedCatalogSlider && (
                     <div ref={editorAnchorRef}>
                       {panelMode === "create" && (
                         <SlideEditorPanel

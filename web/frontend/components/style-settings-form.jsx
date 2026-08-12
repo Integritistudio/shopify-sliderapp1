@@ -129,6 +129,10 @@ export default function StyleSettingsForm({
   const isLogoGrid = sliderType === "logo-grid"
   const isAnnounce = sliderType === "announcement"
   const isProductType = show.productSource
+  const isCollectionType = show.collectionSource
+  const isPremiumCoverflow =
+    sliderType === "premium-coverflow" || sliderType === "premium-circular"
+  const isCollectionCarousel = sliderType === "collection-carousel"
   const heightMin = sliderType === "announcement" ? 36 : sliderType === "logo-grid" ? 80 : 160
 
   const update = (key, value) => {
@@ -248,13 +252,64 @@ export default function StyleSettingsForm({
     }
   }
 
-  const showBehaviourToggles = show.autoplay || show.arrows || show.dots || show.infinite
+  const pickCollections = async () => {
+    if (!sliderId) return
+    try {
+      if (!shopify?.resourcePicker) {
+        setSyncMessage({ error: true, text: "Collection picker is unavailable in this session." })
+        return
+      }
+      const result = await shopify.resourcePicker({
+        type: "collection",
+        multiple: true,
+        action: "select",
+      })
+      const resources = Array.isArray(result) ? result : result?.selection
+      if (!resources?.length) return
+
+      const collectionIds = resources.map((item) => item.id).filter(Boolean)
+      setSyncing(true)
+      setSyncMessage(null)
+      const response = await fetch(`/api/sliders/${sliderId}/sync-collections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          collectionIds,
+          exploreCtaText: settings.exploreCtaText || "Explore Collection",
+          showItemCount: settings.showItemCount !== false,
+          sectionHeading: settings.sectionHeading || "",
+          settings,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || "Failed to load collections")
+      onCollectionSynced?.(data)
+      setSyncMessage({
+        error: false,
+        text: `Loaded ${data.syncMeta?.collectionCount ?? collectionIds.length} collections`,
+      })
+    } catch (error) {
+      if (error?.message && /cancel|closed|abort/i.test(error.message)) return
+      setSyncMessage({ error: true, text: error.message || "Could not pick collections" })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const showBehaviourToggles =
+    show.autoplay || show.arrows || show.dots || show.infinite || isPremiumCoverflow || isCollectionCarousel
   // Stories: pair arrow color with Image fit so the row isn't half-empty
   const showStoriesArrowWithFit = isStories && show.objectFit && show.arrowColor
   const showNavColors = !isAnnounce && ((show.arrowColor && !showStoriesArrowWithFit) || show.dotColor)
   // Logo Grid / Announcement use their own paired layout — skip generic half-empty rows
   const showLayoutRow = !isLogoGrid && !isAnnounce && (show.height || show.borderRadius)
-  const showSlidesRow = !isStories && !isLogoGrid && !isAnnounce && (show.slidesToShow || show.autoplaySpeed)
+  const showSlidesRow =
+    !isStories &&
+    !isLogoGrid &&
+    !isAnnounce &&
+    !isPremiumCoverflow &&
+    !isCollectionCarousel &&
+    (show.slidesToShow || show.autoplaySpeed)
   const showMobileSection = show.mobileSlides || show.mobileHeroText || show.mobileCtaFont
 
   return (
@@ -279,6 +334,17 @@ export default function StyleSettingsForm({
           {show.infinite ? (
             <Button pressed={settings.infinite !== false} onClick={() => update("infinite", settings.infinite === false)} disabled={disabled}>
               Infinite {settings.infinite === false ? "Off" : "On"}
+            </Button>
+          ) : null}
+          {isPremiumCoverflow || isCollectionCarousel ? (
+            <Button
+              pressed={settings.sectionBackgroundTransparent === true}
+              onClick={() =>
+                update("sectionBackgroundTransparent", settings.sectionBackgroundTransparent !== true)
+              }
+              disabled={disabled}
+            >
+              Transparent background {settings.sectionBackgroundTransparent === true ? "On" : "Off"}
             </Button>
           ) : null}
         </Stack>
@@ -437,15 +503,292 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
+      {show.collectionSource ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+            width: "100%",
+            paddingTop: 4,
+            paddingBottom: 4,
+          }}
+        >
+          <div>
+            <Text variant="headingSm" as="h3">
+              Section header
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Optional. Leave any field empty to hide it on the storefront.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <TextField
+                label="Subheading"
+                value={settings.sectionSubheading || ""}
+                onChange={(value) => update("sectionSubheading", value)}
+                placeholder="Shop by world"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Heading"
+                value={settings.sectionHeading || ""}
+                onChange={(value) => update("sectionHeading", value)}
+                placeholder="Collections"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Description"
+                value={settings.sectionDescription || ""}
+                onChange={(value) => update("sectionDescription", value)}
+                placeholder="Enter a curated world…"
+                disabled={disabled}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          {settings.sectionBackgroundTransparent === true ? null : (
+            <div style={{ maxWidth: 420 }}>
+              <ColorField
+                label="Section background (empty = default)"
+                value={settings.sectionBackground || ""}
+                onChange={(value) => update("sectionBackground", value)}
+                fallback="#ece8e2"
+                disabled={disabled}
+              />
+            </div>
+          )}
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              Collections
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Choose which collections appear as cards in the carousel.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <Button primary onClick={pickCollections} loading={syncing} disabled={disabled}>
+                Select collections
+              </Button>
+              <Button
+                pressed={settings.showItemCount !== false}
+                onClick={() => update("showItemCount", settings.showItemCount === false)}
+                disabled={disabled}
+              >
+                Item count {settings.showItemCount === false ? "Off" : "On"}
+              </Button>
+              <Button
+                pressed={settings.showShopNow !== false}
+                onClick={() => update("showShopNow", settings.showShopNow === false)}
+                disabled={disabled}
+              >
+                Explore CTA {settings.showShopNow === false ? "Off" : "On"}
+              </Button>
+            </div>
+            {settings.showShopNow !== false ? (
+              <div style={{ marginTop: 14, maxWidth: 360 }}>
+                <TextField
+                  label="Explore button label"
+                  value={settings.exploreCtaText || "Explore Collection"}
+                  onChange={(value) => update("exploreCtaText", value)}
+                  disabled={disabled}
+                  autoComplete="off"
+                />
+              </div>
+            ) : null}
+          </div>
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              Layout
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                How many cards stay visible at each breakpoint.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <ClampedNumberField
+                label="Desktop"
+                value={settings.visibleSlides ?? 5}
+                min={3}
+                max={7}
+                fallback={5}
+                onChange={(value) => update("visibleSlides", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Tablet"
+                value={settings.tabletVisibleSlides ?? 3}
+                min={1}
+                max={5}
+                fallback={3}
+                onChange={(value) => update("tabletVisibleSlides", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Mobile"
+                value={settings.mobileVisibleSlides ?? 3}
+                min={1}
+                max={5}
+                fallback={3}
+                onChange={(value) => update("mobileVisibleSlides", value)}
+                disabled={disabled}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              Card & motion
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Visual polish for the active card and autoplay timing.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <ClampedNumberField
+                label="Overlay strength (0–100)"
+                value={Math.round((Number(settings.c3Overlay ?? 0.55) || 0.55) * 100)}
+                min={0}
+                max={100}
+                fallback={55}
+                onChange={(value) => update("c3Overlay", Number(value) / 100)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Card radius"
+                value={settings.borderRadius ?? 4}
+                min={0}
+                max={24}
+                fallback={4}
+                onChange={(value) => update("borderRadius", value)}
+                disabled={disabled}
+              />
+              {show.autoplaySpeed ? (
+                <ClampedNumberField
+                  label="Autoplay speed (ms)"
+                  value={settings.autoplaySpeed ?? 4800}
+                  min={0}
+                  max={60000}
+                  fallback={4800}
+                  onChange={(value) => update("autoplaySpeed", value)}
+                  disabled={disabled}
+                />
+              ) : (
+                <div />
+              )}
+            </div>
+          </div>
+
+          <Banner status="info" title="Collections drive the slides">
+            <p>
+              Each selected collection becomes one card. Image and description come from the collection in Shopify —
+              empty fields are hidden automatically.
+            </p>
+          </Banner>
+          {syncMessage ? (
+            <Banner status={syncMessage.error ? "critical" : "success"} onDismiss={() => setSyncMessage(null)}>
+              <p>{syncMessage.text}</p>
+            </Banner>
+          ) : null}
+        </div>
+      ) : null}
+
       {show.productSource ? (
-        <TextField
-          label="Section heading (optional)"
-          value={settings.sectionHeading || ""}
-          onChange={(value) => update("sectionHeading", value)}
-          placeholder="Featured products"
-          disabled={disabled}
-          autoComplete="off"
-        />
+        isPremiumCoverflow ? (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1rem",
+                width: "100%",
+              }}
+            >
+              <TextField
+                label="Subheading (optional)"
+                value={settings.sectionSubheading || ""}
+                onChange={(value) => update("sectionSubheading", value)}
+                placeholder="New season"
+                helpText="Leave empty to hide"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Heading (optional)"
+                value={settings.sectionHeading || ""}
+                onChange={(value) => update("sectionHeading", value)}
+                placeholder="The Edit"
+                helpText="Leave empty to hide"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Description (optional)"
+                value={settings.sectionDescription || ""}
+                onChange={(value) => update("sectionDescription", value)}
+                placeholder="A curated selection of signature pieces…"
+                helpText="Leave empty to hide"
+                disabled={disabled}
+                autoComplete="off"
+              />
+            </div>
+            {settings.sectionBackgroundTransparent === true ? null : (
+              <ColorField
+                label="Section background (empty = default beige)"
+                value={settings.sectionBackground || ""}
+                onChange={(value) => update("sectionBackground", value)}
+                fallback="#ece8e2"
+                disabled={disabled}
+              />
+            )}
+          </>
+        ) : (
+          <TextField
+            label="Section heading (optional)"
+            value={settings.sectionHeading || ""}
+            onChange={(value) => update("sectionHeading", value)}
+            placeholder="Featured products"
+            disabled={disabled}
+            autoComplete="off"
+          />
+        )
       ) : null}
 
       {show.productSource && collectionsError ? (
@@ -648,22 +991,71 @@ export default function StyleSettingsForm({
       ) : null}
 
       {show.productSource ? (
-        <FormLayout.Group>
-          <ClampedNumberField
-            label="Collection product limit"
-            value={settings.productLimit ?? 8}
-            min={1}
-            max={50}
-            fallback={8}
-            onChange={(value) => update("productLimit", value)}
-            disabled={disabled}
-          />
-          <div style={{ display: "flex", alignItems: "flex-end", height: "100%", paddingBottom: 2 }}>
-            <Button onClick={syncCollection} loading={syncing} disabled={disabled || !settings.collectionId}>
-              Sync collection
-            </Button>
+        isPremiumCoverflow ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 7fr) minmax(0, 3fr)",
+              gap: "1rem",
+              width: "100%",
+              alignItems: "end",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto",
+                gap: "0.75rem",
+                alignItems: "end",
+              }}
+            >
+              <ClampedNumberField
+                label="Collection product limit"
+                value={settings.productLimit ?? 8}
+                min={1}
+                max={50}
+                fallback={8}
+                onChange={(value) => update("productLimit", value)}
+                disabled={disabled}
+              />
+              <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
+                <Button onClick={syncCollection} loading={syncing} disabled={disabled || !settings.collectionId}>
+                  Sync collection
+                </Button>
+              </div>
+            </div>
+            {show.autoplaySpeed ? (
+              <ClampedNumberField
+                label="Autoplay speed (ms)"
+                value={settings.autoplaySpeed ?? 4200}
+                min={0}
+                max={60000}
+                fallback={4200}
+                onChange={(value) => update("autoplaySpeed", value)}
+                disabled={disabled}
+              />
+            ) : (
+              <div />
+            )}
           </div>
-        </FormLayout.Group>
+        ) : (
+          <FormLayout.Group>
+            <ClampedNumberField
+              label="Collection product limit"
+              value={settings.productLimit ?? 8}
+              min={1}
+              max={50}
+              fallback={8}
+              onChange={(value) => update("productLimit", value)}
+              disabled={disabled}
+            />
+            <div style={{ display: "flex", alignItems: "flex-end", height: "100%", paddingBottom: 2 }}>
+              <Button onClick={syncCollection} loading={syncing} disabled={disabled || !settings.collectionId}>
+                Sync collection
+              </Button>
+            </div>
+          </FormLayout.Group>
+        )
       ) : null}
 
       {show.productSource && syncMessage ? (
@@ -1129,6 +1521,23 @@ export default function StyleSettingsForm({
               value={settings.ctaIcon || "arrow"}
               onChange={(value) => update("ctaIcon", value)}
               disabled={disabled}
+            />
+          ) : isPremiumCoverflow ? (
+            <ClampedNumberField
+              label="Button corner radius (px)"
+              value={settings.ctaBorderRadius ?? 1}
+              min={0}
+              max={50}
+              fallback={1}
+              onChange={(value) =>
+                onSettingsChange({
+                  ...settings,
+                  ctaBorderRadius: value,
+                  atcBorderRadius: value,
+                })
+              }
+              disabled={disabled}
+              helpText="Shop now and Add to cart"
             />
           ) : (
             <div />

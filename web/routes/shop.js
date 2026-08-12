@@ -3,10 +3,29 @@ import { sequelize } from "../config/database.js"
 import { Op } from "sequelize"
 import { BrandKit, ShopOnboarding, Slider, Slide, AnalyticsEvent } from "../models/index.js"
 import { extractShop } from "../middleware/auth.js"
+import { ensureWebhooksRegistered } from "../utils/registerWebhooks.js"
 
 const router = express.Router()
 
 router.use(extractShop)
+
+/**
+ * Re-register Shopify catalog/lifecycle webhooks for this shop.
+ * Useful in local/tunnel dev when the public URL changes.
+ */
+router.post("/shop/register-webhooks", async (req, res) => {
+  try {
+    const session = res.locals.shopify?.session
+    if (!session) {
+      return res.status(401).json({ error: "Missing shop session" })
+    }
+    const result = await ensureWebhooksRegistered(session, { force: true })
+    res.json({ ok: true, shop: session.shop, ...(result || {}) })
+  } catch (error) {
+    console.error("register-webhooks failed:", error)
+    res.status(500).json({ error: error?.message || "Failed to register webhooks" })
+  }
+})
 
 const DEFAULT_BRAND = {
   textColor: "#ffffff",

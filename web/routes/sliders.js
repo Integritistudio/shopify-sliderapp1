@@ -7,10 +7,11 @@ import {
   SLIDE_ATTRIBUTES,
   DEFAULT_SLIDE_FIELDS,
   PRODUCT_SLIDER_TYPES,
+  COLLECTION_SLIDER_TYPES,
 } from "../utils/sliderDefaults.js"
 import { sanitizePlainText } from "../utils/validation.js"
 import { getTemplateById } from "../utils/templates.js"
-import { fetchCollectionProducts, fetchProductsByIds } from "./collections.js"
+import { fetchCollectionProducts, fetchProductsByIds, fetchCollectionsByIds } from "./collections.js"
 import {
   assertCanCreateSlider,
   assertCanChangeSliderType,
@@ -20,6 +21,7 @@ import { SLIDE_ABSOLUTE_CEILING } from "../utils/plans.js"
 import { resolveShopPlan } from "../utils/resolveShopPlan.js"
 import { upsertShopPlanCache } from "../utils/shopPlanCache.js"
 import { replaceWithProductSlides } from "../utils/productSliderSync.js"
+import { replaceWithCollectionSlides } from "../utils/collectionSliderSync.js"
 
 const router = express.Router()
 
@@ -445,6 +447,12 @@ router.post("/sliders/:id/sync-collection", async (req, res) => {
     if (req.body?.sectionHeading !== undefined) {
       settings.sectionHeading = String(req.body.sectionHeading || "").slice(0, 120)
     }
+    if (req.body?.settings?.sectionSubheading !== undefined) {
+      settings.sectionSubheading = String(req.body.settings.sectionSubheading || "").slice(0, 120)
+    }
+    if (req.body?.settings?.sectionDescription !== undefined) {
+      settings.sectionDescription = String(req.body.settings.sectionDescription || "").slice(0, 280)
+    }
 
     const { products, handle, title } = await fetchCollectionProducts(session, collectionId, limit)
 
@@ -500,6 +508,12 @@ router.post("/sliders/:id/sync-products", async (req, res) => {
     if (req.body?.sectionHeading !== undefined) {
       settings.sectionHeading = String(req.body.sectionHeading || "").slice(0, 120)
     }
+    if (req.body?.settings?.sectionSubheading !== undefined) {
+      settings.sectionSubheading = String(req.body.settings.sectionSubheading || "").slice(0, 120)
+    }
+    if (req.body?.settings?.sectionDescription !== undefined) {
+      settings.sectionDescription = String(req.body.settings.sectionDescription || "").slice(0, 280)
+    }
     settings.showPrice = Boolean(showPrice)
     settings.collectionId = null
     settings.collectionHandle = null
@@ -525,6 +539,77 @@ router.post("/sliders/:id/sync-products", async (req, res) => {
     console.error("Error syncing products:", error)
     res.status(error.status || 500).json({
       error: error.message || "Failed to sync products",
+    })
+  }
+})
+
+router.post("/sliders/:id/sync-collections", async (req, res) => {
+  try {
+    const shop = req.shop
+    const session = res.locals.shopify.session
+    const slider = await Slider.findOne({ where: { id: req.params.id, shop } })
+    if (!slider) {
+      return res.status(404).json({ error: "Slider not found" })
+    }
+
+    if (!COLLECTION_SLIDER_TYPES.includes(slider.sliderType)) {
+      return res.status(400).json({ error: "Collection carousel sync is only available for Collection Carousel" })
+    }
+
+    const collectionIds = req.body?.collectionIds || []
+    if (!Array.isArray(collectionIds) || !collectionIds.length) {
+      return res.status(400).json({ error: "Select at least one collection" })
+    }
+
+    const settings = mergeSliderSettings(slider.sliderType, {
+      ...(slider.settings || {}),
+      ...(req.body?.settings || {}),
+    })
+
+    if (req.body?.sectionHeading !== undefined) {
+      settings.sectionHeading = String(req.body.sectionHeading || "").slice(0, 120)
+    }
+    if (req.body?.settings?.sectionSubheading !== undefined) {
+      settings.sectionSubheading = String(req.body.settings.sectionSubheading || "").slice(0, 120)
+    }
+    if (req.body?.settings?.sectionDescription !== undefined) {
+      settings.sectionDescription = String(req.body.settings.sectionDescription || "").slice(0, 280)
+    }
+    if (req.body?.exploreCtaText !== undefined) {
+      settings.exploreCtaText = String(req.body.exploreCtaText || "Explore Collection").slice(0, 60)
+    }
+    if (req.body?.showItemCount !== undefined) {
+      settings.showItemCount = Boolean(req.body.showItemCount)
+    }
+
+    const { maxSlides } = await getPlanMaxSlidesForShop(session)
+    const limitedIds = collectionIds.slice(0, Math.min(maxSlides, SLIDE_ABSOLUTE_CEILING))
+    settings.collectionIds = limitedIds
+    settings.collectionId = null
+    settings.collectionHandle = null
+    slider.settings = settings
+    await slider.save()
+
+    const collections = (await fetchCollectionsByIds(session, limitedIds)).slice(
+      0,
+      Math.min(maxSlides, SLIDE_ABSOLUTE_CEILING),
+    )
+    await replaceWithCollectionSlides(slider, collections, {
+      exploreCtaText: settings.exploreCtaText,
+    })
+    await markOnboarding(shop, { addedSlide: collections.length > 0 })
+
+    const updated = await loadSerializedSlider(slider.id, shop)
+    res.json({
+      ...serializeSlider(updated),
+      syncMeta: {
+        collectionCount: collections.length,
+      },
+    })
+  } catch (error) {
+    console.error("Error syncing collections:", error)
+    res.status(error.status || 500).json({
+      error: error.message || "Failed to sync collections",
     })
   }
 })

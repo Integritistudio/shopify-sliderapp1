@@ -680,15 +680,19 @@
     return false
   }
 
-  function buildSlickConfig(settings) {
-    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+  function resolveEffect(settings = {}) {
     const aliases = {
       "multiple-items": "autoplay",
       lazy: "autoplay",
       spotlight: "center",
       "carousel-3d": "coverflow",
     }
-    const effect = aliases[settings.effect || settings.transition] || settings.effect || settings.transition || "slide"
+    return aliases[settings.effect || settings.transition] || settings.effect || settings.transition || "slide"
+  }
+
+  function buildSlickConfig(settings) {
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+    const effect = resolveEffect(settings)
     const fadeEffects = [
       "fade",
       "thumbnails",
@@ -1850,16 +1854,897 @@
     `
   }
 
+
+  function renderPremiumProductSlide(slide, settings, index, variant = "coverflow") {
+    const cx = variant === "circular" ? "se-pcc" : "se-pcf"
+    const slideAttr = variant === "circular" ? "data-se-pcc-slide" : "data-se-pcf-slide"
+    const heading = slide.heading || slide.title || "Product"
+    const description = slide.description || ""
+    const compareAt = String(slide.compareAtPrice || "").trim()
+    const ctaHref = safeUrl(slide.ctaUrl) || ""
+    const targetAttrs = slide.ctaNewTab ? ' target="_blank" rel="noopener noreferrer"' : ""
+    const imageUrl = escapeHtml(safeUrl(slide.imageUrl) || "")
+    const hoverImageUrl = escapeHtml(safeUrl(slide.hoverImageUrl) || "")
+    const showPrice = settings.showPrice !== false
+    const showShopNow = settings.showShopNow !== false
+    const showAddToCart = settings.showAddToCart !== false
+    const showSoldOut = settings.showSoldOut !== false
+    const salesBadgeMode = normalizeSalesBadgeMode(settings.salesBadgeMode)
+    const salesBadgeFormat = normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+    const salesBadgeText =
+      settings.salesBadgeText == null
+        ? salesBadgeFormat === "custom"
+          ? "{percent}% OFF"
+          : "OFF"
+        : String(settings.salesBadgeText)
+    const shopLabel = escapeHtml(slide.ctaText || "View product")
+    const soldOutLabel = escapeHtml(settings.soldOutText || "Sold out")
+    const atcLabel = escapeHtml(settings.addToCartText || "Add to cart")
+    const variantId = String(slide.variantId || "").replace(/\D/g, "")
+    const productHandle =
+      productHandleFromUrl(slide.ctaUrl || ctaHref || "") ||
+      String(slide.subheading || "").trim()
+    const isSoldOut = slide.availableForSale === false
+    const saleDiscountPercent = Number(slide.saleDiscountPercent)
+    const saleBadgeLabel =
+      salesBadgeMode === "automatic" && Number.isFinite(saleDiscountPercent) && saleDiscountPercent > 0
+        ? formatSaleBadgeLabel(saleDiscountPercent, {
+            format: salesBadgeFormat,
+            text: salesBadgeText,
+          })
+        : ""
+    const badgeClass = saleBadgeLabel.toLowerCase().includes("sale") || saleBadgeLabel.includes("%")
+      ? `${cx}-card__badge ${cx}-card__badge--sale se-product-card__badge`
+      : `${cx}-card__badge se-product-card__badge`
+    const badgeHtml = saleBadgeLabel
+      ? `<span class="${badgeClass}" aria-hidden="true">${escapeHtml(saleBadgeLabel)}</span>`
+      : ""
+    const mediaInner = imageUrl
+      ? `<img class="${cx}-card__image se-product-card__img se-product-card__img--primary" src="${imageUrl}" alt="${escapeHtml(slide.imageAlt || heading)}" width="800" height="1000" loading="${index === 0 ? "eager" : "lazy"}"${index === 0 ? ' fetchpriority="high"' : ""} decoding="async" />${
+          hoverImageUrl
+            ? `<img class="${cx}-card__image ${cx}-card__image--hover se-product-card__img se-product-card__img--hover" src="${hoverImageUrl}" alt="" aria-hidden="true" loading="lazy" decoding="async" />`
+            : ""
+        }${badgeHtml}`
+      : badgeHtml
+    const priceHtml =
+      showPrice && description
+        ? `<p class="${cx}-card__price"><span class="${cx}-card__amount">${escapeHtml(description)}</span>${
+            compareAt ? `<span class="${cx}-card__compare">${escapeHtml(compareAt)}</span>` : ""
+          }</p>`
+        : ""
+    const actions = []
+    if (showAddToCart && (variantId || productHandle || isSoldOut)) {
+      if (isSoldOut) {
+        if (showSoldOut) {
+          actions.push(
+            `<button type="button" class="se-product-card__atc se-product-card__atc--soldout" disabled aria-disabled="true" data-sold-out="1" data-slide-id="${escapeHtml(slide.id)}">${soldOutLabel}</button>`,
+          )
+        }
+      } else {
+        actions.push(
+          `<button type="button" class="se-product-card__atc" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(slide.id)}" data-show-sold-out="${showSoldOut ? "1" : "0"}">${atcLabel}</button>`,
+        )
+      }
+    }
+    if (showShopNow) {
+      actions.push(
+        `<a class="${cx}-card__cta slideease-cta" data-slide-id="${escapeHtml(slide.id)}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>${shopLabel}</a>`,
+      )
+    }
+    const canQuickAdd = !isSoldOut && Boolean(variantId || productHandle)
+    const quickAddContent = buildQuickAddContent(settings)
+    const quickAddHtml = canQuickAdd
+      ? `<button type="button" class="se-product-card__atc se-product-card__quick-add" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(slide.id)}" data-show-sold-out="${showSoldOut ? "1" : "0"}" aria-label="Quick Add">${quickAddContent}</button>`
+      : ""
+    const cardMods = [
+      hoverImageUrl ? `${cx}-card--has-hover se-product-card--has-hover` : "",
+      canQuickAdd ? `${cx}-card--quick-add se-product-card--quick-add` : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+    const actionsHtml = actions.length
+      ? `<div class="${cx}-card__actions">${actions.join("")}</div>`
+      : ""
+    return `
+      <li class="${cx}__slide${index === 0 ? " is-active" : ""}" ${slideAttr} data-product-title="${escapeHtml(heading)}"${index === 0 ? ' aria-current="true"' : ""}>
+        <article class="${cx}-card se-product-card${cardMods ? ` ${cardMods}` : ""}" data-product-handle="${escapeHtml(productHandle)}" data-variant-id="${escapeHtml(variantId)}" data-slideease-slide-id="${escapeHtml(slide.id)}">
+          <div class="${cx}-card__media se-product-card__media">
+            ${ctaHref ? `<a class="se-product-card__media-link" href="${escapeHtml(ctaHref)}"${targetAttrs} style="display:block;height:100%;position:relative;">${mediaInner}</a>` : mediaInner}
+            ${quickAddHtml}
+          </div>
+          <div class="${cx}-card__body">
+            <h3 class="${cx}-card__title">${
+              ctaHref
+                ? `<a href="${escapeHtml(ctaHref)}"${targetAttrs}>${escapeHtml(heading)}</a>`
+                : escapeHtml(heading)
+            }</h3>
+            ${priceHtml}
+            ${actionsHtml}
+          </div>
+        </article>
+      </li>`
+  }
+
+  function renderPremiumCoverflow(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No slides available", "This slider does not have any visible slides yet.")
+      return
+    }
+
+    // Start coverflow engine early so styles/init arrive ASAP (reduces FOUC)
+    const premiumSrc = `${apiOrigin}/premium-coverflow.js?v=59`
+    const premiumReady = loadScriptOnce(premiumSrc)
+
+    trackEvent("view", slides[0]?.id)
+
+    const salesBadgeMode = normalizeSalesBadgeMode(settings.salesBadgeMode)
+    const salesBadgeFormat = normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+    const salesBadgeText = String(
+      settings.salesBadgeText == null
+        ? salesBadgeFormat === "custom"
+          ? "{percent}% OFF"
+          : "OFF"
+        : settings.salesBadgeText,
+    )
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="se-pcf__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="se-pcf__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="se-pcf__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="se-pcf__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots !== false
+    const coverflowConfig = {
+      autoplay: Boolean(settings.autoplay),
+      autoplayDelay: Number(settings.autoplaySpeed) || 4200,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+      transitionSpeed: Number(settings.speed) || 620,
+    }
+
+    const ctaBg = escapeHtml(settings.ctaBackground || "#1a1816")
+    const ctaColor = escapeHtml(settings.ctaTextColor || "#f7f5f1")
+    const ctaBorder = escapeHtml(settings.ctaBorderColor || settings.ctaBackground || "#1a1816")
+    const ctaHoverBg = escapeHtml(
+      settings.ctaHoverBackground === "" || settings.ctaHoverBackground == null
+        ? "transparent"
+        : settings.ctaHoverBackground,
+    )
+    const ctaHoverColor = escapeHtml(settings.ctaHoverTextColor || settings.ctaBackground || "#1a1816")
+    const atcBg = escapeHtml(settings.atcBackground || settings.ctaBackground || "#1a1816")
+    const atcColor = escapeHtml(settings.atcTextColor || settings.ctaTextColor || "#f7f5f1")
+    const atcBorder = escapeHtml(settings.atcBorderColor || settings.ctaBorderColor || atcBg)
+    const atcHoverBg = escapeHtml(settings.atcHoverBackground || settings.ctaHoverBackground || "transparent")
+    const atcHoverColor = escapeHtml(settings.atcHoverTextColor || settings.ctaHoverTextColor || atcBg)
+    const quickAddBg = escapeHtml(settings.quickAddBackground || "#170f49")
+    const quickAddSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
+    const ctaRadius = Math.min(Math.max(Number(settings.ctaBorderRadius ?? 1), 0), 50)
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.55) 0%, transparent 55%), linear-gradient(165deg, #ece8e2 0%, #d9d4cc 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+    const pcfStyleVars = [
+      `--cf-cta-bg:${ctaBg}`,
+      `--cf-cta-color:${ctaColor}`,
+      `--cf-cta-border:${ctaBorder}`,
+      `--cf-cta-hover-bg:${ctaHoverBg}`,
+      `--cf-cta-hover-color:${ctaHoverColor}`,
+      `--cf-cta-radius:${ctaRadius}px`,
+      `--cf-atc-bg:${atcBg}`,
+      `--cf-atc-color:${atcColor}`,
+      `--cf-atc-border:${atcBorder}`,
+      `--cf-atc-hover-bg:${atcHoverBg}`,
+      `--cf-atc-hover-color:${atcHoverColor}`,
+      `--cf-quick-add-bg:${quickAddBg}`,
+      `--cf-quick-add-size:${quickAddSize}px`,
+      `--cf-section-bg:${sectionBgValue}`,
+    ].join(";")
+
+    const slidesHtml = slides.map((slide, i) => renderPremiumProductSlide(slide, settings, i)).join("")
+
+    const markup = `
+      <style id="se-pcf-boot-${uniqueId}">
+        .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__stage,
+        .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__controls,
+        .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__stage {
+          min-height: min(78vw, 560px);
+        }
+        .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__slide {
+          position: absolute !important;
+          top: 50%;
+          left: 50%;
+          opacity: 0 !important;
+        }
+        .slideease-container-${uniqueId} .se-pcf.is-ready .se-pcf__stage,
+        .slideease-container-${uniqueId} .se-pcf.is-ready .se-pcf__controls,
+        .slideease-container-${uniqueId} .se-pcf.is-ready .se-pcf__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--premium se-root--products" data-effect="premium-coverflow" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" aria-roledescription="carousel">
+        <div class="se-pcf" data-se-pcf data-se-pcf-config='${escapeHtml(JSON.stringify(coverflowConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "Featured products")}" aria-busy="true" style="${pcfStyleVars}">
+          <div class="se-pcf__inner">
+            ${headerHtml}
+            <div class="se-pcf__stage" data-se-pcf-stage>
+              <ul class="se-pcf__track" data-se-pcf-track>
+                ${slidesHtml}
+              </ul>
+            </div>
+            <div class="se-pcf__controls">
+              <div class="se-pcf__nav" data-se-pcf-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="se-pcf__arrow" data-se-pcf-prev aria-label="Previous product">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="se-pcf__arrow" data-se-pcf-next aria-label="Next product">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="se-pcf__pagination" data-se-pcf-pagination aria-label="Product pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="se-pcf__live" data-se-pcf-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let pcfRoot = null
+
+    const mountPremium = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      pcfRoot = root?.querySelector("[data-se-pcf]")
+      if (!pcfRoot || !window.SEPremiumCoverflow) {
+        throw new Error("Premium coverflow unavailable")
+      }
+      document.querySelectorAll(`.slideease-container-${uniqueId} .slideease-cta`).forEach((el) => {
+        el.addEventListener("click", () => {
+          trackEvent("cta_click", el.getAttribute("data-slide-id"))
+        })
+      })
+      wireProductInteractions(root, settings)
+      window.SEPremiumCoverflow.init(pcfRoot, coverflowConfig)
+      pcfRoot.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SEPremiumCoverflow?.getInstance?.(pcfRoot)?.destroy?.()
+      })
+    }
+
+    // Wait for engine CSS before painting markup — avoids horizontal product FOUC
+    premiumReady
+      .then(() => {
+        window.SEPremiumCoverflow?.injectStyles?.()
+        insertAdjacent(markup)
+        mountPremium()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load premium coverflow.")
+      })
+
+    // Full reload / back navigation: keep transforms painted if engine is already warm
+    window.addEventListener("pageshow", (event) => {
+      if (!pcfRoot || !document.contains(pcfRoot)) return
+      const existing = window.SEPremiumCoverflow?.getInstance?.(pcfRoot)
+      if (existing) {
+        pcfRoot.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => pcfRoot.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SEPremiumCoverflow) {
+        try {
+          mountPremium()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function renderPremiumCircular(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No slides available", "This slider does not have any visible slides yet.")
+      return
+    }
+
+    // Start circular engine early so styles/init arrive ASAP (reduces FOUC)
+    const premiumSrc = `${apiOrigin}/premium-circular.js?v=59`
+    const premiumReady = loadScriptOnce(premiumSrc)
+
+    trackEvent("view", slides[0]?.id)
+
+    const salesBadgeMode = normalizeSalesBadgeMode(settings.salesBadgeMode)
+    const salesBadgeFormat = normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+    const salesBadgeText = String(
+      settings.salesBadgeText == null
+        ? salesBadgeFormat === "custom"
+          ? "{percent}% OFF"
+          : "OFF"
+        : settings.salesBadgeText,
+    )
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="se-pcc__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="se-pcc__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="se-pcc__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="se-pcc__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots !== false
+    const circularConfig = {
+      autoplay: Boolean(settings.autoplay),
+      autoplayDelay: Number(settings.autoplaySpeed) || 4500,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+      transitionDuration: Number(settings.speed) || 650,
+    }
+
+    const ctaBg = escapeHtml(settings.ctaBackground || "#121417")
+    const ctaColor = escapeHtml(settings.ctaTextColor || "#f4f5f7")
+    const ctaBorder = escapeHtml(settings.ctaBorderColor || settings.ctaBackground || "#121417")
+    const ctaHoverBg = escapeHtml(
+      settings.ctaHoverBackground === "" || settings.ctaHoverBackground == null
+        ? "transparent"
+        : settings.ctaHoverBackground,
+    )
+    const ctaHoverColor = escapeHtml(settings.ctaHoverTextColor || settings.ctaBackground || "#121417")
+    const atcBg = escapeHtml(settings.atcBackground || settings.ctaBackground || "#121417")
+    const atcColor = escapeHtml(settings.atcTextColor || settings.ctaTextColor || "#f4f5f7")
+    const atcBorder = escapeHtml(settings.atcBorderColor || settings.ctaBorderColor || atcBg)
+    const atcHoverBg = escapeHtml(settings.atcHoverBackground || settings.ctaHoverBackground || "transparent")
+    const atcHoverColor = escapeHtml(settings.atcHoverTextColor || settings.ctaHoverTextColor || atcBg)
+    const quickAddBg = escapeHtml(settings.quickAddBackground || "#170f49")
+    const quickAddSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
+    const ctaRadius = Math.min(Math.max(Number(settings.ctaBorderRadius ?? 1), 0), 50)
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(90% 70% at 50% 18%, rgba(255,255,255,0.65) 0%, transparent 58%), linear-gradient(168deg, #e8e9eb 0%, #d5d7db 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+    const pccStyleVars = [
+      `--pcc-cta-bg:${ctaBg}`,
+      `--pcc-cta-color:${ctaColor}`,
+      `--pcc-cta-border:${ctaBorder}`,
+      `--pcc-cta-hover-bg:${ctaHoverBg}`,
+      `--pcc-cta-hover-color:${ctaHoverColor}`,
+      `--pcc-cta-radius:${ctaRadius}px`,
+      `--pcc-atc-bg:${atcBg}`,
+      `--pcc-atc-color:${atcColor}`,
+      `--pcc-atc-border:${atcBorder}`,
+      `--pcc-atc-hover-bg:${atcHoverBg}`,
+      `--pcc-atc-hover-color:${atcHoverColor}`,
+      `--pcc-quick-add-bg:${quickAddBg}`,
+      `--pcc-quick-add-size:${quickAddSize}px`,
+      `--pcc-section-bg:${sectionBgValue}`,
+    ].join(";")
+
+    const slidesHtml = slides
+      .map((slide, i) => renderPremiumProductSlide(slide, settings, i, "circular"))
+      .join("")
+
+    const markup = `
+      <style id="se-pcc-boot-${uniqueId}">
+        .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__stage,
+        .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__controls,
+        .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__stage {
+          min-height: min(78vw, 560px);
+        }
+        .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__slide {
+          position: absolute !important;
+          top: 50%;
+          left: 50%;
+          opacity: 0 !important;
+        }
+        .slideease-container-${uniqueId} .se-pcc.is-ready .se-pcc__stage,
+        .slideease-container-${uniqueId} .se-pcc.is-ready .se-pcc__controls,
+        .slideease-container-${uniqueId} .se-pcc.is-ready .se-pcc__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--premium se-root--products" data-effect="premium-circular" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" aria-roledescription="carousel">
+        <div class="se-pcc" data-se-pcc data-se-pcc-config='${escapeHtml(JSON.stringify(circularConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "Featured products")}" aria-busy="true" style="${pccStyleVars}">
+          <div class="se-pcc__inner">
+            ${headerHtml}
+            <div class="se-pcc__stage" data-se-pcc-stage>
+              <ul class="se-pcc__track" data-se-pcc-track>
+                ${slidesHtml}
+              </ul>
+            </div>
+            <div class="se-pcc__controls">
+              <div class="se-pcc__nav" data-se-pcc-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="se-pcc__arrow" data-se-pcc-prev aria-label="Previous product">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="se-pcc__arrow" data-se-pcc-next aria-label="Next product">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="se-pcc__pagination" data-se-pcc-pagination aria-label="Product pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="se-pcc__live" data-se-pcc-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let pccRoot = null
+
+    const mountPremium = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      pccRoot = root?.querySelector("[data-se-pcc]")
+      if (!pccRoot || !window.SEPremiumCircular) {
+        throw new Error("Premium circular unavailable")
+      }
+      document.querySelectorAll(`.slideease-container-${uniqueId} .slideease-cta`).forEach((el) => {
+        el.addEventListener("click", () => {
+          trackEvent("cta_click", el.getAttribute("data-slide-id"))
+        })
+      })
+      wireProductInteractions(root, settings)
+      window.SEPremiumCircular.init(pccRoot, circularConfig)
+      pccRoot.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SEPremiumCircular?.getInstance?.(pccRoot)?.destroy?.()
+      })
+    }
+
+    // Wait for engine CSS before painting markup — avoids horizontal product FOUC
+    premiumReady
+      .then(() => {
+        window.SEPremiumCircular?.injectStyles?.()
+        insertAdjacent(markup)
+        mountPremium()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load premium circular.")
+      })
+
+    // Full reload / back navigation: keep transforms painted if engine is already warm
+    window.addEventListener("pageshow", (event) => {
+      if (!pccRoot || !document.contains(pccRoot)) return
+      const existing = window.SEPremiumCircular?.getInstance?.(pccRoot)
+      if (existing) {
+        pccRoot.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => pccRoot.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SEPremiumCircular) {
+        try {
+          mountPremium()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function formatCollectionItemCount(raw) {
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 0) return ""
+    const rounded = Math.round(n)
+    return `${rounded} ${rounded === 1 ? "item" : "items"}`
+  }
+
+  function renderCollectionSlide(slide, settings, index) {
+    const title = String(slide.heading || slide.title || "Collection").trim()
+    const description = String(slide.description || "").trim()
+    const imageUrl = String(slide.imageUrl || "").trim()
+    const href = String(slide.ctaUrl || "#").trim() || "#"
+    const ctaText = String(
+      slide.ctaText || settings.exploreCtaText || "Explore Collection",
+    ).trim() || "Explore Collection"
+    const showCount = settings.showItemCount !== false
+    const countLabel = showCount ? formatCollectionItemCount(slide.subheading) : ""
+    const alt = escapeHtml(slide.imageAlt || title)
+    const eager = index === 0
+
+    const mediaHtml = imageUrl
+      ? `<div class="collection-3d__media">
+            <img
+              class="collection-3d__image"
+              src="${escapeHtml(imageUrl)}"
+              alt="${alt}"
+              width="1000"
+              height="1333"
+              loading="${eager ? "eager" : "lazy"}"
+              ${eager ? 'fetchpriority="high"' : ""}
+              decoding="async"
+            />
+            <div class="collection-3d__overlay" aria-hidden="true"></div>
+          </div>`
+      : `<div class="collection-3d__media collection-3d__media--empty">
+            <div class="collection-3d__overlay" aria-hidden="true"></div>
+          </div>`
+
+    const countHtml = countLabel
+      ? `<p class="collection-3d__count">${escapeHtml(countLabel)}</p>`
+      : ""
+    const descriptionHtml = description
+      ? `<p class="collection-3d__description">${escapeHtml(description)}</p>`
+      : ""
+    const ctaHtml =
+      settings.showShopNow === false
+        ? ""
+        : `<span class="collection-3d__cta slideease-cta" data-slide-id="${escapeHtml(String(slide.id || ""))}">${escapeHtml(ctaText)}</span>`
+
+    return `
+      <li class="collection-3d__slide${index === 0 ? " is-active" : ""}" data-collection-3d-slide data-collection-title="${escapeHtml(title)}"${index === 0 ? ' aria-current="true"' : ""}>
+        <a class="collection-3d__card" href="${escapeHtml(href)}">
+          ${mediaHtml}
+          <div class="collection-3d__content">
+            ${countHtml}
+            <h3 class="collection-3d__title">${escapeHtml(title)}</h3>
+            ${descriptionHtml}
+            ${ctaHtml}
+          </div>
+        </a>
+      </li>
+    `
+  }
+
+  function renderCollectionCarousel(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No collections available", "Select collections in the SlideEase app to populate this carousel.")
+      return
+    }
+
+    const engineSrc = `${apiOrigin}/collection-carousel.js?v=1`
+    const engineReady = loadScriptOnce(engineSrc)
+
+    trackEvent("view", slides[0]?.id)
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="collection-3d__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="collection-3d__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="collection-3d__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="collection-3d__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots !== false
+    const carouselConfig = {
+      perspective: Number(settings.c3Perspective) || 1400,
+      depth: Number(settings.c3Depth) || 200,
+      rotation: Number(settings.c3Rotation) || 42,
+      scale: Number(settings.c3Scale) || 0.78,
+      scaleStep: Number(settings.c3ScaleStep) || 0.09,
+      spacing: Number(settings.c3Spacing) || 250,
+      overlay: Number(settings.c3Overlay ?? settings.overlayOpacity ?? 0.55),
+      borderRadius: Number(settings.borderRadius ?? 4),
+      transitionDuration: Number(settings.speed) || 700,
+      autoplay: Boolean(settings.autoplay),
+      autoplayDelay: Number(settings.autoplaySpeed) || 4800,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+      visibleSlides: Number(settings.visibleSlides) || 5,
+      tabletVisibleSlides: Number(settings.tabletVisibleSlides) || 3,
+      mobileVisibleSlides: Number(settings.mobileVisibleSlides) || 3,
+      clickNeighborToCenter: true,
+      respectReducedMotion: true,
+    }
+
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(85% 60% at 50% 0%, rgba(255, 255, 255, 0.55) 0%, transparent 58%), linear-gradient(168deg, #ece8e2 0%, #d8d2c8 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+
+    const styleVars = [
+      `--c3-section-bg:${sectionBgValue}`,
+      `--c3-overlay:${carouselConfig.overlay}`,
+      `--c3-radius:${carouselConfig.borderRadius}px`,
+      `--c3-perspective:${carouselConfig.perspective}px`,
+    ].join(";")
+
+    const slidesHtml = slides.map((slide, i) => renderCollectionSlide(slide, settings, i)).join("")
+
+    const markup = `
+      <style id="se-c3-boot-${uniqueId}">
+        .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__stage,
+        .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__controls,
+        .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__stage {
+          min-height: min(78vw, 560px);
+        }
+        .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__slide {
+          position: absolute !important;
+          top: 50%;
+          left: 50%;
+          opacity: 0 !important;
+        }
+        .slideease-container-${uniqueId} .collection-3d.is-ready .collection-3d__stage,
+        .slideease-container-${uniqueId} .collection-3d.is-ready .collection-3d__controls,
+        .slideease-container-${uniqueId} .collection-3d.is-ready .collection-3d__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--collection-carousel" data-effect="collection-carousel" aria-roledescription="carousel">
+        <div class="collection-3d" data-collection-3d data-collection-3d-config='${escapeHtml(JSON.stringify(carouselConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "Collections")}" aria-busy="true" style="${styleVars}">
+          <div class="collection-3d__inner">
+            ${headerHtml}
+            <div class="collection-3d__stage" data-collection-3d-stage>
+              <ul class="collection-3d__track" data-collection-3d-track>
+                ${slidesHtml}
+              </ul>
+            </div>
+            <div class="collection-3d__controls">
+              <div class="collection-3d__nav" data-collection-3d-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="collection-3d__arrow" data-collection-3d-prev aria-label="Previous collection">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="collection-3d__arrow" data-collection-3d-next aria-label="Next collection">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="collection-3d__pagination" data-collection-3d-pagination aria-label="Collection pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="collection-3d__live" data-collection-3d-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let c3Root = null
+
+    const mountCarousel = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      c3Root = root?.querySelector("[data-collection-3d]")
+      if (!c3Root || !window.SECollectionCarousel) {
+        throw new Error("Collection carousel unavailable")
+      }
+      document.querySelectorAll(`.slideease-container-${uniqueId} .slideease-cta`).forEach((el) => {
+        el.addEventListener("click", () => {
+          trackEvent("cta_click", el.getAttribute("data-slide-id"))
+        })
+      })
+      window.SECollectionCarousel.init(c3Root, carouselConfig)
+      c3Root.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SECollectionCarousel?.getInstance?.(c3Root)?.destroy?.()
+      })
+    }
+
+    engineReady
+      .then(() => {
+        window.SECollectionCarousel?.injectStyles?.()
+        insertAdjacent(markup)
+        mountCarousel()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load collection carousel.")
+      })
+
+    window.addEventListener("pageshow", (event) => {
+      if (!c3Root || !document.contains(c3Root)) return
+      const existing = window.SECollectionCarousel?.getInstance?.(c3Root)
+      if (existing) {
+        c3Root.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => c3Root.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SECollectionCarousel) {
+        try {
+          mountCarousel()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function wireProductInteractions(root, settings) {
+    if (!root) return
+    const soldOutLabel = settings.soldOutText || "Sold out"
+    const showSoldOut = settings.showSoldOut !== false
+    Promise.resolve(refreshAtcAvailability(root, { soldOutLabel, showSoldOut }))
+      .then(() => refreshSalesBadges(root))
+      .catch(() => {})
+    if (root.dataset.seProductWired === "1") return
+    root.dataset.seProductWired = "1"
+    root.addEventListener(
+      "click",
+      async (event) => {
+        const btn = event.target?.closest?.(".se-product-card__atc")
+        if (!btn || !root.contains(btn)) return
+        event.preventDefault()
+        event.stopPropagation()
+        if (
+          btn.disabled ||
+          btn.dataset.seBusy === "1" ||
+          btn.dataset.soldOut === "1" ||
+          btn.classList.contains("se-product-card__atc--soldout")
+        ) {
+          return
+        }
+        const isQuickAdd = btn.classList.contains("se-product-card__quick-add")
+        const originalHtml = btn.innerHTML
+        const originalText = btn.textContent
+        const quickAddDefault = buildQuickAddContent(settings)
+        btn.dataset.seBusy = "1"
+        btn.disabled = true
+        if (isQuickAdd) {
+          btn.innerHTML = String(settings.quickAddText || "").trim()
+            ? "…"
+            : QUICK_ADD_CART_ICON
+          btn.setAttribute("aria-label", "Adding to cart")
+          btn.classList.add("se-product-card__quick-add--busy")
+        } else {
+          btn.textContent = "Adding…"
+        }
+        try {
+          const variantId = await resolveVariantId({
+            variantId: btn.getAttribute("data-variant-id"),
+            productHandle: btn.getAttribute("data-product-handle"),
+          })
+          await addVariantToCart(variantId, 1)
+          trackEvent("add_to_cart", btn.getAttribute("data-slide-id"))
+          if (isQuickAdd) {
+            btn.innerHTML = String(settings.quickAddText || "").trim()
+              ? "Added"
+              : QUICK_ADD_CHECK_ICON
+            btn.setAttribute("aria-label", "Added to cart")
+          } else {
+            btn.textContent = "Added"
+          }
+          setTimeout(() => {
+            if (isQuickAdd) {
+              btn.innerHTML = quickAddDefault
+              btn.setAttribute("aria-label", "Quick Add")
+              btn.classList.remove("se-product-card__quick-add--busy")
+            } else {
+              btn.textContent = originalText
+            }
+            btn.disabled = false
+            btn.dataset.seBusy = "0"
+          }, 1200)
+        } catch (error) {
+          const message = String(error?.message || "")
+          const card = btn.closest?.(".se-product-card")
+          if (/sold out/i.test(message)) {
+            card
+              ?.querySelectorAll(".se-product-card__quick-add")
+              .forEach((quickBtn) => quickBtn.remove())
+            const bodyAtc = card?.querySelector(
+              ".se-product-card__atc:not(.se-product-card__quick-add)",
+            )
+            if (bodyAtc) {
+              if (showSoldOut) markAtcSoldOut(bodyAtc, soldOutLabel)
+              else bodyAtc.remove()
+            } else if (!isQuickAdd) {
+              if (showSoldOut) markAtcSoldOut(btn, soldOutLabel)
+              else btn.remove()
+            } else {
+              btn.remove()
+            }
+          } else if (isQuickAdd) {
+            btn.innerHTML = originalHtml || quickAddDefault
+            btn.setAttribute("aria-label", "Quick Add")
+            btn.disabled = false
+            btn.dataset.seBusy = "0"
+            btn.classList.remove("se-product-card__quick-add--busy")
+          } else {
+            btn.textContent = "Unavailable"
+            setTimeout(() => {
+              btn.textContent = originalText
+              btn.disabled = false
+              btn.dataset.seBusy = "0"
+            }, 1800)
+          }
+          console.warn("SlideEase add to cart failed:", error?.message || error)
+        }
+      },
+      true,
+    )
+  }
+
+
   function renderSlider(data) {
     const settings = data.settings || {}
     const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
     if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
       renderMessage("No slides available", "This slider does not have any visible slides yet.")
       return
     }
 
     trackEvent("view", slides[0]?.id)
     const { config: slickConfig, effect } = buildSlickConfig(settings)
+    if (effect === "premium-coverflow") {
+      renderPremiumCoverflow(data)
+      return
+    }
+    if (effect === "premium-circular") {
+      renderPremiumCircular(data)
+      return
+    }
+    if (effect === "collection-carousel") {
+      renderCollectionCarousel(data)
+      return
+    }
     if (effect === "testimonials") {
       const show = Math.min(Math.max(Number(slickConfig.slidesToShow) || 3, 1), 3)
       const visible = Math.min(show, slides.length)
@@ -2100,6 +2985,27 @@
           .slideease-container-${uniqueId} .slick-list {
             width: 100% !important;
             max-width: 100%;
+          }
+          /* Hide until Slick initializes — prevents stacked FOUC on load / back-nav */
+          .slideease-container-${uniqueId} .se-slider:not(.slick-initialized) {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            min-height: var(--se-render-height, var(--se-height, 320px));
+            pointer-events: none;
+          }
+          .slideease-container-${uniqueId} .se-slider.slick-initialized {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 160ms ease, visibility 160ms ease;
+          }
+          .slideease-container-${uniqueId} .se-nav {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 160ms ease;
+          }
+          .slideease-container-${uniqueId}.se-slick-ready .se-nav {
+            opacity: 1;
+            pointer-events: auto;
           }
           .slideease-container-${uniqueId} .slick-list { overflow: hidden; }
           .slideease-container-${uniqueId} .slick-track {
@@ -2811,7 +3717,11 @@
       .then(() => {
         const $slider = window.jQuery(`#${uniqueId}`)
         $slider.attr("data-effect", effect)
+        $slider.on("init", () => {
+          root?.classList.add("se-slick-ready")
+        })
         $slider.slick(slickConfig)
+        root?.classList.add("se-slick-ready")
         fullBleed.sync()
 
         if (settings.thumbnails || settings.heroAnimation === "thumbnails") {
@@ -2893,16 +3803,23 @@
       return response.json()
     })
     .then((data) => {
-      removeNode(`${uniqueId}-loading`)
       if (data.error) {
+        removeNode(`${uniqueId}-loading`)
         renderMessage("Slider unavailable", data.error)
         return
       }
       const plan = data.plan || {}
       const apiSaysBlocked = data.placement && data.placement.allowed === false
       if (apiSaysBlocked || !isPlacementAllowed(plan)) {
+        removeNode(`${uniqueId}-loading`)
         renderPlacementLocked(plan)
         return
+      }
+      // Premium 3D engines clear the loader after styles + transforms are ready
+      // so the raw horizontal product list never flashes.
+      const effect = resolveEffect(data.settings || {})
+      if (effect !== "premium-coverflow" && effect !== "premium-circular" && effect !== "collection-carousel") {
+        removeNode(`${uniqueId}-loading`)
       }
       renderSlider(data)
     })

@@ -18,7 +18,7 @@ import { normalizeShopDomain } from "./shopAffiliate.js"
 /** Serialize per-slider refreshes so concurrent webhooks don't race destroy/create. */
 const refreshChains = new Map()
 
-function enqueueSliderRefresh(sliderId, job) {
+export function enqueueSliderRefresh(sliderId, job) {
   const key = String(sliderId)
   const prev = refreshChains.get(key) || Promise.resolve()
   const next = prev.catch(() => {}).then(job)
@@ -119,12 +119,22 @@ export function collectionIdSetFromPayload(payload = {}) {
   return ids
 }
 
-function slideLinkedToProduct(slide, productIds) {
-  if (!slide?.ctaResourceId || slide.ctaResourceType !== "product") return false
-  const rid = String(slide.ctaResourceId)
-  if (productIds.has(rid)) return true
-  const suffix = gidSuffix(rid)
-  return Boolean(suffix && productIds.has(suffix))
+function slideLinkedToProduct(slide, productIds, payload = {}) {
+  if (!slide) return false
+  if (slide.ctaResourceType === "product" && slide.ctaResourceId) {
+    const rid = String(slide.ctaResourceId)
+    if (productIds.has(rid)) return true
+    const suffix = gidSuffix(rid)
+    if (suffix && productIds.has(suffix)) return true
+  }
+  // Fallback: synced slides store product handle in subheading
+  const handle = String(payload.handle || "")
+    .trim()
+    .toLowerCase()
+  if (handle && String(slide.subheading || "").trim().toLowerCase() === handle) {
+    return true
+  }
+  return false
 }
 
 function sliderUsesCollection(slider, collectionIds) {
@@ -222,10 +232,16 @@ async function loadProductSliders(shop) {
  */
 export async function handleProductWebhook(shop, payload) {
   const shopDomain = normalizeShopDomain(shop)
-  if (!shopDomain) return
+  if (!shopDomain) {
+    console.warn("[catalog-sync] product webhook missing shop domain")
+    return
+  }
 
   const productIds = productIdSetFromPayload(payload)
-  if (!productIds.size) return
+  if (!productIds.size) {
+    console.warn("[catalog-sync] product webhook missing product id", shopDomain)
+    return
+  }
 
   const session = await getOfflineSessionForShop(shopDomain)
   if (!session) {
@@ -234,17 +250,32 @@ export async function handleProductWebhook(shop, payload) {
   }
 
   const sliders = await loadProductSliders(shopDomain)
-  const targets = sliders.filter((slider) =>
-    (slider.slides || []).some((slide) => slideLinkedToProduct(slide, productIds)),
+  const uniqueTargets = sliders.filter((slider) =>
+    (slider.slides || []).some((slide) => slideLinkedToProduct(slide, productIds, payload)),
   )
 
-  for (const slider of targets) {
+  console.log(
+    `[catalog-sync] product webhook shop=${shopDomain} product=${payload?.id || "?"} handle=${payload?.handle || "?"} sliders=${sliders.length} targets=${uniqueTargets.length} types=${uniqueTargets.map((s) => `${s.id}:${s.sliderType}`).join(",") || "-"}`,
+  )
+
+  if (!uniqueTargets.length) {
+    console.warn(
+      `[catalog-sync] no product sliders linked to product ${payload?.id || "?"} (${payload?.handle || "no-handle"}) on ${shopDomain}. Tip: re-sync products/collection on the slider so slides store product ids.`,
+    )
+    return
+  }
+
+  for (const slider of uniqueTargets) {
     await enqueueSliderRefresh(slider.id, async () => {
       try {
         const result = await refreshProductSliderFromShopify(session, slider)
         if (result.refreshed) {
           console.log(
-            `[catalog-sync] product webhook refreshed slider ${slider.id} (${result.mode}, ${result.productCount} products)`,
+            `[catalog-sync] product webhook refreshed slider ${slider.id} type=${slider.sliderType} (${result.mode}, ${result.productCount} products)`,
+          )
+        } else {
+          console.warn(
+            `[catalog-sync] skipped slider ${slider.id} type=${slider.sliderType}: ${result.reason || "unknown"}`,
           )
         }
       } catch (error) {

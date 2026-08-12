@@ -80,6 +80,9 @@ export default function SlideEditorPanel({
     "product-carousel": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
     "product-showcase": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
     "collection-rail": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
+    "premium-coverflow": { heading: "Product title", subheading: "Handle / detail", description: "Price", image: "Product image URL" },
+    "premium-circular": { heading: "Product title", subheading: "Handle / detail", description: "Price", image: "Product image URL" },
+    "collection-carousel": { heading: "Collection title", subheading: "Item count", description: "Collection description", image: "Collection image URL" },
   }[sliderType] || {
     heading: "Heading",
     subheading: "Subheading",
@@ -106,13 +109,14 @@ export default function SlideEditorPanel({
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
   const handleSave = async () => {
+    const isCollectionCarousel = sliderType === "collection-carousel"
     if (!isAnnouncement) {
       if (form.mediaType === "video") {
         if (!form.videoUrl?.trim() && !form.imageUrl?.trim()) {
           setError("Add a video URL (YouTube/Vimeo/Shopify) or upload a video")
           return
         }
-      } else if (!form.imageUrl?.trim()) {
+      } else if (!isCollectionCarousel && !form.imageUrl?.trim()) {
         setError("Choose an image from Shopify Files or paste an image URL")
         return
       }
