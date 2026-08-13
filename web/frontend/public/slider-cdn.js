@@ -1975,7 +1975,7 @@
     }
 
     // Start coverflow engine early so styles/init arrive ASAP (reduces FOUC)
-    const premiumSrc = `${apiOrigin}/premium-coverflow.js?v=59`
+    const premiumSrc = `${apiOrigin}/premium-coverflow.js?v=65`
     const premiumReady = loadScriptOnce(premiumSrc)
 
     trackEvent("view", slides[0]?.id)
@@ -2059,12 +2059,26 @@
       `--cf-quick-add-bg:${quickAddBg}`,
       `--cf-quick-add-size:${quickAddSize}px`,
       `--cf-section-bg:${sectionBgValue}`,
+      `--cf-sales-badge-bg:${escapeHtml(settings.salesBadgeBackground || "#170f49")}`,
+      `--cf-sales-badge-pad:${Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)}px`,
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderPremiumProductSlide(slide, settings, i)).join("")
 
     const markup = `
       <style id="se-pcf-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--premium {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .se-pcf {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
         .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__stage,
         .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__controls,
         .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__header {
@@ -2179,7 +2193,7 @@
     }
 
     // Start circular engine early so styles/init arrive ASAP (reduces FOUC)
-    const premiumSrc = `${apiOrigin}/premium-circular.js?v=59`
+    const premiumSrc = `${apiOrigin}/premium-circular.js?v=65`
     const premiumReady = loadScriptOnce(premiumSrc)
 
     trackEvent("view", slides[0]?.id)
@@ -2263,6 +2277,8 @@
       `--pcc-quick-add-bg:${quickAddBg}`,
       `--pcc-quick-add-size:${quickAddSize}px`,
       `--pcc-section-bg:${sectionBgValue}`,
+      `--pcc-sales-badge-bg:${escapeHtml(settings.salesBadgeBackground || "#170f49")}`,
+      `--pcc-sales-badge-pad:${Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)}px`,
     ].join(";")
 
     const slidesHtml = slides
@@ -2271,6 +2287,18 @@
 
     const markup = `
       <style id="se-pcc-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--premium {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .se-pcc {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
         .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__stage,
         .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__controls,
         .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__header {
@@ -2448,7 +2476,7 @@
       return
     }
 
-    const engineSrc = `${apiOrigin}/collection-carousel.js?v=1`
+    const engineSrc = `${apiOrigin}/collection-carousel.js?v=3`
     const engineReady = loadScriptOnce(engineSrc)
 
     trackEvent("view", slides[0]?.id)
@@ -2515,6 +2543,18 @@
 
     const markup = `
       <style id="se-c3-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--collection-carousel {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .collection-3d {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
         .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__stage,
         .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__controls,
         .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__header {
@@ -2609,6 +2649,1051 @@
       if (event.persisted && window.SECollectionCarousel) {
         try {
           mountCarousel()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function renderStackedProductSlide(slide, settings, index) {
+    const heading = slide.heading || slide.title || "Product"
+    const description = String(slide.description || "").trim()
+    const compareAt = String(slide.compareAtPrice || "").trim()
+    const ctaHref = safeUrl(slide.ctaUrl) || ""
+    const targetAttrs = slide.ctaNewTab ? ' target="_blank" rel="noopener noreferrer"' : ""
+    const imageUrl = escapeHtml(safeUrl(slide.imageUrl) || "")
+    const hoverImageUrl = escapeHtml(safeUrl(slide.hoverImageUrl) || "")
+    const showPrice = settings.showPrice !== false
+    const showShopNow = settings.showShopNow !== false
+    const showAddToCart = settings.showAddToCart !== false
+    const showSoldOut = settings.showSoldOut !== false
+    const shopLabel = escapeHtml(slide.ctaText || "View product")
+    const soldOutLabel = escapeHtml(settings.soldOutText || "Sold out")
+    const atcLabel = escapeHtml(settings.addToCartText || "Add to cart")
+    const variantId = String(slide.variantId || "").replace(/\D/g, "")
+    const productHandle =
+      productHandleFromUrl(slide.ctaUrl || ctaHref || "") ||
+      String(slide.subheading || "").trim()
+    const isSoldOut = slide.availableForSale === false
+    const salesBadgeMode = normalizeSalesBadgeMode(settings.salesBadgeMode)
+    const salesBadgeFormat = normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+    const salesBadgeText =
+      settings.salesBadgeText == null
+        ? salesBadgeFormat === "custom"
+          ? "{percent}% OFF"
+          : "OFF"
+        : String(settings.salesBadgeText)
+    const saleDiscountPercent = Number(slide.saleDiscountPercent)
+    const saleBadgeLabel =
+      salesBadgeMode === "automatic" && Number.isFinite(saleDiscountPercent) && saleDiscountPercent > 0
+        ? formatSaleBadgeLabel(saleDiscountPercent, {
+            format: salesBadgeFormat,
+            text: salesBadgeText,
+          })
+        : ""
+    const badgeHtml = saleBadgeLabel
+      ? `<span class="stacked-card__badge stacked-card__badge--sale se-product-card__badge" aria-hidden="true">${escapeHtml(saleBadgeLabel)}</span>`
+      : ""
+    const priceHtml =
+      showPrice && description
+        ? `<p class="stacked-card__price"><span class="stacked-card__amount">${escapeHtml(description)}</span>${
+            compareAt ? `<span class="stacked-card__compare">${escapeHtml(compareAt)}</span>` : ""
+          }</p>`
+        : ""
+    const titleHtml = ctaHref
+      ? `<a href="${escapeHtml(ctaHref)}"${targetAttrs}>${escapeHtml(heading)}</a>`
+      : escapeHtml(heading)
+    const actions = []
+    if (showAddToCart && (variantId || productHandle || isSoldOut)) {
+      if (isSoldOut) {
+        if (showSoldOut) {
+          actions.push(
+            `<button type="button" class="se-product-card__atc se-product-card__atc--soldout" disabled aria-disabled="true" data-sold-out="1" data-slide-id="${escapeHtml(String(slide.id || ""))}">${soldOutLabel}</button>`,
+          )
+        }
+      } else {
+        actions.push(
+          `<button type="button" class="se-product-card__atc" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(String(slide.id || ""))}" data-show-sold-out="${showSoldOut ? "1" : "0"}">${atcLabel}</button>`,
+        )
+      }
+    }
+    if (showShopNow) {
+      actions.push(
+        `<a class="stacked-card__cta slideease-cta" data-slide-id="${escapeHtml(String(slide.id || ""))}" href="${escapeHtml(ctaHref || "#")}"${targetAttrs}>${shopLabel}</a>`,
+      )
+    }
+    const actionsHtml = actions.length
+      ? `<div class="stacked-card__actions">${actions.join("")}</div>`
+      : ""
+    const canQuickAdd = !isSoldOut && Boolean(variantId || productHandle)
+    const quickAddContent = buildQuickAddContent(settings)
+    const quickAddHtml = canQuickAdd
+      ? `<button type="button" class="se-product-card__atc se-product-card__quick-add" data-variant-id="${escapeHtml(variantId)}" data-product-handle="${escapeHtml(productHandle)}" data-slide-id="${escapeHtml(String(slide.id || ""))}" data-show-sold-out="${showSoldOut ? "1" : "0"}" aria-label="Quick Add">${quickAddContent}</button>`
+      : ""
+    const mediaInner = imageUrl
+      ? `<img class="stacked-card__image se-product-card__img se-product-card__img--primary" src="${imageUrl}" alt="${escapeHtml(slide.imageAlt || heading)}" width="800" height="1000" loading="${index === 0 ? "eager" : "lazy"}"${index === 0 ? ' fetchpriority="high"' : ""} decoding="async" />${
+          hoverImageUrl
+            ? `<img class="stacked-card__image stacked-card__image--hover se-product-card__img se-product-card__img--hover" src="${hoverImageUrl}" alt="" aria-hidden="true" loading="lazy" decoding="async" />`
+            : ""
+        }`
+      : ""
+    const mediaHtml = ctaHref
+      ? `<a class="se-product-card__media-link" href="${escapeHtml(ctaHref)}"${targetAttrs} style="display:block;height:100%;position:relative;">${mediaInner}${badgeHtml}</a>`
+      : `${badgeHtml}${mediaInner}`
+    const cardMods = [
+      canQuickAdd ? "se-product-card--quick-add stacked-card--quick-add" : "",
+      hoverImageUrl ? "se-product-card--has-hover stacked-card--has-hover" : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+
+    return `
+      <li class="stacked-carousel__slide${index === 0 ? " is-active" : ""}" data-stacked-slide data-product-title="${escapeHtml(heading)}"${index === 0 ? ' aria-current="true"' : ""}>
+        <article class="stacked-card se-product-card${cardMods ? ` ${cardMods}` : ""}" data-product-handle="${escapeHtml(productHandle)}" data-variant-id="${escapeHtml(variantId)}" data-slideease-slide-id="${escapeHtml(String(slide.id || ""))}">
+          <div class="stacked-card__media se-product-card__media">
+            ${mediaHtml}
+            ${quickAddHtml}
+          </div>
+          <div class="stacked-card__body">
+            <h3 class="stacked-card__title">${titleHtml}</h3>
+            ${priceHtml}
+            ${actionsHtml}
+          </div>
+        </article>
+      </li>
+    `
+  }
+
+  function renderPremiumStacked(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No slides available", "This slider does not have any visible slides yet.")
+      return
+    }
+
+    const engineSrc = `${apiOrigin}/premium-stacked.js?v=7`
+    const engineReady = loadScriptOnce(engineSrc)
+    trackEvent("view", slides[0]?.id)
+
+    const salesBadgeMode = normalizeSalesBadgeMode(settings.salesBadgeMode)
+    const salesBadgeFormat = normalizeSalesBadgeFormat(settings.salesBadgeFormat)
+    const salesBadgeText = String(
+      settings.salesBadgeText == null
+        ? salesBadgeFormat === "custom"
+          ? "{percent}% OFF"
+          : "OFF"
+        : settings.salesBadgeText,
+    )
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="stacked-carousel__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="stacked-carousel__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="stacked-carousel__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="stacked-carousel__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots !== false
+    const stackedConfig = {
+      stackDepth: Number(settings.stackDepth) || 4,
+      horizontalOffset: Number(settings.stackHorizontalOffset) || 42,
+      verticalOffset: Number(settings.stackVerticalOffset) || 22,
+      scaleDifference: Number(settings.stackScaleDifference) || 0.07,
+      rotation: Number(settings.stackRotation) || 2,
+      depthStep: Number(settings.stackDepthStep) || 56,
+      perspective: Number(settings.stackPerspective) || 1200,
+      animationDuration: Number(settings.speed) || 680,
+      autoplay: Boolean(settings.autoplay),
+      autoplayDelay: Number(settings.autoplaySpeed) || 4400,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+    }
+
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(95% 75% at 50% 10%, rgba(255, 255, 255, 0.55) 0%, transparent 55%), linear-gradient(165deg, #efece7 0%, #ddd8d0 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+
+    const quickAddBg = escapeHtml(settings.quickAddBackground || "#170f49")
+    const quickAddSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
+    const styleVars = [
+      `--sc-section-bg:${sectionBgValue}`,
+      `--sc-perspective:${stackedConfig.perspective}px`,
+      `--sc-radius:${Number(settings.borderRadius ?? 4)}px`,
+      `--sc-sales-badge-bg:${escapeHtml(settings.salesBadgeBackground || "#170f49")}`,
+      `--sc-sales-badge-pad:${Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)}px`,
+      `--sc-quick-add-bg:${quickAddBg}`,
+      `--sc-quick-add-size:${quickAddSize}px`,
+    ].join(";")
+
+    const slidesHtml = slides.map((slide, i) => renderStackedProductSlide(slide, settings, i)).join("")
+
+    const markup = `
+      <style id="se-stacked-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--premium {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .stacked-carousel {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
+        .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__stage,
+        .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__controls,
+        .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__stage {
+          min-height: min(78vw, 560px);
+        }
+        .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__stage,
+        .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__controls,
+        .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--premium se-root--products se-root--stacked" data-effect="premium-stacked" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" aria-roledescription="carousel">
+        <div class="stacked-carousel" data-stacked data-stacked-config='${escapeHtml(JSON.stringify(stackedConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "Featured products")}" aria-busy="true" style="${styleVars}">
+          <div class="stacked-carousel__inner">
+            ${headerHtml}
+            <div class="stacked-carousel__stage" data-stacked-stage>
+              <ul class="stacked-carousel__track" data-stacked-track>
+                ${slidesHtml}
+              </ul>
+            </div>
+            <div class="stacked-carousel__controls">
+              <div class="stacked-carousel__nav" data-stacked-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="stacked-carousel__arrow" data-stacked-prev aria-label="Previous product">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="stacked-carousel__arrow" data-stacked-next aria-label="Next product">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="stacked-carousel__pagination" data-stacked-pagination aria-label="Product pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="stacked-carousel__live" data-stacked-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let stackedRoot = null
+
+    const mountStacked = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      stackedRoot = root?.querySelector("[data-stacked]")
+      if (!stackedRoot || !window.SEPremiumStacked) {
+        throw new Error("Premium stacked unavailable")
+      }
+      document.querySelectorAll(`.slideease-container-${uniqueId} .slideease-cta`).forEach((el) => {
+        el.addEventListener("click", () => {
+          trackEvent("cta_click", el.getAttribute("data-slide-id"))
+        })
+      })
+      wireProductInteractions(root, settings)
+      window.SEPremiumStacked.init(stackedRoot, stackedConfig)
+      stackedRoot.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SEPremiumStacked?.getInstance?.(stackedRoot)?.destroy?.()
+      })
+    }
+
+    engineReady
+      .then(() => {
+        window.SEPremiumStacked?.injectStyles?.()
+        insertAdjacent(markup)
+        mountStacked()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load stacked carousel.")
+      })
+
+    window.addEventListener("pageshow", (event) => {
+      if (!stackedRoot || !document.contains(stackedRoot)) return
+      const existing = window.SEPremiumStacked?.getInstance?.(stackedRoot)
+      if (existing) {
+        stackedRoot.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => stackedRoot.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SEPremiumStacked) {
+        try {
+          mountStacked()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function t3StarSvg(filled) {
+    return `<svg class="testimonials-3d__star${filled ? "" : " is-empty"}" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10 1.5l2.47 5.01 5.53.8-4 3.9.94 5.5L10 14.9l-4.94 2.6.94-5.5-4-3.9 5.53-.8L10 1.5z"/></svg>`
+  }
+
+  function t3StarsHtml(rating) {
+    const n = Math.min(5, Math.max(1, Math.round(Number(rating) || 5)))
+    const items = []
+    for (let i = 1; i <= 5; i += 1) {
+      items.push(`<li>${t3StarSvg(i <= n)}</li>`)
+    }
+    return `<ul class="testimonials-3d__stars" aria-label="${n} out of 5 stars">${items.join("")}</ul>`
+  }
+
+  function t3Initials(name) {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    if (!parts.length) return "?"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+
+  function t3VerifiedHtml() {
+    return `<span class="testimonials-3d__verified"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm3.3 5.7-3.8 3.8-1.8-1.8a.75.75 0 1 0-1.06 1.06l2.33 2.33a.75.75 0 0 0 1.06 0l4.33-4.33a.75.75 0 1 0-1.06-1.06Z"/></svg>Verified</span>`
+  }
+
+  function renderTestimonials3DSlide(slide, index) {
+    const quote = String(slide.heading || slide.title || "").trim() || "Customer quote"
+    const author = String(slide.subheading || slide.title || "").trim() || "Customer"
+    const role = String(slide.description || "").trim()
+    const imageUrl = String(safeUrl(slide.imageUrl) || "").trim()
+    const logoUrl = String(safeUrl(slide.logoUrl || slide.hoverImageUrl) || "").trim()
+    const rating = Math.min(5, Math.max(1, Math.round(Number(slide.rating) || 5)))
+    const verified = slide.verified === true || slide.verified === "true" || slide.verified === 1
+    const alt = escapeHtml(slide.imageAlt || author)
+    const eager = index === 0
+
+    const avatarHtml = imageUrl
+      ? `<img class="testimonials-3d__avatar" src="${escapeHtml(imageUrl)}" alt="${alt}" width="48" height="48" loading="${eager ? "eager" : "lazy"}"${eager ? ' fetchpriority="high"' : ""} decoding="async" />`
+      : `<span class="testimonials-3d__avatar-fallback" aria-hidden="true">${escapeHtml(t3Initials(author))}</span>`
+
+    const roleHtml = role ? `<p class="testimonials-3d__role">${escapeHtml(role)}</p>` : ""
+    const verifiedHtml = verified ? t3VerifiedHtml() : ""
+    const logoHtml = logoUrl
+      ? `<img class="testimonials-3d__logo" src="${escapeHtml(logoUrl)}" alt="" loading="lazy" decoding="async" />`
+      : ""
+
+    return `
+      <li class="testimonials-3d__slide${index === 0 ? " is-active" : ""}" data-testimonials-3d-slide data-author="${escapeHtml(author)}"${index === 0 ? ' aria-current="true"' : ""}>
+        <article class="testimonials-3d__card">
+          ${t3StarsHtml(rating)}
+          <blockquote class="testimonials-3d__quote">\u201C${escapeHtml(quote)}\u201D</blockquote>
+          <footer class="testimonials-3d__footer">
+            ${avatarHtml}
+            <div class="testimonials-3d__meta">
+              <div class="testimonials-3d__name-row">
+                <p class="testimonials-3d__name">${escapeHtml(author)}</p>
+                ${verifiedHtml}
+              </div>
+              ${roleHtml}
+            </div>
+            ${logoHtml}
+          </footer>
+        </article>
+      </li>
+    `
+  }
+
+  function renderTestimonials3D(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No testimonials available", "This slider does not have any visible slides yet.")
+      return
+    }
+
+    const engineSrc = `${apiOrigin}/testimonials-3d.js?v=1`
+    const engineReady = loadScriptOnce(engineSrc)
+    trackEvent("view", slides[0]?.id)
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="testimonials-3d__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="testimonials-3d__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="testimonials-3d__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="testimonials-3d__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots !== false
+    const t3Config = {
+      cardWidth: Number(settings.t3CardWidth) || 420,
+      cardMinHeight: Number(settings.t3CardMinHeight) || 280,
+      perspective: Number(settings.t3Perspective) || 1300,
+      depth: Number(settings.t3Depth) || 200,
+      rotation: Number(settings.t3Rotation) || 14,
+      scale: Number(settings.t3Scale) || 0.86,
+      scaleStep: Number(settings.t3ScaleStep) || 0.06,
+      sideOpacity: Number(settings.t3SideOpacity) || 0.72,
+      spacing: Number(settings.t3Spacing) || 260,
+      sideVisibility: Number(settings.t3SideVisibility) || 1,
+      floating: settings.t3Floating !== false,
+      animationSpeed: Number(settings.speed) || 680,
+      autoplay: Boolean(settings.autoplay),
+      autoplayDelay: Number(settings.autoplaySpeed) || 5000,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+    }
+
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(80% 60% at 50% 0%, rgba(255, 255, 255, 0.85) 0%, transparent 60%), linear-gradient(165deg, #f4f6f8 0%, #e8ecf0 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+
+    const styleVars = [
+      `--t3-section-bg:${sectionBgValue}`,
+      `--t3-perspective:${t3Config.perspective}px`,
+      `--t3-radius:${Number(settings.borderRadius ?? 18)}px`,
+      `--t3-accent:${escapeHtml(settings.accentColor || "#2f6fed")}`,
+      `--t3-star:${escapeHtml(settings.starColor || "#e6a817")}`,
+    ].join(";")
+
+    const slidesHtml = slides.map((slide, i) => renderTestimonials3DSlide(slide, i)).join("")
+
+    const markup = `
+      <style id="se-t3-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--testimonials-3d {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .testimonials-3d {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
+        .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__stage,
+        .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__controls,
+        .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__stage {
+          min-height: min(78vw, 520px);
+        }
+        .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__slide {
+          position: absolute !important;
+          top: 50%;
+          left: 50%;
+          opacity: 0 !important;
+        }
+        .slideease-container-${uniqueId} .testimonials-3d.is-ready .testimonials-3d__stage,
+        .slideease-container-${uniqueId} .testimonials-3d.is-ready .testimonials-3d__controls,
+        .slideease-container-${uniqueId} .testimonials-3d.is-ready .testimonials-3d__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--testimonials-3d" data-effect="testimonials-3d" aria-roledescription="carousel">
+        <div class="testimonials-3d${t3Config.floating ? " is-floating" : ""}" data-testimonials-3d data-testimonials-3d-config='${escapeHtml(JSON.stringify(t3Config))}' aria-label="${escapeHtml(sectionHeading || data.name || "Testimonials")}" aria-busy="true" style="${styleVars}">
+          <div class="testimonials-3d__inner">
+            ${headerHtml}
+            <div class="testimonials-3d__stage" data-testimonials-3d-stage>
+              <ul class="testimonials-3d__track" data-testimonials-3d-track>
+                ${slidesHtml}
+              </ul>
+            </div>
+            <div class="testimonials-3d__controls">
+              <div class="testimonials-3d__nav" data-testimonials-3d-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="testimonials-3d__arrow" data-testimonials-3d-prev aria-label="Previous testimonial">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="testimonials-3d__arrow" data-testimonials-3d-next aria-label="Next testimonial">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="testimonials-3d__pagination" data-testimonials-3d-pagination aria-label="Testimonial pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="testimonials-3d__live" data-testimonials-3d-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let t3Root = null
+
+    const mountTestimonials3D = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      t3Root = root?.querySelector("[data-testimonials-3d]")
+      if (!t3Root || !window.SETestimonials3D) {
+        throw new Error("Testimonials 3D unavailable")
+      }
+      window.SETestimonials3D.init(t3Root, t3Config)
+      t3Root.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SETestimonials3D?.getInstance?.(t3Root)?.destroy?.()
+      })
+    }
+
+    engineReady
+      .then(() => {
+        window.SETestimonials3D?.injectStyles?.()
+        insertAdjacent(markup)
+        mountTestimonials3D()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load 3D testimonials.")
+      })
+
+    window.addEventListener("pageshow", (event) => {
+      if (!t3Root || !document.contains(t3Root)) return
+      const existing = window.SETestimonials3D?.getInstance?.(t3Root)
+      if (existing) {
+        t3Root.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => t3Root.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SETestimonials3D) {
+        try {
+          mountTestimonials3D()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function ugcInitials(name) {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    if (!parts.length) return "?"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+
+  function renderUgcFeedSlide(slide, index) {
+    const title = String(slide.heading || slide.title || "").trim() || "UGC"
+    const creator = String(slide.subheading || slide.title || "").trim()
+    const handle = String(slide.creatorHandle || "").trim()
+    const caption = String(slide.description || "").trim()
+    const posterUrl = String(safeUrl(slide.imageUrl) || "").trim()
+    const videoUrl = String(safeUrl(slide.videoUrl) || "").trim()
+    const avatarUrl = String(safeUrl(slide.avatarUrl) || "").trim()
+    const ctaText = String(slide.ctaText || "").trim()
+    const ctaUrl = String(safeUrl(slide.ctaUrl) || slide.ctaUrl || "#").trim() || "#"
+    const ctaTarget = slide.ctaOpenInNewTab ? ' target="_blank" rel="noopener noreferrer"' : ""
+    const hasVideo = Boolean(videoUrl)
+    const eager = index === 0
+    const alt = escapeHtml(slide.imageAlt || title)
+
+    const posterHtml = posterUrl
+      ? `<img class="video-ugc-3d__poster" src="${escapeHtml(posterUrl)}" width="600" height="1067" alt="${alt}" loading="${eager ? "eager" : "lazy"}"${eager ? ' fetchpriority="high"' : ""} decoding="async" />`
+      : ""
+
+    const videoHtml = hasVideo
+      ? `<video class="video-ugc-3d__video" playsinline loop muted${posterUrl ? ` poster="${escapeHtml(posterUrl)}"` : ""}>
+                  <source data-src="${escapeHtml(videoUrl)}" type="video/mp4" />
+                </video>`
+      : ""
+
+    const avatarHtml = avatarUrl
+      ? `<img class="video-ugc-3d__avatar" src="${escapeHtml(avatarUrl)}" width="32" height="32" alt="" loading="${eager ? "eager" : "lazy"}" decoding="async" />`
+      : `<span class="video-ugc-3d__avatar" style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.18);font-size:11px;font-weight:600;" aria-hidden="true">${escapeHtml(ugcInitials(creator || title))}</span>`
+
+    const handleHtml = handle ? `<p class="video-ugc-3d__handle">${escapeHtml(handle)}</p>` : ""
+    const captionHtml = caption ? `<p class="video-ugc-3d__description">${escapeHtml(caption)}</p>` : ""
+    const ctaHtml = ctaText
+      ? `<a class="video-ugc-3d__cta" href="${escapeHtml(ctaUrl)}"${ctaTarget}>${escapeHtml(ctaText)}</a>`
+      : ""
+
+    const controlsHtml = hasVideo
+      ? `<div class="video-ugc-3d__media-controls" data-video-ugc-media-controls>
+                <button type="button" class="video-ugc-3d__control" data-video-ugc-play aria-label="Play or pause">
+                  <svg class="video-ugc-3d__icon-play" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 2.5v11l9-5.5L4 2.5z"/></svg>
+                  <svg class="video-ugc-3d__icon-pause" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4 3h3v10H4V3zm5 0h3v10H9V3z"/></svg>
+                </button>
+                <button type="button" class="video-ugc-3d__control" data-video-ugc-mute aria-label="Mute or unmute">
+                  <svg class="video-ugc-3d__icon-mute" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 6h3l3-3v10L5 10H2V6zm9.5 2l1.8-1.8.7.7L12.2 8l1.8 1.8-.7.7L11.5 8.7l-1.8 1.8-.7-.7L10.8 8 9 6.2l.7-.7L11.5 8z"/></svg>
+                  <svg class="video-ugc-3d__icon-unmute" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 6h3l3-3v10L5 10H2V6zm8 1.2a2.5 2.5 0 010 1.6v-1.6zm1.5-2.1a4.5 4.5 0 010 5.8l-.9-.7a3.3 3.3 0 000-4.4l.9-.7z"/></svg>
+                </button>
+              </div>`
+      : ""
+
+    return `
+      <li class="video-ugc-3d__slide${index === 0 ? " is-active" : ""}${hasVideo ? "" : " is-image-only"}" data-video-ugc-slide data-video-title="${escapeHtml(title)}"${index === 0 ? ' aria-current="true"' : ""}>
+        <article class="video-ugc-3d__card">
+          <div class="video-ugc-3d__media">
+            ${videoHtml}
+            ${posterHtml}
+            ${hasVideo ? '<div class="video-ugc-3d__fallback">Video unavailable</div>' : ""}
+            <div class="video-ugc-3d__gradient" aria-hidden="true"></div>
+          </div>
+          <div class="video-ugc-3d__top">
+            <div class="video-ugc-3d__creator">
+              ${avatarHtml}
+              <div class="video-ugc-3d__creator-text">
+                ${creator ? `<p class="video-ugc-3d__name">${escapeHtml(creator)}</p>` : ""}
+                ${handleHtml}
+              </div>
+            </div>
+          </div>
+          <div class="video-ugc-3d__bottom">
+            <h3 class="video-ugc-3d__title">${escapeHtml(title)}</h3>
+            ${captionHtml}
+            ${ctaHtml}
+          </div>
+          ${controlsHtml}
+        </article>
+      </li>
+    `
+  }
+
+  function renderUgcFeed(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No UGC slides available", "This slider does not have any visible slides yet.")
+      return
+    }
+
+    const engineSrc = `${apiOrigin}/video-ugc-3d.js?v=3`
+    const engineReady = loadScriptOnce(engineSrc)
+    trackEvent("view", slides[0]?.id)
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="video-ugc-3d__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="video-ugc-3d__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="video-ugc-3d__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="video-ugc-3d__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots !== false
+    const ugcConfig = {
+      videoAspectRatio: "9 / 16",
+      cardWidth: Number(settings.ugcCardWidth) || 280,
+      perspective: Number(settings.ugcPerspective) || 1300,
+      depth: Number(settings.ugcDepth) || 180,
+      rotation: Number(settings.ugcRotation) || 18,
+      scale: Number(settings.ugcScale) || 0.84,
+      scaleStep: Number(settings.ugcScaleStep) || 0.07,
+      spacing: Number(settings.ugcSpacing) || 200,
+      visibleSlides: Number(settings.ugcVisibleSlides) || 5,
+      tabletVisibleSlides: 3,
+      mobileVisibleSlides: 3,
+      autoplay: settings.autoplay !== false,
+      mutedByDefault: settings.ugcMutedByDefault !== false,
+      showMediaControls: settings.ugcShowMediaControls !== false,
+      transitionDuration: Number(settings.speed) || 650,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+      carouselAutoplay: Boolean(settings.ugcCarouselAutoplay),
+      carouselAutoplayDelay: Number(settings.autoplaySpeed) || 8000,
+      clickNeighborToCenter: true,
+      respectReducedMotion: true,
+    }
+
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(70% 55% at 50% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 55%), linear-gradient(180deg, #121417 0%, #1a1e24 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+
+    const styleVars = [
+      `--vu-section-bg:${sectionBgValue}`,
+      `--vu-perspective:${ugcConfig.perspective}px`,
+      `--vu-radius:${Number(settings.borderRadius ?? 16)}px`,
+    ].join(";")
+
+    const slidesHtml = slides.map((slide, i) => renderUgcFeedSlide(slide, i)).join("")
+
+    const markup = `
+      <style id="se-ugc-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--ugc-feed {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .video-ugc-3d {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
+        .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__stage,
+        .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__controls,
+        .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__stage {
+          min-height: min(78vw, 560px);
+        }
+        .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__slide {
+          position: absolute !important;
+          top: 50%;
+          left: 50%;
+          opacity: 0 !important;
+        }
+        .slideease-container-${uniqueId} .video-ugc-3d.is-ready .video-ugc-3d__stage,
+        .slideease-container-${uniqueId} .video-ugc-3d.is-ready .video-ugc-3d__controls,
+        .slideease-container-${uniqueId} .video-ugc-3d.is-ready .video-ugc-3d__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--ugc-feed" data-effect="ugc-feed" aria-roledescription="carousel">
+        <div class="video-ugc-3d" data-video-ugc data-video-ugc-config='${escapeHtml(JSON.stringify(ugcConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "UGC feed")}" aria-busy="true" style="${styleVars}">
+          <div class="video-ugc-3d__inner">
+            ${headerHtml}
+            <div class="video-ugc-3d__stage" data-video-ugc-stage>
+              <ul class="video-ugc-3d__track" data-video-ugc-track>
+                ${slidesHtml}
+              </ul>
+            </div>
+            <div class="video-ugc-3d__controls">
+              <div class="video-ugc-3d__nav" data-video-ugc-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="video-ugc-3d__arrow" data-video-ugc-prev aria-label="Previous video">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="video-ugc-3d__arrow" data-video-ugc-next aria-label="Next video">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="video-ugc-3d__pagination" data-video-ugc-pagination aria-label="UGC pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="video-ugc-3d__live" data-video-ugc-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let ugcRoot = null
+
+    const mountUgcFeed = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      ugcRoot = root?.querySelector("[data-video-ugc]")
+      if (!ugcRoot || !window.SEVideoUgc3D) {
+        throw new Error("UGC feed unavailable")
+      }
+      window.SEVideoUgc3D.init(ugcRoot, ugcConfig)
+      ugcRoot.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SEVideoUgc3D?.getInstance?.(ugcRoot)?.destroy?.()
+      })
+    }
+
+    engineReady
+      .then(() => {
+        window.SEVideoUgc3D?.injectStyles?.()
+        insertAdjacent(markup)
+        mountUgcFeed()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load 3D UGC feed.")
+      })
+
+    window.addEventListener("pageshow", (event) => {
+      if (!ugcRoot || !document.contains(ugcRoot)) return
+      const existing = window.SEVideoUgc3D?.getInstance?.(ugcRoot)
+      if (existing) {
+        ugcRoot.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => ugcRoot.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SEVideoUgc3D) {
+        try {
+          mountUgcFeed()
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    })
+  }
+
+  function renderLogo3DSlide(slide, index) {
+    const brand = String(slide.heading || slide.title || "").trim() || "Brand"
+    const description = String(slide.description || "").trim()
+    const imageUrl = String(safeUrl(slide.imageUrl) || slide.imageUrl || "").trim()
+    const ctaUrl = String(safeUrl(slide.ctaUrl) || slide.ctaUrl || "").trim()
+    const ctaTarget = slide.ctaOpenInNewTab ? ' target="_blank" rel="noopener noreferrer"' : ""
+    const eager = index === 0
+    const alt = escapeHtml(slide.imageAlt || brand)
+
+    const logoHtml = imageUrl
+      ? `<img class="logo-3d__logo" src="${escapeHtml(imageUrl)}" width="120" height="40" alt="${alt}" loading="${eager ? "eager" : "lazy"}"${eager ? ' fetchpriority="high"' : ""} decoding="async" />`
+      : `<span class="logo-3d__logo" aria-hidden="true">${escapeHtml(brand.slice(0, 1))}</span>`
+
+    const descHtml = description
+      ? `<p class="logo-3d__description">${escapeHtml(description)}</p>`
+      : ""
+
+    const inner = `
+                <div class="logo-3d__logo-wrap">
+                  ${logoHtml}
+                </div>
+                <p class="logo-3d__name">${escapeHtml(brand)}</p>
+                ${descHtml}
+    `
+
+    const card = ctaUrl
+      ? `<a class="logo-3d__card" href="${escapeHtml(ctaUrl)}"${ctaTarget}>${inner}</a>`
+      : `<div class="logo-3d__card">${inner}</div>`
+
+    return `
+      <li class="logo-3d__slide${index === 0 ? " is-active" : ""}" data-logo-3d-slide data-brand-name="${escapeHtml(brand)}"${index === 0 ? ' aria-current="true"' : ""}>
+        ${card}
+      </li>
+    `
+  }
+
+  function renderLogo3D(data) {
+    const settings = data.settings || {}
+    const slides = (data.slides || []).filter((s) => s && s.isVisible !== false)
+    if (!slides.length) {
+      removeNode(`${uniqueId}-loading`)
+      renderMessage("No logo slides available", "This slider does not have any visible slides yet.")
+      return
+    }
+
+    const engineSrc = `${apiOrigin}/logo-3d.js?v=1`
+    const engineReady = loadScriptOnce(engineSrc)
+    trackEvent("view", slides[0]?.id)
+
+    const sectionSubheading = String(settings.sectionSubheading || "").trim()
+    const sectionHeading = String(settings.sectionHeading || "").trim()
+    const sectionDescription = String(settings.sectionDescription || "").trim()
+    const headerParts = []
+    if (sectionSubheading) {
+      headerParts.push(`<span class="logo-3d__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+    }
+    if (sectionHeading) {
+      headerParts.push(`<h2 class="logo-3d__heading">${escapeHtml(sectionHeading)}</h2>`)
+    }
+    if (sectionDescription) {
+      headerParts.push(`<p class="logo-3d__subheading">${escapeHtml(sectionDescription)}</p>`)
+    }
+    const headerHtml = headerParts.length
+      ? `<header class="logo-3d__header">${headerParts.join("")}</header>`
+      : ""
+
+    const showNav = settings.arrows !== false
+    const showDots = settings.dots === true
+    const l3Config = {
+      perspective: Number(settings.logo3dPerspective) || 1200,
+      cylinderRadius: Number(settings.logo3dCylinderRadius) || 320,
+      depth: Number(settings.logo3dDepth) || 160,
+      rotation: Number(settings.logo3dRotation) || 28,
+      scale: Number(settings.logo3dScale) || 0.82,
+      scaleStep: Number(settings.logo3dScaleStep) || 0.08,
+      sideOpacity: Number(settings.logo3dSideOpacity) || 0.55,
+      logoSize: Number(settings.logo3dLogoSize) || 88,
+      visibleSlides: Number(settings.logo3dVisibleSlides) || 7,
+      tabletVisibleSlides: 5,
+      mobileVisibleSlides: 3,
+      tiltIntensity: Number(settings.logo3dTiltIntensity) || 0.35,
+      autoplay: settings.autoplay !== false,
+      autoplayDelay: Number(settings.autoplaySpeed) || 3200,
+      animationSpeed: Number(settings.speed) || 700,
+      navigation: showNav,
+      pagination: showDots,
+      loop: settings.infinite !== false,
+      clickNeighborToCenter: true,
+      respectReducedMotion: true,
+    }
+
+    const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+    const sectionBgCustom = String(settings.sectionBackground || "").trim()
+    const defaultSectionBg =
+      "radial-gradient(80% 55% at 50% 0%, #fff 0%, transparent 60%), linear-gradient(180deg, #f5f5f3 0%, #ebebe8 100%)"
+    const sectionBgValue = sectionBgTransparent
+      ? "transparent"
+      : sectionBgCustom
+        ? escapeHtml(sectionBgCustom)
+        : defaultSectionBg
+
+    const styleVars = [
+      `--l3-section-bg:${sectionBgValue}`,
+      `--l3-perspective:${l3Config.perspective}px`,
+      `--l3-logo-size:${l3Config.logoSize}px`,
+    ].join(";")
+
+    const slidesHtml = slides.map((slide, i) => renderLogo3DSlide(slide, i)).join("")
+
+    const markup = `
+      <style id="se-logo3d-boot-${uniqueId}">
+        .slideease-container-${uniqueId}.se-root--logo-3d {
+          width: 100%;
+          max-width: none;
+          display: block;
+        }
+        .slideease-container-${uniqueId} .logo-3d {
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: calc(50% - 50vw);
+          margin-right: calc(50% - 50vw);
+          box-sizing: border-box;
+        }
+        .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__stage,
+        .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__controls,
+        .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__header {
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__stage {
+          min-height: min(42vw, 280px);
+        }
+        .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__slide {
+          position: absolute !important;
+          top: 50%;
+          left: 50%;
+          opacity: 0 !important;
+        }
+        .slideease-container-${uniqueId} .logo-3d.is-ready .logo-3d__stage,
+        .slideease-container-${uniqueId} .logo-3d.is-ready .logo-3d__controls,
+        .slideease-container-${uniqueId} .logo-3d.is-ready .logo-3d__header {
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 160ms ease, visibility 160ms ease;
+        }
+      </style>
+      <section class="slideease-container-${uniqueId} se-root se-root--logo-3d" data-effect="logo-3d" aria-roledescription="carousel">
+        <div class="logo-3d" data-logo-3d data-logo-3d-config='${escapeHtml(JSON.stringify(l3Config))}' aria-label="${escapeHtml(sectionHeading || data.name || "Brand logos")}" aria-busy="true" style="${styleVars}">
+          <div class="logo-3d__inner">
+            ${headerHtml}
+            <div class="logo-3d__stage" data-logo-3d-stage>
+              <div class="logo-3d__tilt" data-logo-3d-tilt>
+                <ul class="logo-3d__track" data-logo-3d-track>
+                  ${slidesHtml}
+                </ul>
+              </div>
+            </div>
+            <div class="logo-3d__controls">
+              <div class="logo-3d__nav" data-logo-3d-nav${showNav ? "" : " hidden"}>
+                <button type="button" class="logo-3d__arrow" data-logo-3d-prev aria-label="Previous logo">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="logo-3d__arrow" data-logo-3d-next aria-label="Next logo">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <ul class="logo-3d__pagination" data-logo-3d-pagination aria-label="Logo pagination"${showDots ? "" : " hidden"}></ul>
+            </div>
+            <div class="logo-3d__live" data-logo-3d-live aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+    `
+
+    let l3Root = null
+
+    const mountLogo3D = () => {
+      const root = document.querySelector(`.slideease-container-${uniqueId}`)
+      l3Root = root?.querySelector("[data-logo-3d]")
+      if (!l3Root || !window.SELogo3D) {
+        throw new Error("Logo 3D unavailable")
+      }
+      window.SELogo3D.init(l3Root, l3Config)
+      l3Root.setAttribute("aria-busy", "false")
+      removeNode(`${uniqueId}-loading`)
+      document.addEventListener("shopify:section:unload", () => {
+        window.SELogo3D?.getInstance?.(l3Root)?.destroy?.()
+      })
+    }
+
+    engineReady
+      .then(() => {
+        window.SELogo3D?.injectStyles?.()
+        insertAdjacent(markup)
+        mountLogo3D()
+      })
+      .catch(() => {
+        removeNode(`${uniqueId}-loading`)
+        renderMessage("Slider unavailable", "Could not load 3D brand logos.")
+      })
+
+    window.addEventListener("pageshow", (event) => {
+      if (!l3Root || !document.contains(l3Root)) return
+      const existing = window.SELogo3D?.getInstance?.(l3Root)
+      if (existing) {
+        l3Root.classList.add("is-instant", "is-ready")
+        existing._render?.({ animate: false })
+        requestAnimationFrame(() => l3Root.classList.remove("is-instant"))
+        return
+      }
+      if (event.persisted && window.SELogo3D) {
+        try {
+          mountLogo3D()
         } catch (_) {
           /* ignore */
         }
@@ -2739,6 +3824,22 @@
     }
     if (effect === "premium-circular") {
       renderPremiumCircular(data)
+      return
+    }
+    if (effect === "premium-stacked") {
+      renderPremiumStacked(data)
+      return
+    }
+    if (effect === "testimonials-3d") {
+      renderTestimonials3D(data)
+      return
+    }
+    if (effect === "ugc-feed") {
+      renderUgcFeed(data)
+      return
+    }
+    if (effect === "logo-3d") {
+      renderLogo3D(data)
       return
     }
     if (effect === "collection-carousel") {
@@ -3818,7 +4919,15 @@
       // Premium 3D engines clear the loader after styles + transforms are ready
       // so the raw horizontal product list never flashes.
       const effect = resolveEffect(data.settings || {})
-      if (effect !== "premium-coverflow" && effect !== "premium-circular" && effect !== "collection-carousel") {
+      if (
+        effect !== "premium-coverflow" &&
+        effect !== "premium-circular" &&
+        effect !== "premium-stacked" &&
+        effect !== "testimonials-3d" &&
+        effect !== "ugc-feed" &&
+        effect !== "logo-3d" &&
+        effect !== "collection-carousel"
+      ) {
         removeNode(`${uniqueId}-loading`)
       }
       renderSlider(data)

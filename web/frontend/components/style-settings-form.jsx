@@ -131,8 +131,14 @@ export default function StyleSettingsForm({
   const isProductType = show.productSource
   const isCollectionType = show.collectionSource
   const isPremiumCoverflow =
-    sliderType === "premium-coverflow" || sliderType === "premium-circular"
+    sliderType === "premium-coverflow" ||
+    sliderType === "premium-circular" ||
+    sliderType === "premium-stacked"
+  const isPremiumStacked = sliderType === "premium-stacked"
   const isCollectionCarousel = sliderType === "collection-carousel"
+  const isTestimonials3d = sliderType === "testimonials-3d"
+  const isUgcFeed = sliderType === "ugc-feed"
+  const isLogo3d = sliderType === "logo-3d"
   const heightMin = sliderType === "announcement" ? 36 : sliderType === "logo-grid" ? 80 : 160
 
   const update = (key, value) => {
@@ -297,18 +303,29 @@ export default function StyleSettingsForm({
   }
 
   const showBehaviourToggles =
-    show.autoplay || show.arrows || show.dots || show.infinite || isPremiumCoverflow || isCollectionCarousel
+    show.autoplay ||
+    show.arrows ||
+    show.dots ||
+    show.infinite ||
+    isPremiumCoverflow ||
+    isCollectionCarousel ||
+    isTestimonials3d ||
+    isUgcFeed ||
+    isLogo3d
   // Stories: pair arrow color with Image fit so the row isn't half-empty
   const showStoriesArrowWithFit = isStories && show.objectFit && show.arrowColor
   const showNavColors = !isAnnounce && ((show.arrowColor && !showStoriesArrowWithFit) || show.dotColor)
   // Logo Grid / Announcement use their own paired layout — skip generic half-empty rows
-  const showLayoutRow = !isLogoGrid && !isAnnounce && (show.height || show.borderRadius)
+  const showLayoutRow = !isLogoGrid && !isAnnounce && !isTestimonials3d && !isUgcFeed && !isLogo3d && (show.height || show.borderRadius)
   const showSlidesRow =
     !isStories &&
     !isLogoGrid &&
     !isAnnounce &&
     !isPremiumCoverflow &&
     !isCollectionCarousel &&
+    !isTestimonials3d &&
+    !isUgcFeed &&
+    !isLogo3d &&
     (show.slidesToShow || show.autoplaySpeed)
   const showMobileSection = show.mobileSlides || show.mobileHeroText || show.mobileCtaFont
 
@@ -336,7 +353,7 @@ export default function StyleSettingsForm({
               Infinite {settings.infinite === false ? "Off" : "On"}
             </Button>
           ) : null}
-          {isPremiumCoverflow || isCollectionCarousel ? (
+          {isPremiumCoverflow || isCollectionCarousel || isTestimonials3d || isUgcFeed || isLogo3d ? (
             <Button
               pressed={settings.sectionBackgroundTransparent === true}
               onClick={() =>
@@ -730,6 +747,614 @@ export default function StyleSettingsForm({
         </div>
       ) : null}
 
+      {isTestimonials3d && !show.productSource ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+            width: "100%",
+            paddingTop: 4,
+            paddingBottom: 4,
+          }}
+        >
+          <div>
+            <Text variant="headingSm" as="h3">
+              Section header
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Optional. Leave any field empty to hide it on the storefront.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <TextField
+                label="Subheading"
+                value={settings.sectionSubheading || ""}
+                onChange={(value) => update("sectionSubheading", value)}
+                placeholder="Loved by customers"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Heading"
+                value={settings.sectionHeading || ""}
+                onChange={(value) => update("sectionHeading", value)}
+                placeholder="What people say"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Description"
+                value={settings.sectionDescription || ""}
+                onChange={(value) => update("sectionDescription", value)}
+                placeholder="Real stories from shoppers…"
+                disabled={disabled}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          {settings.sectionBackgroundTransparent === true ? null : (
+            <div style={{ maxWidth: 420 }}>
+              <ColorField
+                label="Section background (empty = default)"
+                value={settings.sectionBackground || ""}
+                onChange={(value) => update("sectionBackground", value)}
+                fallback="#f4f6f8"
+                disabled={disabled}
+              />
+            </div>
+          )}
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              3D layout
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Depth, spacing, and card size for the floating testimonial stage.
+              </Text>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <Button
+                pressed={settings.t3Floating !== false}
+                onClick={() => update("t3Floating", settings.t3Floating === false)}
+                disabled={disabled}
+              >
+                Floating cards {settings.t3Floating === false ? "Off" : "On"}
+              </Button>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <ClampedNumberField
+                label="Depth"
+                value={settings.t3Depth ?? 200}
+                min={80}
+                max={360}
+                fallback={200}
+                onChange={(value) => update("t3Depth", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Rotation"
+                value={settings.t3Rotation ?? 14}
+                min={0}
+                max={28}
+                fallback={14}
+                onChange={(value) => update("t3Rotation", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Spacing"
+                value={settings.t3Spacing ?? 260}
+                min={120}
+                max={420}
+                fallback={260}
+                onChange={(value) => update("t3Spacing", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Perspective"
+                value={settings.t3Perspective ?? 1300}
+                min={600}
+                max={2200}
+                fallback={1300}
+                onChange={(value) => update("t3Perspective", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Side visibility"
+                value={settings.t3SideVisibility ?? 1}
+                min={1}
+                max={3}
+                fallback={1}
+                onChange={(value) => update("t3SideVisibility", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Card width"
+                value={settings.t3CardWidth ?? 420}
+                min={280}
+                max={560}
+                fallback={420}
+                onChange={(value) => update("t3CardWidth", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Card min height"
+                value={settings.t3CardMinHeight ?? 280}
+                min={200}
+                max={420}
+                fallback={280}
+                onChange={(value) => update("t3CardMinHeight", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Corner radius (px)"
+                value={settings.borderRadius ?? 18}
+                min={0}
+                max={40}
+                fallback={18}
+                onChange={(value) => update("borderRadius", value)}
+                disabled={disabled}
+              />
+              {show.autoplaySpeed ? (
+                <ClampedNumberField
+                  label="Autoplay speed (ms)"
+                  value={settings.autoplaySpeed ?? 5000}
+                  min={0}
+                  max={60000}
+                  fallback={5000}
+                  onChange={(value) => update("autoplaySpeed", value)}
+                  disabled={disabled}
+                />
+              ) : (
+                <div />
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              Colors
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Accent for verified badges and eyebrow; stars for ratings.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                maxWidth: 560,
+              }}
+            >
+              <ColorField
+                label="Accent color"
+                value={settings.accentColor || "#2f6fed"}
+                onChange={(value) => update("accentColor", value)}
+                fallback="#2f6fed"
+                disabled={disabled}
+              />
+              <ColorField
+                label="Star color"
+                value={settings.starColor || "#e6a817"}
+                onChange={(value) => update("starColor", value)}
+                fallback="#e6a817"
+                disabled={disabled}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isUgcFeed && !show.productSource ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+            width: "100%",
+            paddingTop: 4,
+            paddingBottom: 4,
+          }}
+        >
+          <div>
+            <Text variant="headingSm" as="h3">
+              Section header
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Optional. Leave any field empty to hide it on the storefront.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <TextField
+                label="Subheading"
+                value={settings.sectionSubheading || ""}
+                onChange={(value) => update("sectionSubheading", value)}
+                placeholder="Community"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Heading"
+                value={settings.sectionHeading || ""}
+                onChange={(value) => update("sectionHeading", value)}
+                placeholder="On camera"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Description"
+                value={settings.sectionDescription || ""}
+                onChange={(value) => update("sectionDescription", value)}
+                placeholder="Real moments from customers…"
+                disabled={disabled}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          {settings.sectionBackgroundTransparent === true ? null : (
+            <div style={{ maxWidth: 420 }}>
+              <ColorField
+                label="Section background (empty = default)"
+                value={settings.sectionBackground || ""}
+                onChange={(value) => update("sectionBackground", value)}
+                fallback="#121417"
+                disabled={disabled}
+              />
+            </div>
+          )}
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              3D layout
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Depth, spacing, and card size for the vertical UGC stage.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <ClampedNumberField
+                label="Depth"
+                value={settings.ugcDepth ?? 180}
+                min={80}
+                max={360}
+                fallback={180}
+                onChange={(value) => update("ugcDepth", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Rotation"
+                value={settings.ugcRotation ?? 18}
+                min={0}
+                max={32}
+                fallback={18}
+                onChange={(value) => update("ugcRotation", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Spacing"
+                value={settings.ugcSpacing ?? 200}
+                min={100}
+                max={360}
+                fallback={200}
+                onChange={(value) => update("ugcSpacing", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Perspective"
+                value={settings.ugcPerspective ?? 1300}
+                min={600}
+                max={2200}
+                fallback={1300}
+                onChange={(value) => update("ugcPerspective", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Visible slides"
+                value={settings.ugcVisibleSlides ?? 5}
+                min={3}
+                max={7}
+                fallback={5}
+                onChange={(value) => update("ugcVisibleSlides", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Card width"
+                value={settings.ugcCardWidth ?? 280}
+                min={200}
+                max={360}
+                fallback={280}
+                onChange={(value) => update("ugcCardWidth", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Corner radius (px)"
+                value={settings.borderRadius ?? 16}
+                min={0}
+                max={40}
+                fallback={16}
+                onChange={(value) => update("borderRadius", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Transition (ms)"
+                value={settings.speed ?? 650}
+                min={200}
+                max={2000}
+                fallback={650}
+                onChange={(value) => update("speed", value)}
+                disabled={disabled}
+              />
+              {settings.ugcCarouselAutoplay ? (
+                <ClampedNumberField
+                  label="Carousel autoplay (ms)"
+                  value={settings.autoplaySpeed ?? 8000}
+                  min={2000}
+                  max={60000}
+                  fallback={8000}
+                  onChange={(value) => update("autoplaySpeed", value)}
+                  disabled={disabled}
+                />
+              ) : (
+                <div />
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              Media controls
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Autoplay controls video playback on the active card (not carousel rotation).
+              </Text>
+            </div>
+            <Stack spacing="tight">
+              <Button
+                pressed={settings.ugcMutedByDefault !== false}
+                onClick={() => update("ugcMutedByDefault", settings.ugcMutedByDefault === false)}
+                disabled={disabled}
+              >
+                Muted by default {settings.ugcMutedByDefault === false ? "Off" : "On"}
+              </Button>
+              <Button
+                pressed={settings.ugcShowMediaControls !== false}
+                onClick={() => update("ugcShowMediaControls", settings.ugcShowMediaControls === false)}
+                disabled={disabled}
+              >
+                Media controls {settings.ugcShowMediaControls === false ? "Off" : "On"}
+              </Button>
+              <Button
+                pressed={Boolean(settings.ugcCarouselAutoplay)}
+                onClick={() => update("ugcCarouselAutoplay", !settings.ugcCarouselAutoplay)}
+                disabled={disabled}
+              >
+                Carousel autoplay {settings.ugcCarouselAutoplay ? "On" : "Off"}
+              </Button>
+            </Stack>
+          </div>
+        </div>
+      ) : null}
+
+      {isLogo3d && !show.productSource ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 22,
+            width: "100%",
+            paddingTop: 4,
+            paddingBottom: 4,
+          }}
+        >
+          <div>
+            <Text variant="headingSm" as="h3">
+              Section header
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Optional. Leave any field empty to hide it on the storefront.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <TextField
+                label="Subheading"
+                value={settings.sectionSubheading || ""}
+                onChange={(value) => update("sectionSubheading", value)}
+                placeholder=""
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Heading"
+                value={settings.sectionHeading || ""}
+                onChange={(value) => update("sectionHeading", value)}
+                placeholder=""
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Description"
+                value={settings.sectionDescription || ""}
+                onChange={(value) => update("sectionDescription", value)}
+                placeholder=""
+                disabled={disabled}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          {settings.sectionBackgroundTransparent === true ? null : (
+            <div style={{ maxWidth: 420 }}>
+              <ColorField
+                label="Section background (empty = default)"
+                value={settings.sectionBackground || ""}
+                onChange={(value) => update("sectionBackground", value)}
+                fallback="#f5f5f3"
+                disabled={disabled}
+              />
+            </div>
+          )}
+
+          <div>
+            <Text variant="headingSm" as="h3">
+              3D layout
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 12 }}>
+              <Text variant="bodySm" color="subdued">
+                Cylinder radius, depth, and logo size for the brand logos stage.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <ClampedNumberField
+                label="Depth"
+                value={settings.logo3dDepth ?? 160}
+                min={40}
+                max={360}
+                fallback={160}
+                onChange={(value) => update("logo3dDepth", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Rotation"
+                value={settings.logo3dRotation ?? 28}
+                min={8}
+                max={42}
+                fallback={28}
+                onChange={(value) => update("logo3dRotation", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Cylinder radius"
+                value={settings.logo3dCylinderRadius ?? 320}
+                min={160}
+                max={520}
+                fallback={320}
+                onChange={(value) => update("logo3dCylinderRadius", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Perspective"
+                value={settings.logo3dPerspective ?? 1200}
+                min={600}
+                max={2200}
+                fallback={1200}
+                onChange={(value) => update("logo3dPerspective", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Visible slides"
+                value={settings.logo3dVisibleSlides ?? 7}
+                min={3}
+                max={9}
+                fallback={7}
+                onChange={(value) => update("logo3dVisibleSlides", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Logo size"
+                value={settings.logo3dLogoSize ?? 88}
+                min={48}
+                max={140}
+                fallback={88}
+                onChange={(value) => update("logo3dLogoSize", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Tilt intensity"
+                value={Math.round((Number(settings.logo3dTiltIntensity) || 0.35) * 100)}
+                min={0}
+                max={80}
+                fallback={35}
+                onChange={(value) => update("logo3dTiltIntensity", Number(value) / 100)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Corner radius (px)"
+                value={settings.borderRadius ?? 14}
+                min={0}
+                max={40}
+                fallback={14}
+                onChange={(value) => update("borderRadius", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Transition (ms)"
+                value={settings.speed ?? 700}
+                min={200}
+                max={2000}
+                fallback={700}
+                onChange={(value) => update("speed", value)}
+                disabled={disabled}
+              />
+              {settings.autoplay ? (
+                <ClampedNumberField
+                  label="Autoplay delay (ms)"
+                  value={settings.autoplaySpeed ?? 3200}
+                  min={1500}
+                  max={20000}
+                  fallback={3200}
+                  onChange={(value) => update("autoplaySpeed", value)}
+                  disabled={disabled}
+                />
+              ) : (
+                <div />
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {show.productSource ? (
         isPremiumCoverflow ? (
           <>
@@ -1062,6 +1687,57 @@ export default function StyleSettingsForm({
         <Banner status={syncMessage.error ? "critical" : "success"}>
           <p>{syncMessage.text}</p>
         </Banner>
+      ) : null}
+
+      {isPremiumStacked ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%" }}>
+          <div>
+            <Text variant="headingSm" as="h3">
+              Stack layout
+            </Text>
+            <div style={{ marginTop: 4, marginBottom: 10 }}>
+              <Text variant="bodySm" color="subdued">
+                How deep the card stack looks behind the front product.
+              </Text>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "1.25rem 1.5rem",
+                width: "100%",
+              }}
+            >
+              <ClampedNumberField
+                label="Stack depth"
+                value={settings.stackDepth ?? 4}
+                min={2}
+                max={7}
+                fallback={4}
+                onChange={(value) => update("stackDepth", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Horizontal offset"
+                value={settings.stackHorizontalOffset ?? 42}
+                min={10}
+                max={80}
+                fallback={42}
+                onChange={(value) => update("stackHorizontalOffset", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Vertical offset"
+                value={settings.stackVerticalOffset ?? 22}
+                min={0}
+                max={48}
+                fallback={22}
+                onChange={(value) => update("stackVerticalOffset", value)}
+                disabled={disabled}
+              />
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {show.productTypography ? <Text variant="headingSm">Product typography</Text> : null}

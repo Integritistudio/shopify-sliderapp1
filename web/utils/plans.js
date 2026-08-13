@@ -36,10 +36,22 @@ export const CURATED_PRESET_ORDER = [
   "premium-coverflow",
   "collection-carousel",
   "premium-circular",
+  "premium-stacked",
+  "testimonials-3d",
+  "ugc-feed",
+  "logo-3d",
 ]
 
 /** Presets unlocked only on Pro (not included in Free/Standard slices). */
-export const PRO_ONLY_PRESETS = ["premium-coverflow", "premium-circular", "collection-carousel"]
+export const PRO_ONLY_PRESETS = [
+  "premium-coverflow",
+  "premium-circular",
+  "collection-carousel",
+  "premium-stacked",
+  "testimonials-3d",
+  "ugc-feed",
+  "logo-3d",
+]
 
 export const PLAN_IDS = ["free", "standard", "pro"]
 

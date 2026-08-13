@@ -45,6 +45,10 @@ const EMPTY_SLIDE = {
   videoUrl: "",
   videoProvider: null,
   isVisible: true,
+  rating: 5,
+  verified: false,
+  creatorHandle: "",
+  avatarUrl: "",
 }
 
 function detectVideoProvider(url) {
@@ -66,14 +70,20 @@ export default function SlideEditorPanel({
   const [form, setForm] = useState(EMPTY_SLIDE)
   const [saving, setSaving] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [error, setError] = useState("")
   const [showSecondButton, setShowSecondButton] = useState(false)
 
   const showSlideCta = canShow(sliderType, "slideCtaFields")
   const isAnnouncement = sliderType === "announcement"
+  const isTestimonials3d = sliderType === "testimonials-3d"
+  const isUgcFeed = sliderType === "ugc-feed"
 
   const fieldLabels = {
     testimonials: { heading: "Quote", subheading: "Author", description: "Role / detail", image: "Avatar image URL" },
+    "testimonials-3d": { heading: "Quote", subheading: "Author", description: "Role / detail", image: "Avatar image URL" },
+    "ugc-feed": { heading: "Title", subheading: "Creator name", description: "Caption", image: "Poster / image URL" },
+    "logo-3d": { heading: "Brand name", subheading: "Subheading", description: "Subtitle (optional)", image: "Logo image URL" },
     "logo-grid": { heading: "Brand name", subheading: "Subheading", description: "Description", image: "Logo image URL" },
     stories: { heading: "Story label", subheading: "Subheading", description: "Description", image: "Story media URL" },
     announcement: { heading: "Announcement message", subheading: "Subheading", description: "Description", image: "Image URL" },
@@ -82,6 +92,7 @@ export default function SlideEditorPanel({
     "collection-rail": { heading: "Product title", subheading: "Subheading", description: "Price", image: "Product image URL" },
     "premium-coverflow": { heading: "Product title", subheading: "Handle / detail", description: "Price", image: "Product image URL" },
     "premium-circular": { heading: "Product title", subheading: "Handle / detail", description: "Price", image: "Product image URL" },
+    "premium-stacked": { heading: "Product title", subheading: "Handle / detail", description: "Price", image: "Product image URL" },
     "collection-carousel": { heading: "Collection title", subheading: "Item count", description: "Collection description", image: "Collection image URL" },
   }[sliderType] || {
     heading: "Heading",
@@ -104,19 +115,26 @@ export default function SlideEditorPanel({
     setShowSecondButton(Boolean(initialSlide?.cta2Text?.trim()))
     setError("")
     setShowPicker(false)
+    setShowAvatarPicker(false)
   }, [initialSlide, brandKit])
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
   const handleSave = async () => {
     const isCollectionCarousel = sliderType === "collection-carousel"
+    const allowEmptyImage = isCollectionCarousel || isTestimonials3d
     if (!isAnnouncement) {
-      if (form.mediaType === "video") {
+      if (isUgcFeed) {
+        if (!form.imageUrl?.trim() && !form.videoUrl?.trim()) {
+          setError("Add a poster/image URL or a video URL")
+          return
+        }
+      } else if (form.mediaType === "video") {
         if (!form.videoUrl?.trim() && !form.imageUrl?.trim()) {
           setError("Add a video URL (YouTube/Vimeo/Shopify) or upload a video")
           return
         }
-      } else if (!isCollectionCarousel && !form.imageUrl?.trim()) {
+      } else if (!allowEmptyImage && !form.imageUrl?.trim()) {
         setError("Choose an image from Shopify Files or paste an image URL")
         return
       }
@@ -133,17 +151,33 @@ export default function SlideEditorPanel({
     setSaving(true)
     setError("")
     try {
+      const videoUrl = isAnnouncement ? "" : form.videoUrl?.trim() || ""
+      const mediaType = isAnnouncement
+        ? "image"
+        : isUgcFeed
+          ? videoUrl
+            ? "video"
+            : "image"
+          : form.mediaType
       await onSave({
         ...form,
-        imageUrl: isAnnouncement ? form.imageUrl?.trim() || "" : form.imageUrl?.trim() || form.videoUrl?.trim() || "",
-        videoUrl: isAnnouncement ? "" : form.videoUrl?.trim() || "",
-        videoProvider: isAnnouncement ? null : detectVideoProvider(form.videoUrl),
-        mediaType: isAnnouncement ? "image" : form.mediaType,
+        imageUrl: isAnnouncement
+          ? form.imageUrl?.trim() || ""
+          : form.imageUrl?.trim() || videoUrl || "",
+        videoUrl,
+        videoProvider: isAnnouncement ? null : detectVideoProvider(videoUrl),
+        mediaType,
         title: form.title.trim(),
         description: isAnnouncement ? "" : form.description?.trim() || "",
         subheading: isAnnouncement ? "" : form.subheading?.trim() || "",
         heading: form.heading?.trim() || form.title.trim(),
         imageAlt: form.imageAlt?.trim() || form.title.trim(),
+        rating: isTestimonials3d
+          ? Math.min(5, Math.max(1, Math.round(Number(form.rating) || 5)))
+          : form.rating,
+        verified: isTestimonials3d ? Boolean(form.verified) : form.verified,
+        creatorHandle: isUgcFeed ? form.creatorHandle?.trim() || "" : form.creatorHandle,
+        avatarUrl: isUgcFeed ? form.avatarUrl?.trim() || "" : form.avatarUrl,
       })
     } catch (err) {
       setError(err.message || "Failed to save slide")
@@ -261,13 +295,23 @@ export default function SlideEditorPanel({
       ) : null}
 
       <FormLayout>
-        {!isAnnouncement && form.mediaType === "video" ? (
+        {!isAnnouncement && (form.mediaType === "video" || isUgcFeed) ? (
           <TextField
-            label="Video URL"
+            label={isUgcFeed ? "Video URL (optional)" : "Video URL"}
             value={form.videoUrl}
-            onChange={(value) => update("videoUrl", value)}
-            placeholder="YouTube, Vimeo, or Shopify video URL"
-            helpText="Paste a YouTube/Vimeo link or upload a Shopify video above."
+            onChange={(value) => {
+              setForm((prev) => ({
+                ...prev,
+                videoUrl: value,
+                mediaType: isUgcFeed ? (value?.trim() ? "video" : "image") : prev.mediaType,
+              }))
+            }}
+            placeholder={isUgcFeed ? "https://…/video.mp4" : "YouTube, Vimeo, or Shopify video URL"}
+            helpText={
+              isUgcFeed
+                ? "Leave empty for an image-only card. Poster/image is still recommended."
+                : "Paste a YouTube/Vimeo link or upload a Shopify video above."
+            }
           />
         ) : null}
 
@@ -277,7 +321,11 @@ export default function SlideEditorPanel({
             value={form.imageUrl}
             onChange={(value) => update("imageUrl", value)}
             placeholder="https://cdn.shopify.com/..."
-            helpText="Prefer Shopify Files above. URL is an optional fallback."
+            helpText={
+              isTestimonials3d
+                ? "Optional — leave empty to show author initials."
+                : "Prefer Shopify Files above. URL is an optional fallback."
+            }
           />
         ) : null}
 
@@ -312,6 +360,128 @@ export default function SlideEditorPanel({
             onChange={(value) => update("description", value)}
             multiline={3}
           />
+        ) : null}
+
+        {isTestimonials3d ? (
+          <FormLayout.Group>
+            <SeSelect
+              label="Rating"
+              options={[
+                { label: "5 stars", value: "5" },
+                { label: "4 stars", value: "4" },
+                { label: "3 stars", value: "3" },
+                { label: "2 stars", value: "2" },
+                { label: "1 star", value: "1" },
+              ]}
+              value={String(Math.min(5, Math.max(1, Math.round(Number(form.rating) || 5))))}
+              onChange={(value) => update("rating", Number(value))}
+            />
+            <div style={{ display: "flex", alignItems: "flex-end", height: "100%", paddingBottom: 4 }}>
+              <Checkbox
+                label="Verified buyer"
+                checked={Boolean(form.verified)}
+                onChange={(value) => update("verified", value)}
+              />
+            </div>
+          </FormLayout.Group>
+        ) : null}
+
+        {isUgcFeed ? (
+          <>
+            <TextField
+              label="Creator handle"
+              value={form.creatorHandle || ""}
+              onChange={(value) => update("creatorHandle", value)}
+              placeholder="@maya.studio"
+              autoComplete="off"
+              helpText="Shown next to the profile picture on the card"
+            />
+            <div
+              style={{
+                border: "1px solid var(--p-color-border, #e1e3e5)",
+                borderRadius: 10,
+                padding: 12,
+                background: "var(--p-color-bg-surface-secondary, #f6f6f7)",
+              }}
+            >
+              <Text as="h3" variant="headingSm">
+                Creator profile picture
+              </Text>
+              <div style={{ marginTop: 4, marginBottom: 10 }}>
+                <Text variant="bodySm" color="subdued">
+                  Replaces the initials circle (e.g. R4) on the UGC card.
+                </Text>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                {form.avatarUrl?.trim() ? (
+                  <img
+                    src={form.avatarUrl.trim()}
+                    alt=""
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "2px solid rgba(0,0,0,0.12)",
+                      flexShrink: 0,
+                      background: "#fff",
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      background: "#5c5f62",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                    aria-hidden="true"
+                  >
+                    {(form.creatorHandle || form.subheading || form.title || "?").replace(/^@/, "").slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <Button
+                    onClick={() => {
+                      setShowPicker(false)
+                      setShowAvatarPicker((v) => !v)
+                    }}
+                  >
+                    {showAvatarPicker ? "Hide Files" : "Choose from Shopify Files"}
+                  </Button>
+                  {form.avatarUrl?.trim() ? (
+                    <Button onClick={() => update("avatarUrl", "")}>Clear picture</Button>
+                  ) : null}
+                </div>
+              </div>
+              {showAvatarPicker ? (
+                <div style={{ marginBottom: 12 }}>
+                  <MediaPickerInline
+                    mediaType="image"
+                    onClose={() => setShowAvatarPicker(false)}
+                    onSelect={(file) => {
+                      update("avatarUrl", file.url || file.previewUrl || "")
+                      setShowAvatarPicker(false)
+                    }}
+                  />
+                </div>
+              ) : null}
+              <TextField
+                label="Or paste profile picture URL"
+                value={form.avatarUrl || ""}
+                onChange={(value) => update("avatarUrl", value)}
+                placeholder="https://cdn.shopify.com/..."
+                autoComplete="off"
+              />
+            </div>
+          </>
         ) : null}
 
         {showSlideCta ? (

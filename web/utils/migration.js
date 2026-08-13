@@ -625,6 +625,64 @@ const migrations = {
       }
     },
   },
+
+  "019-slide-testimonial-rating-fields": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (!columns.rating) {
+        await queryInterface.addColumn("Slides", "rating", {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+          defaultValue: 5,
+        })
+      }
+      if (!columns.verified) {
+        await queryInterface.addColumn("Slides", "verified", {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (columns.verified) {
+        await queryInterface.removeColumn("Slides", "verified")
+      }
+      if (columns.rating) {
+        await queryInterface.removeColumn("Slides", "rating")
+      }
+    },
+  },
+
+  "020-slide-ugc-creator-fields": {
+    up: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (!columns.creatorHandle) {
+        await queryInterface.addColumn("Slides", "creatorHandle", {
+          type: DataTypes.STRING,
+          allowNull: true,
+          defaultValue: "",
+        })
+      }
+      if (!columns.avatarUrl) {
+        await queryInterface.addColumn("Slides", "avatarUrl", {
+          type: DataTypes.TEXT,
+          allowNull: true,
+          defaultValue: "",
+        })
+      }
+    },
+    down: async (queryInterface) => {
+      const columns = await queryInterface.describeTable("Slides")
+      if (columns.avatarUrl) {
+        await queryInterface.removeColumn("Slides", "avatarUrl")
+      }
+      if (columns.creatorHandle) {
+        await queryInterface.removeColumn("Slides", "creatorHandle")
+      }
+    },
+  },
 }
 
 // Run pending migrations

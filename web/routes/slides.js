@@ -54,11 +54,15 @@ function applySlideFields(slide, payload) {
     "videoProvider",
     "position",
     "isVisible",
+    "rating",
+    "verified",
+    "creatorHandle",
+    "avatarUrl",
   ]
 
   for (const field of fields) {
     if (payload[field] !== undefined) {
-      if (typeof payload[field] === "string" && ["title", "heading", "subheading", "ctaText", "cta2Text", "imageAlt"].includes(field)) {
+      if (typeof payload[field] === "string" && ["title", "heading", "subheading", "ctaText", "cta2Text", "imageAlt", "creatorHandle"].includes(field)) {
         slide[field] = sanitizePlainText(payload[field], field === "title" ? 200 : 300)
       } else if (field === "description") {
         slide[field] = sanitizePlainText(payload[field], 2000)
@@ -68,7 +72,10 @@ function applySlideFields(slide, payload) {
         const percent = Number(payload[field])
         slide[field] =
           Number.isFinite(percent) && percent > 0 ? Math.round(percent) : null
-      } else if (field === "isVisible" || field === "ctaOpenInNewTab" || field === "cta2OpenInNewTab") {
+      } else if (field === "rating") {
+        const rating = Math.round(Number(payload[field]))
+        slide[field] = Number.isFinite(rating) ? Math.min(5, Math.max(1, rating)) : 5
+      } else if (field === "isVisible" || field === "ctaOpenInNewTab" || field === "cta2OpenInNewTab" || field === "verified") {
         slide[field] = Boolean(payload[field])
       } else if (field === "position") {
         slide[field] = Number(payload[field]) || 0
@@ -134,6 +141,10 @@ router.post("/sliders/:sliderId/slides", async (req, res) => {
       videoProvider: payload.videoProvider || null,
       position: payload.position ?? ((Number.isFinite(maxPosition) ? maxPosition : -1) + 1),
       isVisible: payload.isVisible !== false,
+      rating: Math.min(5, Math.max(1, Math.round(Number(payload.rating) || 5))),
+      verified: Boolean(payload.verified),
+      creatorHandle: sanitizePlainText(payload.creatorHandle || "", 120),
+      avatarUrl: payload.avatarUrl || "",
       SliderId: Number.parseInt(sliderId, 10),
     })
 

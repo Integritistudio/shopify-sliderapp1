@@ -1055,6 +1055,1554 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
   )
 }
 
+function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
+  const ink = "#15181c"
+  const showNav = settings.arrows !== false && slides.length > 1
+  const showDots = settings.dots !== false && slides.length > 1
+  const depth = Number(settings.t3Depth) || 200
+  const rotation = Number(settings.t3Rotation) || 14
+  const spacing = compact ? Math.min(Number(settings.t3Spacing) || 260, 180) : Number(settings.t3Spacing) || 260
+  const scaleBase = Number(settings.t3Scale) || 0.86
+  const scaleStep = Number(settings.t3ScaleStep) || 0.06
+  const sideOpacity = Number(settings.t3SideOpacity) || 0.72
+  const sideVisibility = Math.max(1, Number(settings.t3SideVisibility) || 1)
+  const perspective = Number(settings.t3Perspective) || 1300
+  const cardWidth = compact
+    ? Math.min(Number(settings.t3CardWidth) || 420, 260)
+    : Math.min(Number(settings.t3CardWidth) || 420, 380)
+  const cardMinHeight = compact
+    ? Math.min(Number(settings.t3CardMinHeight) || 280, 220)
+    : Number(settings.t3CardMinHeight) || 280
+  const animMs = Number(settings.speed) || 680
+  const floating = settings.t3Floating !== false
+  const accent = settings.accentColor || "#2f6fed"
+  const starColor = settings.starColor || "#e6a817"
+  const radius = Number(settings.borderRadius ?? 18)
+  const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+  const sectionBgCustom = String(settings.sectionBackground || "").trim()
+  const sectionBg = sectionBgTransparent
+    ? "transparent"
+    : sectionBgCustom ||
+      "radial-gradient(80% 60% at 50% 0%, rgba(255,255,255,0.85) 0%, transparent 60%), linear-gradient(165deg, #f4f6f8 0%, #e8ecf0 100%)"
+  const transition = `transform ${animMs}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${animMs}ms cubic-bezier(0.22, 1, 0.36, 1)`
+
+  const hasHeader = Boolean(
+    String(settings.sectionSubheading || "").trim() ||
+      String(settings.sectionHeading || "").trim() ||
+      String(settings.sectionDescription || "").trim(),
+  )
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+  const offsetForIndex = (slideIndex, activeIndex) => {
+    const len = slides.length
+    if (settings.infinite === false) return slideIndex - activeIndex
+    let offset = slideIndex - activeIndex
+    const half = Math.floor(len / 2)
+    if (offset > half) offset -= len
+    if (offset < -half) offset += len
+    return offset
+  }
+
+  const transformForOffset = (offset) => {
+    const t = offset
+    const abs = Math.abs(t)
+    const dir = t === 0 ? 0 : t > 0 ? 1 : -1
+    const x = t * spacing
+    const z = abs === 0 ? 36 : -depth * Math.min(abs, 1) - depth * 0.4 * Math.max(abs - 1, 0)
+    const y = abs === 0 ? -4 : abs * 8
+    const rotateY =
+      -dir * rotation * Math.min(abs, 1) - dir * rotation * 0.25 * Math.max(abs - 1, 0)
+    let scale = 1
+    if (abs < 1) scale = 1 - (1 - scaleBase) * abs
+    else scale = Math.max(scaleBase - scaleStep * (abs - 1), 0.72)
+    let opacity = 1
+    if (abs === 0) opacity = 1
+    else if (abs > sideVisibility + 0.15) opacity = 0
+    else if (abs > sideVisibility - 0.2) opacity = clamp(1 - (abs - (sideVisibility - 0.2)) / 0.5, 0, 1)
+    else opacity = sideOpacity + (1 - sideOpacity) * (1 - Math.min(abs, 1))
+    return { x, y, z, rotateY, scale, opacity }
+  }
+
+  const initials = (name) => {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    if (!parts.length) return "?"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+
+  const starPath =
+    "M10 1.5l2.47 5.01 5.53.8-4 3.9.94 5.5L10 14.9l-4.94 2.6.94-5.5-4-3.9 5.53-.8L10 1.5z"
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 12,
+        background: sectionBg,
+        color: ink,
+        padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.5rem 0.5rem 2.75rem",
+        fontFamily: '"Plus Jakarta Sans", "Helvetica Neue", sans-serif',
+      }}
+    >
+      {hasHeader ? (
+        <header style={{ textAlign: "center", marginBottom: compact ? 16 : 28, paddingInline: 12 }}>
+          {settings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: accent,
+                marginBottom: 8,
+              }}
+            >
+              {settings.sectionSubheading}
+            </div>
+          ) : null}
+          {settings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: '"Source Serif 4", "Times New Roman", serif',
+                fontSize: compact ? 26 : 36,
+                fontWeight: 600,
+                lineHeight: 1.15,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {settings.sectionHeading}
+            </h2>
+          ) : null}
+          {settings.sectionDescription ? (
+            <p
+              style={{
+                margin: "10px auto 0",
+                maxWidth: 420,
+                fontSize: compact ? 13 : 15,
+                lineHeight: 1.55,
+                color: "#5f6770",
+              }}
+            >
+              {settings.sectionDescription}
+            </p>
+          ) : null}
+        </header>
+      ) : null}
+
+      <div
+        style={{
+          position: "relative",
+          height: cardMinHeight + (compact ? 96 : 140),
+          perspective,
+          perspectiveOrigin: "50% 45%",
+        }}
+      >
+        {slides.map((slide, i) => {
+          const offset = offsetForIndex(i, index)
+          const abs = Math.abs(offset)
+          if (abs > sideVisibility) return null
+          const t = transformForOffset(offset)
+          const active = offset === 0
+          const quote = slide.heading || slide.title || "Customer quote"
+          const author = slide.subheading || slide.title || "Customer"
+          const role = String(slide.description || "").trim()
+          const imageUrl = safeUrl(slide.imageUrl)
+          const rating = Math.min(5, Math.max(1, Math.round(Number(slide.rating) || 5)))
+          const verified = slide.verified === true || slide.verified === "true"
+          return (
+            <div
+              key={slide.id || i}
+              onClick={() => !active && onGoTo(i)}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: cardWidth,
+                transform: `translate(-50%, -50%) translate3d(${t.x}px, ${t.y}px, ${t.z}px) rotateY(${t.rotateY}deg) scale(${t.scale})`,
+                transition,
+                zIndex: 100 - Math.round(abs * 10),
+                opacity: t.opacity,
+                cursor: active ? "default" : "pointer",
+                pointerEvents: t.opacity < 0.05 ? "none" : "auto",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: compact ? 12 : 16,
+                  minHeight: cardMinHeight,
+                  padding: compact ? "1.15rem 1.1rem" : "1.45rem 1.35rem",
+                  background: "#fff",
+                  border: "1px solid rgba(21,24,28,0.08)",
+                  borderRadius: radius,
+                  boxShadow: active
+                    ? "0 22px 48px rgba(21,24,28,0.14), 0 4px 12px rgba(21,24,28,0.06)"
+                    : "0 8px 20px rgba(21,24,28,0.08)",
+                  transform: floating && active ? "translate3d(0, -4px, 0)" : "none",
+                  boxSizing: "border-box",
+                }}
+              >
+                <div style={{ display: "flex", gap: 3, color: starColor }}>
+                  {Array.from({ length: 5 }, (_, starIdx) => (
+                    <svg
+                      key={starIdx}
+                      viewBox="0 0 20 20"
+                      width={compact ? 12 : 14}
+                      height={compact ? 12 : 14}
+                      aria-hidden="true"
+                      style={{ color: starIdx < rating ? starColor : "rgba(21,24,28,0.15)" }}
+                    >
+                      <path fill="currentColor" d={starPath} />
+                    </svg>
+                  ))}
+                </div>
+                <blockquote
+                  style={{
+                    margin: 0,
+                    fontFamily: '"Source Serif 4", "Times New Roman", serif',
+                    fontSize: compact ? 14 : 17,
+                    fontWeight: 500,
+                    lineHeight: 1.55,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  &ldquo;{quote}&rdquo;
+                </blockquote>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginTop: "auto",
+                    paddingTop: 4,
+                  }}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      style={{
+                        width: compact ? 40 : 48,
+                        height: compact ? 40 : 48,
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        border: "2px solid #fff",
+                        boxShadow: "0 2px 8px rgba(21,24,28,0.1)",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: compact ? 40 : 48,
+                        height: compact ? 40 : 48,
+                        borderRadius: "50%",
+                        background: "#e8edf3",
+                        color: "#5f6770",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {initials(author)}
+                    </span>
+                  )}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 700, fontSize: compact ? 13 : 14 }}>{author}</div>
+                      {verified ? (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            color: accent,
+                          }}
+                        >
+                          Verified
+                        </span>
+                      ) : null}
+                    </div>
+                    {role ? (
+                      <div style={{ fontSize: compact ? 11 : 12, color: "#5f6770", marginTop: 2 }}>{role}</div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {(showNav || showDots) && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 8 }}>
+          {showNav ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 11 }}>
+              <button
+                type="button"
+                onClick={onPrev}
+                aria-label="Previous testimonial"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(21,24,28,0.08)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: ink,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M10.2 2.2 4.4 8l5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                aria-label="Next testimonial"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(21,24,28,0.08)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: ink,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M5.8 2.2 11.6 8l-5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          ) : null}
+          {showDots ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              {slides.map((slide, i) => (
+                <button
+                  key={slide.id || i}
+                  type="button"
+                  aria-label={`Go to testimonial ${i + 1}`}
+                  onClick={() => onGoTo(i)}
+                  style={{
+                    width: i === index ? 18 : 8,
+                    height: 8,
+                    borderRadius: 99,
+                    border: 0,
+                    padding: 0,
+                    background: i === index ? ink : "rgba(21,24,28,0.2)",
+                    cursor: "pointer",
+                    transition: "width 160ms ease",
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 3D UGC Feed preview — vertical social cards with depth */
+function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
+  const ink = "#f4f5f7"
+  const showNav = settings.arrows !== false && slides.length > 1
+  const showDots = settings.dots !== false && slides.length > 1
+  const depth = Number(settings.ugcDepth) || 180
+  const rotation = Number(settings.ugcRotation) || 18
+  const spacing = compact ? Math.min(Number(settings.ugcSpacing) || 200, 140) : Number(settings.ugcSpacing) || 200
+  const scaleBase = Number(settings.ugcScale) || 0.84
+  const scaleStep = Number(settings.ugcScaleStep) || 0.07
+  const visibleSlides = Math.max(3, Number(settings.ugcVisibleSlides) || 5)
+  const sideVisibility = Math.floor(visibleSlides / 2)
+  const perspective = Number(settings.ugcPerspective) || 1300
+  const cardWidth = compact
+    ? Math.min(Number(settings.ugcCardWidth) || 280, 160)
+    : Math.min(Number(settings.ugcCardWidth) || 280, 220)
+  const animMs = Number(settings.speed) || 650
+  const radius = Number(settings.borderRadius ?? 16)
+  const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+  const sectionBgCustom = String(settings.sectionBackground || "").trim()
+  const sectionBg = sectionBgTransparent
+    ? "transparent"
+    : sectionBgCustom ||
+      "radial-gradient(70% 55% at 50% 20%, rgba(255,255,255,0.05) 0%, transparent 55%), linear-gradient(180deg, #121417 0%, #1a1e24 100%)"
+  const transition = `transform ${animMs}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${animMs}ms cubic-bezier(0.22, 1, 0.36, 1)`
+
+  const hasHeader = Boolean(
+    String(settings.sectionSubheading || "").trim() ||
+      String(settings.sectionHeading || "").trim() ||
+      String(settings.sectionDescription || "").trim(),
+  )
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+  const offsetForIndex = (slideIndex, activeIndex) => {
+    const len = slides.length
+    if (settings.infinite === false) return slideIndex - activeIndex
+    let offset = slideIndex - activeIndex
+    const half = Math.floor(len / 2)
+    if (offset > half) offset -= len
+    if (offset < -half) offset += len
+    return offset
+  }
+
+  const transformForOffset = (offset) => {
+    const t = offset
+    const abs = Math.abs(t)
+    const dir = t === 0 ? 0 : t > 0 ? 1 : -1
+    const x = t * spacing
+    const z = abs === 0 ? 40 : -depth * Math.min(abs, 1) - depth * 0.35 * Math.max(abs - 1, 0)
+    const rotateY =
+      -dir * rotation * Math.min(abs, 1) - dir * rotation * 0.25 * Math.max(abs - 1, 0)
+    let scale = 1
+    if (abs < 1) scale = 1 - (1 - scaleBase) * abs
+    else scale = Math.max(scaleBase - scaleStep * (abs - 1), 0.68)
+    let opacity = 1
+    if (abs > sideVisibility + 0.15) opacity = 0
+    else if (abs > sideVisibility - 0.2) opacity = clamp(1 - (abs - (sideVisibility - 0.2)) / 0.5, 0, 1)
+    else if (abs > 0) opacity = 1 - Math.min(abs, 1) * 0.1
+    return { x, z, rotateY, scale, opacity }
+  }
+
+  const initials = (name) => {
+    const parts = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    if (!parts.length) return "?"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+
+  const stageHeight = Math.round(cardWidth * (16 / 9) + (compact ? 48 : 72))
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 12,
+        background: sectionBg,
+        color: ink,
+        padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.25rem 0.5rem 2.5rem",
+        fontFamily: '"Plus Jakarta Sans", "Helvetica Neue", sans-serif',
+      }}
+    >
+      {hasHeader ? (
+        <header style={{ textAlign: "center", marginBottom: compact ? 14 : 24, paddingInline: 12 }}>
+          {settings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "rgba(244,245,247,0.45)",
+                marginBottom: 8,
+              }}
+            >
+              {settings.sectionSubheading}
+            </div>
+          ) : null}
+          {settings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: '"Syne", "Helvetica Neue", sans-serif',
+                fontSize: compact ? 22 : 32,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.1,
+              }}
+            >
+              {settings.sectionHeading}
+            </h2>
+          ) : null}
+          {settings.sectionDescription ? (
+            <p
+              style={{
+                margin: "10px auto 0",
+                maxWidth: 360,
+                fontSize: compact ? 12 : 14,
+                lineHeight: 1.55,
+                color: "rgba(244,245,247,0.68)",
+              }}
+            >
+              {settings.sectionDescription}
+            </p>
+          ) : null}
+        </header>
+      ) : null}
+
+      <div
+        style={{
+          position: "relative",
+          height: stageHeight,
+          perspective: `${perspective}px`,
+          perspectiveOrigin: "50% 50%",
+        }}
+      >
+        {slides.map((slide, i) => {
+          const offset = offsetForIndex(i, index)
+          const t = transformForOffset(offset)
+          const isActive = offset === 0
+          const hidden = Math.abs(offset) > sideVisibility
+          const title = String(slide.heading || slide.title || "").trim() || "UGC"
+          const creator = String(slide.subheading || "").trim()
+          const handle = String(slide.creatorHandle || "").trim()
+          const poster = String(slide.imageUrl || "").trim()
+          const avatar = String(slide.avatarUrl || "").trim()
+          const ctaText = String(slide.ctaText || "").trim()
+          const hasVideo = Boolean(String(slide.videoUrl || "").trim())
+
+          return (
+            <div
+              key={slide.id || i}
+              onClick={() => !isActive && onGoTo(i)}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: cardWidth,
+                aspectRatio: "9 / 16",
+                borderRadius: radius,
+                overflow: "hidden",
+                transform: `translate(-50%, -50%) translate3d(${t.x}px, 0, ${t.z}px) rotateY(${t.rotateY}deg) scale(${t.scale})`,
+                opacity: hidden ? 0 : t.opacity,
+                visibility: hidden ? "hidden" : "visible",
+                transition,
+                zIndex: 100 - Math.round(Math.abs(offset) * 10),
+                cursor: isActive ? "default" : "pointer",
+                boxShadow: isActive
+                  ? "0 28px 60px rgba(0,0,0,0.45)"
+                  : "0 16px 36px rgba(0,0,0,0.28)",
+                background: "#0b0d10",
+                pointerEvents: hidden ? "none" : "auto",
+              }}
+            >
+              {poster ? (
+                <img
+                  src={poster}
+                  alt=""
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(165deg, #2a3038, #121417)",
+                  }}
+                />
+              )}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 28%, transparent 55%, rgba(0,0,0,0.75) 100%)",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  left: 12,
+                  right: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt=""
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "1.5px solid rgba(255,255,255,0.55)",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "rgba(255,255,255,0.18)",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {initials(creator || title)}
+                  </span>
+                )}
+                <div style={{ minWidth: 0 }}>
+                  {creator ? (
+                    <div style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>{creator}</div>
+                  ) : null}
+                  {handle ? (
+                    <div style={{ fontSize: 10, color: "rgba(244,245,247,0.65)", lineHeight: 1.2 }}>{handle}</div>
+                  ) : null}
+                </div>
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: '"Syne", "Helvetica Neue", sans-serif',
+                    fontSize: compact ? 13 : 15,
+                    fontWeight: 700,
+                    lineHeight: 1.2,
+                    marginBottom: 4,
+                  }}
+                >
+                  {title}
+                </div>
+                {isActive && ctaText ? (
+                  <div
+                    style={{
+                      display: "inline-block",
+                      marginTop: 8,
+                      padding: "7px 12px",
+                      borderRadius: 999,
+                      background: "#fff",
+                      color: "#121417",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {ctaText}
+                  </div>
+                ) : null}
+                {!hasVideo && isActive ? (
+                  <div style={{ marginTop: 6, fontSize: 10, color: "rgba(244,245,247,0.5)" }}>Image</div>
+                ) : null}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {(showNav || showDots) && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginTop: 10 }}>
+          {showNav ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 11 }}>
+              <button
+                type="button"
+                onClick={onPrev}
+                aria-label="Previous video"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(21,24,28,0.08)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: "#15181c",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M10.2 2.2 4.4 8l5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                aria-label="Next video"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(21,24,28,0.08)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: "#15181c",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M5.8 2.2 11.6 8l-5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          ) : null}
+          {showDots ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              {slides.map((slide, i) => (
+                <button
+                  key={slide.id || i}
+                  type="button"
+                  aria-label={`Go to video ${i + 1}`}
+                  onClick={() => onGoTo(i)}
+                  style={{
+                    width: i === index ? 18 : 8,
+                    height: 8,
+                    borderRadius: 99,
+                    border: 0,
+                    padding: 0,
+                    background: i === index ? "#15181c" : "rgba(21,24,28,0.22)",
+                    cursor: "pointer",
+                    transition: "width 160ms ease",
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 3D Brand Logos preview — cylindrical trusted-by carousel */
+function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
+  const ink = "#161616"
+  const showNav = settings.arrows !== false && slides.length > 1
+  const showDots = settings.dots === true && slides.length > 1
+  const depth = Number(settings.logo3dDepth) || 160
+  const rotation = Number(settings.logo3dRotation) || 28
+  const cylinderRadius = compact
+    ? Math.min(Number(settings.logo3dCylinderRadius) || 320, 180)
+    : Number(settings.logo3dCylinderRadius) || 320
+  const scaleBase = Number(settings.logo3dScale) || 0.82
+  const scaleStep = Number(settings.logo3dScaleStep) || 0.08
+  const sideOpacity = Number(settings.logo3dSideOpacity) || 0.55
+  const visibleCount = Math.max(3, Number(settings.logo3dVisibleSlides) || 7)
+  const sideVisibility = Math.floor(visibleCount / 2)
+  const perspective = Number(settings.logo3dPerspective) || 1200
+  const logoSize = compact
+    ? Math.min(Number(settings.logo3dLogoSize) || 88, 56)
+    : Number(settings.logo3dLogoSize) || 88
+  const cardWidth = logoSize * 2.1
+  const animMs = Number(settings.speed) || 700
+  const radius = Number(settings.borderRadius ?? 14)
+  const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+  const sectionBgCustom = String(settings.sectionBackground || "").trim()
+  const sectionBg = sectionBgTransparent
+    ? "transparent"
+    : sectionBgCustom ||
+      "radial-gradient(80% 55% at 50% 0%, #fff 0%, transparent 60%), linear-gradient(180deg, #f5f5f3 0%, #ebebe8 100%)"
+  const transition = `transform ${animMs}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${animMs}ms cubic-bezier(0.22, 1, 0.36, 1)`
+
+  const hasHeader = Boolean(
+    String(settings.sectionSubheading || "").trim() ||
+      String(settings.sectionHeading || "").trim() ||
+      String(settings.sectionDescription || "").trim(),
+  )
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+  const offsetForIndex = (slideIndex, activeIndex) => {
+    const len = slides.length
+    if (settings.infinite === false) return slideIndex - activeIndex
+    let offset = slideIndex - activeIndex
+    const half = Math.floor(len / 2)
+    if (offset > half) offset -= len
+    if (offset < -half) offset += len
+    return offset
+  }
+
+  const transformForOffset = (offset) => {
+    const t = offset
+    const abs = Math.abs(t)
+    const maxAngle = Math.min(rotation, 36)
+    const angleDeg = t * maxAngle
+    const angleRad = (angleDeg * Math.PI) / 180
+    const x = Math.sin(angleRad) * cylinderRadius
+    let z = Math.cos(angleRad) * cylinderRadius - cylinderRadius + (abs === 0 ? 24 : 0)
+    if (abs > 0) z -= depth * 0.15 * Math.min(abs, sideVisibility)
+    const rotateY = -angleDeg
+    let scale = 1
+    if (abs < 1) scale = 1 - (1 - scaleBase) * abs
+    else scale = Math.max(scaleBase - scaleStep * (abs - 1), 0.62)
+    let opacity = 1
+    if (abs === 0) opacity = 1
+    else if (abs > sideVisibility + 0.2) opacity = 0
+    else if (abs > sideVisibility - 0.25) {
+      opacity = clamp(1 - (abs - (sideVisibility - 0.25)) / 0.55, 0, 1)
+    } else {
+      opacity = Math.max(sideOpacity, 1 - abs * ((1 - sideOpacity) / Math.max(sideVisibility, 1)))
+    }
+    if (opacity > 0) opacity = Math.max(opacity, 0.42)
+    return { x, z, rotateY, scale, opacity }
+  }
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 12,
+        background: sectionBg,
+        color: ink,
+        padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.5rem 0.5rem 2.75rem",
+        fontFamily: '"Instrument Sans", "Helvetica Neue", sans-serif',
+      }}
+    >
+      {hasHeader ? (
+        <header style={{ textAlign: "center", marginBottom: compact ? 16 : 28, paddingInline: 12 }}>
+          {settings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "#9a9a94",
+                marginBottom: 8,
+              }}
+            >
+              {settings.sectionSubheading}
+            </div>
+          ) : null}
+          {settings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontSize: compact ? 22 : 32,
+                fontWeight: 600,
+                lineHeight: 1.15,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {settings.sectionHeading}
+            </h2>
+          ) : null}
+          {settings.sectionDescription ? (
+            <p
+              style={{
+                margin: "10px auto 0",
+                maxWidth: 420,
+                fontSize: compact ? 13 : 15,
+                lineHeight: 1.55,
+                color: "#6b6b66",
+              }}
+            >
+              {settings.sectionDescription}
+            </p>
+          ) : null}
+        </header>
+      ) : null}
+
+      <div
+        style={{
+          position: "relative",
+          height: logoSize * 2.4 + (compact ? 64 : 96),
+          perspective,
+          perspectiveOrigin: "50% 50%",
+        }}
+      >
+        {slides.map((slide, i) => {
+          const offset = offsetForIndex(i, index)
+          const abs = Math.abs(offset)
+          if (abs > sideVisibility) return null
+          const t = transformForOffset(offset)
+          const active = offset === 0
+          const brand = slide.heading || slide.title || "Brand"
+          const description = String(slide.description || "").trim()
+          const imageUrl = safeUrl(slide.imageUrl)
+          return (
+            <div
+              key={slide.id || i}
+              onClick={() => !active && onGoTo(i)}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: cardWidth,
+                transform: `translate(-50%, -50%) translate3d(${t.x}px, 0, ${t.z}px) rotateY(${t.rotateY}deg) scale(${t.scale})`,
+                transition,
+                zIndex: 100 - Math.round(abs * 10),
+                opacity: t.opacity,
+                cursor: active ? "default" : "pointer",
+                pointerEvents: t.opacity < 0.05 ? "none" : "auto",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  padding: compact ? "0.85rem 0.7rem" : "1.15rem 1rem",
+                  textAlign: "center",
+                  background: "#fff",
+                  border: "1px solid rgba(22,22,22,0.08)",
+                  borderRadius: radius,
+                  boxShadow: active
+                    ? "0 4px 10px rgba(22,22,22,0.05), 0 18px 36px rgba(22,22,22,0.1)"
+                    : "0 8px 20px rgba(22,22,22,0.06)",
+                  boxSizing: "border-box",
+                }}
+              >
+                <div
+                  style={{
+                    width: logoSize,
+                    height: logoSize * 0.5,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={brand}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontWeight: 700, fontSize: 18 }}>{String(brand).slice(0, 1)}</span>
+                  )}
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: compact ? 12 : 13,
+                    fontWeight: 600,
+                    opacity: active ? 1 : 0.75,
+                  }}
+                >
+                  {brand}
+                </p>
+                {active && description ? (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      lineHeight: 1.4,
+                      color: "#6b6b66",
+                      maxWidth: "16ch",
+                    }}
+                  >
+                    {description}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {(showNav || showDots) && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 14,
+            marginTop: compact ? 8 : 12,
+          }}
+        >
+          {showNav ? (
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                type="button"
+                onClick={onPrev}
+                aria-label="Previous logo"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 42,
+                  height: 42,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(22,22,22,0.08)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: ink,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M10.2 2.2 4.4 8l5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                aria-label="Next logo"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 42,
+                  height: 42,
+                  padding: 0,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(22,22,22,0.08)",
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  cursor: "pointer",
+                  color: ink,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M5.8 2.2 11.6 8l-5.8 5.8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          ) : null}
+          {showDots ? (
+            <div style={{ display: "flex", gap: 6 }}>
+              {slides.map((slide, i) => (
+                <button
+                  key={slide.id || i}
+                  type="button"
+                  aria-label={`Go to logo ${i + 1}`}
+                  onClick={() => onGoTo(i)}
+                  style={{
+                    width: i === index ? 18 : 6,
+                    height: 6,
+                    borderRadius: 99,
+                    border: 0,
+                    padding: 0,
+                    background: i === index ? ink : "rgba(22,22,22,0.18)",
+                    cursor: "pointer",
+                    transition: "width 160ms ease",
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Stacked cards product preview — separate from coverflow / circular / collection */
+function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
+  const ink = "#1c1a17"
+  const surface = "#faf8f5"
+  const showNav = settings.arrows !== false && slides.length > 1
+  const showDots = settings.dots !== false && slides.length > 1
+  const depth = Math.max(2, Number(settings.stackDepth) || 4)
+  const hOffset = Number(settings.stackHorizontalOffset) || 42
+  const vOffset = Number(settings.stackVerticalOffset) || 22
+  const scaleStep = Number(settings.stackScaleDifference) || 0.07
+  const rotation = Number(settings.stackRotation) || 2
+  const depthStep = Number(settings.stackDepthStep) || 56
+  const animMs = Number(settings.speed) || 680
+  const exitDistance = compact ? 280 : 420
+  const exitRotate = 12
+  const cardWidth = compact ? 200 : 280
+  const transition = `transform ${animMs}ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity ${animMs}ms cubic-bezier(0.34, 1.3, 0.64, 1), filter ${animMs}ms cubic-bezier(0.34, 1.3, 0.64, 1)`
+  const salesBadgeMode = String(settings.salesBadgeMode || "automatic").toLowerCase()
+  const salesBadgeFormat = String(settings.salesBadgeFormat || "percent-off").toLowerCase()
+  const salesBadgeText =
+    settings.salesBadgeText == null
+      ? salesBadgeFormat === "custom"
+        ? "{percent}% OFF"
+        : "OFF"
+      : String(settings.salesBadgeText)
+  const salesBadgePadding = Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)
+  const salesBadgeBackground = settings.salesBadgeBackground || "#170f49"
+  const sectionBgTransparent = settings.sectionBackgroundTransparent === true
+  const sectionBgCustom = String(settings.sectionBackground || "").trim()
+  const sectionBg = sectionBgTransparent
+    ? "transparent"
+    : sectionBgCustom ||
+      "radial-gradient(95% 75% at 50% 10%, rgba(255,255,255,0.55) 0%, transparent 55%), linear-gradient(165deg, #efece7 0%, #ddd8d0 100%)"
+
+  const hasHeader = Boolean(
+    String(settings.sectionSubheading || "").trim() ||
+      String(settings.sectionHeading || "").trim() ||
+      String(settings.sectionDescription || "").trim(),
+  )
+
+  const prevIndexRef = useRef(index)
+  const [exiting, setExiting] = useState(null)
+
+  const wrapIndex = (i) => {
+    const len = slides.length
+    if (!len) return 0
+    return ((i % len) + len) % len
+  }
+
+  const stackLevel = (slideIndex, activeIndex) => {
+    const len = slides.length
+    if (!len) return -1
+    const offset =
+      settings.infinite === false
+        ? slideIndex - activeIndex
+        : (slideIndex - activeIndex + len) % len
+    if (offset < 0 || offset >= depth) return -1
+    return offset
+  }
+
+  // Mirror premium-stacked.js goTo + _exitTransform throw-off animation
+  useEffect(() => {
+    const prev = prevIndexRef.current
+    if (prev === index || !slides.length) {
+      prevIndexRef.current = index
+      return undefined
+    }
+    const len = slides.length
+    let forward =
+      settings.infinite === false
+        ? index > prev
+        : (index - prev + len) % len <= Math.floor(len / 2)
+    if (settings.infinite !== false && prev === 0 && index === len - 1) forward = false
+    if (settings.infinite !== false && prev === len - 1 && index === 0) forward = true
+    const exitDir = forward ? -1 : 1
+    setExiting({ slideIndex: prev, direction: exitDir })
+    prevIndexRef.current = index
+    const timer = setTimeout(() => setExiting(null), animMs + 40)
+    return () => clearTimeout(timer)
+  }, [index, slides.length, settings.infinite, animMs])
+
+  const formatBadge = (slide) => {
+    if (salesBadgeMode === "off") return ""
+    const n = Number(slide.saleDiscountPercent)
+    if (!Number.isFinite(n) || n <= 0) return ""
+    const rounded = Math.round(n)
+    if (salesBadgeFormat === "percent") return `${rounded}%`
+    if (salesBadgeFormat === "save-percent") return `Save ${rounded}%`
+    if (salesBadgeFormat === "custom") {
+      return (salesBadgeText.trim() || "{percent}% OFF").replace(/\{percent\}/gi, String(rounded))
+    }
+    return `${rounded}% ${salesBadgeText.trim() || "OFF"}`
+  }
+
+  const transformForLevel = (level) => {
+    const x = level * (compact ? Math.min(hOffset, 28) : hOffset)
+    const y = -level * (compact ? Math.min(vOffset, 16) : vOffset)
+    const z = -level * (compact ? Math.min(depthStep, 44) : depthStep)
+    const scale = Math.max(1 - level * scaleStep, 0.72)
+    const rotateZ = level * rotation
+    const opacity = level === 0 ? 1 : Math.max(0.55, 1 - level * 0.12)
+    return { x, y, z, scale, rotateZ, opacity }
+  }
+
+  const exitTransform = (direction) => ({
+    x: direction * -exitDistance,
+    y: -20,
+    z: 40,
+    scale: 0.96,
+    rotateZ: direction * -exitRotate,
+    opacity: 0,
+  })
+
+  const cssTransform = (t) =>
+    `translate(-50%, -50%) translateX(${t.x}px) translateY(${t.y}px) translateZ(${t.z}px) rotateZ(${t.rotateZ}deg) scale(${t.scale})`
+
+  const renderCard = (slide, i, { level, isExiting }) => {
+    const title = slide.heading || slide.title || "Product"
+    const price = String(slide.description || "").trim()
+    const compareAt = String(slide.compareAtPrice || "").trim()
+    const imageUrl = String(slide.imageUrl || "").trim()
+    const hoverImageUrl = safeUrl(slide.hoverImageUrl)
+    const badge = formatBadge(slide)
+    const active = level === 0 && !isExiting
+    const t = isExiting ? exitTransform(exiting.direction) : transformForLevel(level)
+    return (
+      <div
+        key={slide.id || i}
+        onClick={() => !isExiting && level > 0 && onGoTo(wrapIndex(i))}
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: cardWidth,
+          transform: cssTransform(t),
+          transition,
+          zIndex: isExiting ? 50 : 40 - level,
+          cursor: active || isExiting ? "default" : "pointer",
+          opacity: t.opacity,
+          pointerEvents: isExiting ? "none" : "auto",
+        }}
+      >
+        <div
+          style={{
+            background: surface,
+            border: "1px solid rgba(28,26,23,0.08)",
+            borderRadius: Number(settings.borderRadius ?? 4),
+            overflow: "hidden",
+            boxShadow: active
+              ? "0 28px 56px rgba(28,26,23,0.2)"
+              : "0 14px 32px rgba(28,26,23,0.12)",
+          }}
+        >
+          <div
+            className={hoverImageUrl && active ? "se-preview-pcf-media has-hover" : "se-preview-pcf-media"}
+            style={{ position: "relative", aspectRatio: "4 / 5", background: "#e4dfd7" }}
+          >
+            {badge ? (
+              <span
+                style={{
+                  position: "absolute",
+                  top: 14,
+                  left: 14,
+                  zIndex: 2,
+                  padding: salesBadgePadding,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: surface,
+                  background: salesBadgeBackground,
+                  borderRadius: 1,
+                }}
+              >
+                {badge}
+              </span>
+            ) : null}
+            {imageUrl ? (
+              <img
+                src={safeUrl(imageUrl)}
+                alt={title}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            ) : null}
+            {hoverImageUrl && active ? (
+              <img
+                className="se-preview-pcf-hover-img"
+                src={hoverImageUrl}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  opacity: 0,
+                  transition: "opacity 0.25s ease",
+                  pointerEvents: "none",
+                }}
+              />
+            ) : null}
+            {active &&
+            slide.availableForSale !== false &&
+            Boolean(slide.variantId || slide.ctaUrl || slide.subheading) ? (
+              <span
+                className="se-preview-pcf-quick-add"
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  bottom: 12,
+                  zIndex: 3,
+                  padding: 6,
+                  borderRadius: 4,
+                  background: settings.quickAddBackground || "#170f49",
+                  color: "#fff",
+                  fontSize: Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24),
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  opacity: 0,
+                  transition: "opacity 0.18s ease",
+                }}
+              >
+                {String(settings.quickAddText || "").trim() || "＋"}
+              </span>
+            ) : null}
+          </div>
+          <div
+            style={{
+              padding: compact ? "0.85rem 0.9rem 1rem" : "1rem 1.1rem 1.15rem",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              opacity: active ? 1 : 0.55,
+              pointerEvents: active ? "auto" : "none",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: '"Fraunces", "Times New Roman", serif',
+                fontSize: compact ? 16 : 20,
+                fontWeight: 500,
+                lineHeight: 1.25,
+              }}
+            >
+              {title}
+            </div>
+            {settings.showPrice !== false && price ? (
+              <div style={{ display: "flex", justifyContent: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
+                <span>{price}</span>
+                {compareAt ? (
+                  <span style={{ color: "#9a9288", textDecoration: "line-through", fontWeight: 500 }}>
+                    {compareAt}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {active && settings.showShopNow !== false ? (
+              <span
+                style={{
+                  alignSelf: "center",
+                  marginTop: 4,
+                  minHeight: 36,
+                  padding: "8px 16px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: surface,
+                  background: ink,
+                  border: `1px solid ${ink}`,
+                }}
+              >
+                {slide.ctaText || "View product"}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 12,
+        background: sectionBg,
+        color: ink,
+        padding: compact ? "1.5rem 0.75rem 1.75rem" : "2.25rem 1rem 2.5rem",
+        fontFamily: '"Sora", "Helvetica Neue", sans-serif',
+      }}
+    >
+      {hasHeader ? (
+        <header style={{ textAlign: "center", marginBottom: compact ? 16 : 24, paddingInline: 12 }}>
+          {settings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "#3d5a4c",
+                marginBottom: 8,
+              }}
+            >
+              {settings.sectionSubheading}
+            </div>
+          ) : null}
+          {settings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: '"Fraunces", "Times New Roman", serif',
+                fontSize: compact ? 26 : 36,
+                fontWeight: 500,
+                lineHeight: 1.1,
+              }}
+            >
+              {settings.sectionHeading}
+            </h2>
+          ) : null}
+          {settings.sectionDescription ? (
+            <p style={{ margin: "10px auto 0", maxWidth: 380, fontSize: 14, lineHeight: 1.55, color: "#6a645c" }}>
+              {settings.sectionDescription}
+            </p>
+          ) : null}
+        </header>
+      ) : null}
+
+      <div
+        style={{
+          position: "relative",
+          height: cardWidth * 1.55 + 48,
+          perspective: Number(settings.stackPerspective) || 1200,
+        }}
+      >
+        {slides.map((slide, i) => {
+          if (exiting && exiting.slideIndex === i) {
+            return renderCard(slide, i, { level: 0, isExiting: true })
+          }
+          const level = stackLevel(i, index)
+          if (level < 0) return null
+          return renderCard(slide, i, { level, isExiting: false })
+        })}
+      </div>
+
+      {(showNav || showDots) && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, marginTop: 8 }}>
+          {showNav ? (
+            <div style={{ display: "flex", gap: 11 }}>
+              <button
+                type="button"
+                onClick={onPrev}
+                aria-label="Previous product"
+                style={{
+                  width: 43,
+                  height: 43,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(28,26,23,0.08)",
+                  background: "rgba(250,248,245,0.8)",
+                  cursor: "pointer",
+                  color: ink,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                aria-label="Next product"
+                style={{
+                  width: 43,
+                  height: 43,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(28,26,23,0.08)",
+                  background: "rgba(250,248,245,0.8)",
+                  cursor: "pointer",
+                  color: ink,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          ) : null}
+          {showDots ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+              {slides.map((slide, i) => (
+                <button
+                  key={slide.id || i}
+                  type="button"
+                  aria-label={`Go to product ${i + 1}`}
+                  onClick={() => onGoTo(i)}
+                  style={{
+                    width: i === index ? 20 : 6.5,
+                    height: 6.5,
+                    borderRadius: 999,
+                    border: 0,
+                    padding: 0,
+                    cursor: "pointer",
+                    background: i === index ? ink : "rgba(28,26,23,0.2)",
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Standalone Premium coverflow / circular preview — does NOT reuse ProductCard / NavArrows / Slick dots */
 function PremiumCoverflowPreview({
   slides,
@@ -1287,7 +2835,7 @@ function PremiumCoverflowPreview({
                   }}
                 >
                   <div
-                    className={hoverImageUrl ? "se-preview-pcf-media has-hover" : "se-preview-pcf-media"}
+                    className={hoverImageUrl && active ? "se-preview-pcf-media has-hover" : "se-preview-pcf-media"}
                     style={{ position: "relative", aspectRatio: "4 / 5", background: surfaceAlt, overflow: "hidden" }}
                   >
                     {imageUrl ? (
@@ -1303,7 +2851,7 @@ function PremiumCoverflowPreview({
                         }}
                       />
                     ) : null}
-                    {hoverImageUrl ? (
+                    {hoverImageUrl && active ? (
                       <img
                         className="se-preview-pcf-hover-img"
                         src={hoverImageUrl}
@@ -1328,13 +2876,13 @@ function PremiumCoverflowPreview({
                           top: 10,
                           left: 10,
                           zIndex: 2,
-                          padding: "4px 7px",
+                          padding: Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24),
                           fontSize: 9,
                           fontWeight: 700,
                           letterSpacing: "0.14em",
                           textTransform: "uppercase",
                           color: surface,
-                          background: badge.toLowerCase().includes("sale") || badge.includes("%") ? metal : ink,
+                          background: settings.salesBadgeBackground || "#170f49",
                           borderRadius: 1,
                         }}
                       >
@@ -2222,6 +3770,62 @@ export default function SliderPreview({
           onNext={goNext}
           onGoTo={(i) => setIndex(i)}
           variant={effect === "premium-circular" ? "circular" : "coverflow"}
+        />
+      )
+    }
+
+    if (effect === "premium-stacked") {
+      return (
+        <StackedCarouselPreview
+          slides={visibleSlides}
+          index={index}
+          settings={mergedSettings}
+          compact={compact}
+          onPrev={goPrev}
+          onNext={goNext}
+          onGoTo={(i) => setIndex(i)}
+        />
+      )
+    }
+
+    if (effect === "testimonials-3d") {
+      return (
+        <Testimonials3DPreview
+          slides={visibleSlides}
+          index={index}
+          settings={mergedSettings}
+          compact={compact}
+          onPrev={goPrev}
+          onNext={goNext}
+          onGoTo={(i) => setIndex(i)}
+        />
+      )
+    }
+
+    if (effect === "ugc-feed") {
+      return (
+        <UgcFeedPreview
+          slides={visibleSlides}
+          index={index}
+          settings={mergedSettings}
+          compact={compact}
+          onPrev={goPrev}
+          onNext={goNext}
+          onGoTo={(i) => setIndex(i)}
+        />
+      )
+    }
+
+    if (effect === "logo-3d") {
+      return (
+        <Logo3DPreview
+          slides={visibleSlides}
+          index={index}
+          settings={mergedSettings}
+          compact={compact}
+          onPrev={goPrev}
+          onNext={goNext}
+          onGoTo={(i) => setIndex(i)}
         />
       )
     }

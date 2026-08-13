@@ -61,6 +61,10 @@ export function pickSlidePayload(body = {}) {
     videoProvider: body.videoProvider,
     position: body.position,
     isVisible: body.isVisible,
+    rating: body.rating,
+    verified: body.verified,
+    creatorHandle: body.creatorHandle,
+    avatarUrl: body.avatarUrl,
   }
 }
 
@@ -68,10 +72,24 @@ export function validateSlideInput(payload, { partial = false, sliderType = null
   const errors = []
   const mediaType = payload.mediaType || "image"
   const isAnnouncement = sliderType === "announcement"
+  const allowEmptyImage =
+    isAnnouncement || sliderType === "collection-carousel" || sliderType === "testimonials-3d"
 
   if (!partial || payload.imageUrl !== undefined || payload.videoUrl !== undefined) {
-    if (isAnnouncement) {
-      // Announcement bars are text-first; imageUrl is optional.
+    if (sliderType === "ugc-feed") {
+      const hasImage = payload.imageUrl && String(payload.imageUrl).trim()
+      const hasVideo = payload.videoUrl && String(payload.videoUrl).trim()
+      if (!hasImage && !hasVideo) {
+        errors.push("imageUrl or videoUrl is required for UGC feed slides")
+      }
+      if (hasImage && !isValidHttpUrl(payload.imageUrl) && !String(payload.imageUrl).startsWith("/")) {
+        errors.push("imageUrl must be a valid http(s) URL")
+      }
+      if (hasVideo && !isValidHttpUrl(payload.videoUrl) && !String(payload.videoUrl).startsWith("/")) {
+        errors.push("videoUrl must be a valid http(s) URL")
+      }
+    } else if (allowEmptyImage) {
+      // Text-first / initials / sync-driven cards: imageUrl is optional.
       if (payload.imageUrl && String(payload.imageUrl).trim()) {
         if (!isValidHttpUrl(payload.imageUrl) && !String(payload.imageUrl).startsWith("/")) {
           errors.push("imageUrl must be a valid http(s) URL")
@@ -106,7 +124,7 @@ export function validateSlideInput(payload, { partial = false, sliderType = null
     }
   }
 
-  if (payload.videoUrl && String(payload.videoUrl).trim()) {
+    if (payload.videoUrl && String(payload.videoUrl).trim()) {
     const value = String(payload.videoUrl).trim()
     const isEmbed =
       /youtube\.com|youtu\.be|vimeo\.com/i.test(value) ||
@@ -114,6 +132,12 @@ export function validateSlideInput(payload, { partial = false, sliderType = null
       value.startsWith("/")
     if (!isEmbed) {
       errors.push("videoUrl must be a valid URL")
+    }
+  }
+
+  if (payload.avatarUrl && String(payload.avatarUrl).trim()) {
+    if (!isValidHttpUrl(payload.avatarUrl) && !String(payload.avatarUrl).startsWith("/")) {
+      errors.push("avatarUrl must be a valid http(s) URL")
     }
   }
 

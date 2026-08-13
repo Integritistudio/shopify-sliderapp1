@@ -29,6 +29,26 @@ const Slide = sequelize.define(
       allowNull: true,
       defaultValue: null,
     },
+    rating: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 5,
+    },
+    verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    creatorHandle: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "",
+    },
+    avatarUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "",
+    },
     title: {
       type: DataTypes.TEXT,
       allowNull: false,

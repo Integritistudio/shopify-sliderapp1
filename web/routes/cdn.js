@@ -33,8 +33,24 @@ router.get("/premium-circular.js", corsHeaders, (req, res) => {
   servePublicScript("premium-circular.js", res)
 })
 
+router.get("/premium-stacked.js", corsHeaders, (req, res) => {
+  servePublicScript("premium-stacked.js", res)
+})
+
 router.get("/collection-carousel.js", corsHeaders, (req, res) => {
   servePublicScript("collection-carousel.js", res)
+})
+
+router.get("/testimonials-3d.js", corsHeaders, (req, res) => {
+  servePublicScript("testimonials-3d.js", res)
+})
+
+router.get("/video-ugc-3d.js", corsHeaders, (req, res) => {
+  servePublicScript("video-ugc-3d.js", res)
+})
+
+router.get("/logo-3d.js", corsHeaders, (req, res) => {
+  servePublicScript("logo-3d.js", res)
 })
 
 export default router

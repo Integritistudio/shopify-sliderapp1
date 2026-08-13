@@ -385,6 +385,8 @@ router.post("/sliders/:id/duplicate", async (req, res) => {
           videoProvider: slide.videoProvider || null,
           position: slide.position ?? index,
           isVisible: slide.isVisible !== false,
+          rating: Math.min(5, Math.max(1, Math.round(Number(slide.rating) || 5))),
+          verified: Boolean(slide.verified),
           SliderId: copy.id,
         })),
       )
