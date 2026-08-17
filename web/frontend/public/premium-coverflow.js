@@ -85,7 +85,7 @@
     '.se-pcf__eyebrow {',
     '  display: block;',
     '  margin: 0 0 0.65rem;',
-    '  font-size: 0.6875rem;',
+    '  font-size: var(--cf-section-subheading-size, 0.6875rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.22em;',
     '  text-transform: uppercase;',
@@ -94,7 +94,7 @@
     '.se-pcf__heading {',
     '  margin: 0;',
     '  font-family: var(--cf-font-display);',
-    '  font-size: clamp(2.25rem, 5vw, 3.75rem);',
+    '  font-size: var(--cf-section-heading-size, clamp(2.25rem, 5vw, 3.75rem));',
     '  font-weight: 500;',
     '  line-height: 1.05;',
     '  letter-spacing: -0.02em;',
@@ -103,7 +103,7 @@
     '.se-pcf__subheading {',
     '  margin: 0.85rem auto 0;',
     '  max-width: 32rem;',
-    '  font-size: 0.9375rem;',
+    '  font-size: var(--cf-section-description-size, 0.9375rem);',
     '  line-height: 1.6;',
     '  color: var(--cf-ink-muted);',
     '}',
@@ -329,7 +329,7 @@
     '.se-pcf-card__title {',
     '  margin: 0;',
     '  font-family: var(--cf-font-display);',
-    '  font-size: clamp(1.2rem, 2.4vw, 1.45rem);',
+    '  font-size: var(--cf-slide-title-size, clamp(1.2rem, 2.4vw, 1.45rem));',
     '  font-weight: 500;',
     '  line-height: 1.25;',
     '  letter-spacing: 0.01em;',
@@ -350,7 +350,7 @@
     '  justify-content: center;',
     '  gap: 0.5rem;',
     '  margin: 0;',
-    '  font-size: 0.8125rem;',
+    '  font-size: var(--cf-slide-detail-size, 0.8125rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.04em;',
     '  color: var(--cf-ink);',
@@ -887,12 +887,6 @@
       if (document.hidden) self._stopAutoplay();
       else self._startAutoplay();
     };
-    this.bound.onEnter = function () {
-      self._stopAutoplay();
-    };
-    this.bound.onLeave = function () {
-      self._startAutoplay();
-    };
     this.bound.onPageShow = function (e) {
       if (!e.persisted || self.destroyed) return;
       self.root.classList.add('is-instant');
@@ -914,10 +908,6 @@
     global.addEventListener('resize', this.bound.onResize);
     global.addEventListener('pageshow', this.bound.onPageShow);
     document.addEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.addEventListener('mouseenter', this.bound.onEnter);
-    this.root.addEventListener('mouseleave', this.bound.onLeave);
-    this.root.addEventListener('focusin', this.bound.onEnter);
-    this.root.addEventListener('focusout', this.bound.onLeave);
   };
 
   PremiumCoverflow.prototype._onResize = function () {
@@ -1084,7 +1074,7 @@
   };
 
   PremiumCoverflow.prototype._renderDragPreview = function (deltaX) {
-    var progress = deltaX / (this.runtime.slideSpacing || 280);
+    var progress = -deltaX / (this.runtime.slideSpacing || 280);
     var self = this;
     this.slides.forEach(function (slide, i) {
       var offset = self._offsetForIndex(i, self.index);
@@ -1205,7 +1195,7 @@
   PremiumCoverflow.prototype._startAutoplay = function () {
     var self = this;
     this._stopAutoplay();
-    if (!this.runtime.autoplay || this.slides.length < 2 || prefersReducedMotion()) return;
+    if (!this.runtime.autoplay || this.slides.length < 2) return;
     if (document.hidden) return;
     this.autoplayTimer = setInterval(function () {
       self.next();
@@ -1259,10 +1249,6 @@
     global.removeEventListener('resize', this.bound.onResize);
     global.removeEventListener('pageshow', this.bound.onPageShow);
     document.removeEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.removeEventListener('mouseenter', this.bound.onEnter);
-    this.root.removeEventListener('mouseleave', this.bound.onLeave);
-    this.root.removeEventListener('focusin', this.bound.onEnter);
-    this.root.removeEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       slide.style.transform = '';

@@ -27,6 +27,7 @@ const CAPABILITY_DEFAULTS = {
   productSource: false,
   collectionSource: false,
   productTypography: false,
+  utilityTypography: false,
   shopNowButton: false,
   atcButton: false,
   ctaPrimary: false,
@@ -169,6 +170,7 @@ const TYPE_CAPABILITIES = {
     width: true,
     slidesToShow: true,
     mobileSlides: true,
+    utilityTypography: true,
   }),
 
   "logo-grid": caps({
@@ -187,6 +189,7 @@ const TYPE_CAPABILITIES = {
     height: true,
     borderRadius: true,
     objectFit: true,
+    utilityTypography: true,
   }),
 
   announcement: caps({
@@ -198,6 +201,7 @@ const TYPE_CAPABILITIES = {
     height: true,
     ctaBackgroundOnly: true,
     slideCtaFields: true,
+    utilityTypography: true,
   }),
 
   marquee: caps({
@@ -215,6 +219,7 @@ const TYPE_CAPABILITIES = {
     mobileHeroText: true,
     mobileCtaFont: true,
     slideCtaFields: true,
+    utilityTypography: true,
   }),
 }
 

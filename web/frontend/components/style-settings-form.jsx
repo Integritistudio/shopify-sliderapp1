@@ -6,9 +6,11 @@ import { useAppBridge } from "@shopify/app-bridge-react"
 import {
   HERO_ANIMATION_OPTIONS,
   HERO_CONTENT_POSITION_OPTIONS,
+  HERO_SLIDER_TYPES,
 } from "../utils/sliderConfig"
 import { getSettingsCapabilities } from "../utils/settingsVisibility"
 import SeSelect from "./se-select"
+import { TYPE3D_FONT_SOURCE_OPTIONS, type3dSizeFields, getUtilityTypographyRoles } from "../utils/type3dTypography"
 
 function clampNum(value, min, max, fallback) {
   if (value === "" || value === null || value === undefined) return fallback
@@ -76,6 +78,481 @@ function pickerValue(value, fallback) {
   return fallback
 }
 
+function Type3dFontSourceField({ label, sourceKey, customKey, settings, update, disabled, helpText }) {
+  const source = settings[sourceKey] || "slider"
+  return (
+    <div>
+      <SeSelect
+        label={label}
+        options={TYPE3D_FONT_SOURCE_OPTIONS}
+        value={source}
+        onChange={(value) => update(sourceKey, value)}
+        helpText={helpText}
+        disabled={disabled}
+      />
+      {source === "custom" ? (
+        <div style={{ marginTop: "0.65rem" }}>
+          <TextField
+            label="Font name"
+            value={settings[customKey] || ""}
+            onChange={(value) => update(customKey, value)}
+            placeholder="Playfair Display"
+            helpText="A Google Font name, or a font already loaded on your theme"
+            disabled={disabled}
+            autoComplete="off"
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function Type3dTypographyFields({ sliderType, settings, update, disabled }) {
+  const sizeFields = type3dSizeFields(sliderType)
+  const stacked = sliderType === "premium-stacked"
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 22,
+        width: "100%",
+        paddingTop: 4,
+        paddingBottom: 4,
+      }}
+    >
+      <div>
+        <Text variant="headingSm" as="h3">
+          Typography
+        </Text>
+        <div style={{ marginTop: 4, marginBottom: 12 }}>
+          <Text variant="bodySm" color="subdued">
+            Desktop sizes. Text scales down on smaller screens.
+          </Text>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "1.5rem 1.5rem",
+            width: "100%",
+          }}
+        >
+          <Type3dFontSourceField
+            label="Heading font"
+            sourceKey="type3dHeadingFontSource"
+            customKey="type3dHeadingFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText={
+              stacked
+                ? "Left-column heading and product titles"
+                : "Section heading and slide titles"
+            }
+          />
+          <Type3dFontSourceField
+            label="Body font"
+            sourceKey="type3dBodyFontSource"
+            customKey="type3dBodyFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText={
+              stacked
+                ? "Subheading, description, price, and buttons"
+                : "Subheading, description, and supporting slide text"
+            }
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "1.25rem 1.5rem",
+          width: "100%",
+        }}
+      >
+        {sizeFields.map((field) => (
+          <ClampedNumberField
+            key={field.key}
+            label={field.label}
+            value={settings[field.key] ?? field.fallback}
+            min={field.min}
+            max={field.max}
+            fallback={field.fallback}
+            onChange={(value) => update(field.key, value)}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function HeroTypographyFields({ settings, update, disabled }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 22,
+        width: "100%",
+        paddingTop: 4,
+        paddingBottom: 4,
+      }}
+    >
+      <div>
+        <Text variant="headingSm" as="h3">
+          Typography
+        </Text>
+        <div style={{ marginTop: 4, marginBottom: 12 }}>
+          <Text variant="bodySm" color="subdued">
+            One font and size for each text role. Desktop uses the size you set; mobile scales with clamp.
+          </Text>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "1.5rem 1.5rem",
+            width: "100%",
+          }}
+        >
+          <Type3dFontSourceField
+            label="Heading font"
+            sourceKey="heroHeadingFontSource"
+            customKey="heroHeadingFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Slide title"
+          />
+          <Type3dFontSourceField
+            label="Subheading font"
+            sourceKey="heroSubheadingFontSource"
+            customKey="heroSubheadingFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Eyebrow above the title"
+          />
+          <Type3dFontSourceField
+            label="Description font"
+            sourceKey="heroDescriptionFontSource"
+            customKey="heroDescriptionFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Supporting copy"
+          />
+          <Type3dFontSourceField
+            label="Button font"
+            sourceKey="heroCtaFontSource"
+            customKey="heroCtaFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Call-to-action"
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "1.25rem 1.5rem",
+          width: "100%",
+        }}
+      >
+        <ClampedNumberField
+          label="Heading size (px)"
+          value={settings.headingFontSize ?? 42}
+          min={18}
+          max={96}
+          fallback={42}
+          onChange={(value) => update("headingFontSize", value)}
+          disabled={disabled}
+        />
+        <ClampedNumberField
+          label="Subheading size (px)"
+          value={settings.subheadingFontSize ?? 12}
+          min={10}
+          max={28}
+          fallback={12}
+          onChange={(value) => update("subheadingFontSize", value)}
+          disabled={disabled}
+        />
+        <ClampedNumberField
+          label="Description size (px)"
+          value={settings.descriptionFontSize ?? 16}
+          min={12}
+          max={32}
+          fallback={16}
+          onChange={(value) => update("descriptionFontSize", value)}
+          disabled={disabled}
+        />
+        <ClampedNumberField
+          label="Button size (px)"
+          value={settings.ctaFontSize ?? 16}
+          min={10}
+          max={24}
+          fallback={16}
+          onChange={(value) => update("ctaFontSize", value)}
+          disabled={disabled}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ProductTypographyFields({ settings, update, onSettingsChange, disabled }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 22,
+        width: "100%",
+        paddingTop: 4,
+        paddingBottom: 4,
+      }}
+    >
+      <div>
+        <Text variant="headingSm" as="h3">
+          Typography
+        </Text>
+        <div style={{ marginTop: 4, marginBottom: 12 }}>
+          <Text variant="bodySm" color="subdued">
+            One font and size for each text role. Desktop uses the size you set; mobile scales with clamp.
+          </Text>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "1.5rem 1.5rem",
+            width: "100%",
+          }}
+        >
+          <Type3dFontSourceField
+            label="Section heading font"
+            sourceKey="productSectionFontSource"
+            customKey="productSectionFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Heading above the product cards"
+          />
+          <Type3dFontSourceField
+            label="Product title font"
+            sourceKey="productTitleFontSource"
+            customKey="productTitleFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Name on each card"
+          />
+          <Type3dFontSourceField
+            label="Price font"
+            sourceKey="productPriceFontSource"
+            customKey="productPriceFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Price under the title"
+          />
+          <Type3dFontSourceField
+            label="Button font"
+            sourceKey="productCtaFontSource"
+            customKey="productCtaFontCustom"
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            helpText="Shop now and Add to cart"
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "1.25rem 1.5rem",
+          width: "100%",
+        }}
+      >
+        <ClampedNumberField
+          label="Section heading size (px)"
+          value={settings.sectionHeadingFontSize ?? 28}
+          min={16}
+          max={48}
+          fallback={28}
+          onChange={(value) => update("sectionHeadingFontSize", value)}
+          disabled={disabled}
+        />
+        <ClampedNumberField
+          label="Product title size (px)"
+          value={settings.productTitleFontSize ?? 16}
+          min={12}
+          max={28}
+          fallback={16}
+          onChange={(value) => update("productTitleFontSize", value)}
+          disabled={disabled}
+        />
+        <ClampedNumberField
+          label="Price size (px)"
+          value={settings.productPriceFontSize ?? 14}
+          min={10}
+          max={24}
+          fallback={14}
+          onChange={(value) => update("productPriceFontSize", value)}
+          disabled={disabled}
+        />
+        <ClampedNumberField
+          label="Button size (px)"
+          value={settings.ctaFontSize ?? settings.atcFontSize ?? 16}
+          min={10}
+          max={24}
+          fallback={16}
+          onChange={(value) => {
+            onSettingsChange({
+              ...settings,
+              ctaFontSize: value,
+              atcFontSize: value,
+            })
+          }}
+          disabled={disabled}
+        />
+      </div>
+    </div>
+  )
+}
+
+function UtilityTypographyFields({ sliderType, settings, update, disabled }) {
+  const roles = getUtilityTypographyRoles(sliderType)
+  if (!roles.length) return null
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 22,
+        width: "100%",
+        paddingTop: 4,
+        paddingBottom: 4,
+      }}
+    >
+      <div>
+        <Text variant="headingSm" as="h3">
+          Typography
+        </Text>
+        <div style={{ marginTop: 4, marginBottom: 12 }}>
+          <Text variant="bodySm" color="subdued">
+            One font and size for each text role. Desktop uses the size you set; mobile scales with clamp.
+          </Text>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "1.5rem 1.5rem",
+            width: "100%",
+          }}
+        >
+          {roles.map((role) => (
+            <Type3dFontSourceField
+              key={role.sourceKey}
+              label={role.label}
+              sourceKey={role.sourceKey}
+              customKey={role.customKey}
+              settings={settings}
+              update={update}
+              disabled={disabled}
+              helpText={role.helpText}
+            />
+          ))}
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "1.25rem 1.5rem",
+          width: "100%",
+        }}
+      >
+        {roles.map((role) => (
+          <ClampedNumberField
+            key={role.sizeKey}
+            label={role.sizeLabel}
+            value={settings[role.sizeKey] ?? role.fallback}
+            min={role.min}
+            max={role.max}
+            fallback={role.fallback}
+            onChange={(value) => update(role.sizeKey, value)}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SplitVisualSideField({ settings, update, disabled, visualLabel }) {
+  return (
+    <div style={{ gridColumn: "1 / -1" }}>
+      <SeSelect
+        label="Image position"
+        options={[
+          { label: "Right", value: "right" },
+          { label: "Left", value: "left" },
+        ]}
+        value={settings.splitVisualSide === "left" ? "left" : "right"}
+        onChange={(value) => update("splitVisualSide", value)}
+        helpText={`Place the ${visualLabel} on the left or right of the text. Default is right.`}
+        disabled={disabled}
+      />
+    </div>
+  )
+}
+
+function LeftColumnSection({ title, help, children }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        width: "100%",
+        paddingTop: 4,
+        paddingBottom: 4,
+      }}
+    >
+      <div>
+        <Text as="h3" variant="headingSm">
+          {title}
+        </Text>
+        <div style={{ marginTop: 6 }}>
+          <Text variant="bodySm" color="subdued">
+            {help}
+          </Text>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "1.25rem 1.5rem",
+          width: "100%",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function ColorField({ label, value, fallback, onChange, disabled }) {
   return (
     <div>
@@ -139,6 +616,9 @@ export default function StyleSettingsForm({
   const isTestimonials3d = sliderType === "testimonials-3d"
   const isUgcFeed = sliderType === "ugc-feed"
   const isLogo3d = sliderType === "logo-3d"
+  const isHeroCategory = HERO_SLIDER_TYPES.includes(sliderType)
+  const isType3d =
+    isPremiumCoverflow || isCollectionCarousel || isTestimonials3d || isUgcFeed || isLogo3d
   const heightMin = sliderType === "announcement" ? 36 : sliderType === "logo-grid" ? 80 : 160
 
   const update = (key, value) => {
@@ -403,7 +883,20 @@ export default function StyleSettingsForm({
         />
       ) : null}
 
-      {show.heroText ? (
+      {isHeroCategory ? (
+        <HeroTypographyFields settings={settings} update={update} disabled={disabled} />
+      ) : null}
+
+      {show.utilityTypography && show.heroText ? (
+        <UtilityTypographyFields
+          sliderType={sliderType}
+          settings={settings}
+          update={update}
+          disabled={disabled}
+        />
+      ) : null}
+
+      {show.heroText && !isHeroCategory && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Heading size (px)"
@@ -426,7 +919,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {show.heroText ? (
+      {show.heroText && !isHeroCategory && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Description size (px)"
@@ -444,6 +937,19 @@ export default function StyleSettingsForm({
             fallback="#ffffff"
             disabled={disabled}
           />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.heroText && isHeroCategory ? (
+        <FormLayout.Group>
+          <ColorField
+            label="Description color"
+            value={settings.descriptionColor || "#ffffff"}
+            onChange={(value) => update("descriptionColor", value)}
+            fallback="#ffffff"
+            disabled={disabled}
+          />
+          <div />
         </FormLayout.Group>
       ) : null}
 
@@ -1142,7 +1648,7 @@ export default function StyleSettingsForm({
             </Text>
             <div style={{ marginTop: 4, marginBottom: 12 }}>
               <Text variant="bodySm" color="subdued">
-                Autoplay controls video playback on the active card (not carousel rotation).
+                Video on the active card plays automatically. Use Autoplay above to rotate the carousel.
               </Text>
             </div>
             <Stack spacing="tight">
@@ -1159,13 +1665,6 @@ export default function StyleSettingsForm({
                 disabled={disabled}
               >
                 Media controls {settings.ugcShowMediaControls === false ? "Off" : "On"}
-              </Button>
-              <Button
-                pressed={Boolean(settings.ugcCarouselAutoplay)}
-                onClick={() => update("ugcCarouselAutoplay", !settings.ugcCarouselAutoplay)}
-                disabled={disabled}
-              >
-                Carousel autoplay {settings.ugcCarouselAutoplay ? "On" : "Off"}
               </Button>
             </Stack>
           </div>
@@ -1356,7 +1855,109 @@ export default function StyleSettingsForm({
       ) : null}
 
       {show.productSource ? (
-        isPremiumCoverflow ? (
+        isPremiumStacked ? (
+          <>
+            <LeftColumnSection
+              title="Left column (optional)"
+              help="Leave all fields empty to keep product cards centered. If any field is filled, cards sit beside the text."
+            >
+              <SplitVisualSideField
+                settings={settings}
+                update={update}
+                disabled={disabled}
+                visualLabel="product cards"
+              />
+              <TextField
+                label="Subheading"
+                value={settings.sectionSubheading || ""}
+                onChange={(value) => update("sectionSubheading", value)}
+                placeholder="New season"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Heading"
+                value={settings.sectionHeading || ""}
+                onChange={(value) => update("sectionHeading", value)}
+                placeholder="The Edit"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <div style={{ gridColumn: "1 / -1" }}>
+                <TextField
+                  label="Description"
+                  value={settings.sectionDescription || ""}
+                  onChange={(value) => update("sectionDescription", value)}
+                  placeholder="A curated selection of signature pieces…"
+                  multiline={3}
+                  disabled={disabled}
+                  autoComplete="off"
+                />
+              </div>
+              <TextField
+                label="Button text"
+                value={settings.stackIntroCtaText || ""}
+                onChange={(value) => update("stackIntroCtaText", value)}
+                placeholder="Shop the collection"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <TextField
+                label="Button URL"
+                value={settings.stackIntroCtaUrl || ""}
+                onChange={(value) => update("stackIntroCtaUrl", value)}
+                placeholder="/collections/all"
+                disabled={disabled}
+                autoComplete="off"
+              />
+              <ClampedNumberField
+                label="Heading size (desktop px)"
+                value={settings.stackIntroHeadingSize ?? 48}
+                min={18}
+                max={80}
+                fallback={48}
+                onChange={(value) => update("stackIntroHeadingSize", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Subheading size (desktop px)"
+                value={settings.stackIntroSubheadingSize ?? 11}
+                min={8}
+                max={28}
+                fallback={11}
+                onChange={(value) => update("stackIntroSubheadingSize", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Description size (desktop px)"
+                value={settings.stackIntroDescriptionSize ?? 14}
+                min={10}
+                max={32}
+                fallback={14}
+                onChange={(value) => update("stackIntroDescriptionSize", value)}
+                disabled={disabled}
+              />
+              <ClampedNumberField
+                label="Button text size (desktop px)"
+                value={settings.stackIntroCtaSize ?? 11}
+                min={8}
+                max={22}
+                fallback={11}
+                onChange={(value) => update("stackIntroCtaSize", value)}
+                disabled={disabled}
+              />
+            </LeftColumnSection>
+            {settings.sectionBackgroundTransparent === true ? null : (
+              <ColorField
+                label="Section background (empty = default beige)"
+                value={settings.sectionBackground || ""}
+                onChange={(value) => update("sectionBackground", value)}
+                fallback="#ece8e2"
+                disabled={disabled}
+              />
+            )}
+          </>
+        ) : isPremiumCoverflow ? (
           <>
             <div
               style={{
@@ -1414,6 +2015,15 @@ export default function StyleSettingsForm({
             autoComplete="off"
           />
         )
+      ) : null}
+
+      {isType3d ? (
+        <Type3dTypographyFields
+          sliderType={sliderType}
+          settings={settings}
+          update={update}
+          disabled={disabled}
+        />
       ) : null}
 
       {show.productSource && collectionsError ? (
@@ -1740,19 +2350,26 @@ export default function StyleSettingsForm({
         </div>
       ) : null}
 
-      {show.productTypography ? <Text variant="headingSm">Product typography</Text> : null}
+      {show.productTypography ? (
+        <ProductTypographyFields
+          settings={settings}
+          update={update}
+          onSettingsChange={onSettingsChange}
+          disabled={disabled}
+        />
+      ) : null}
+
+      {show.utilityTypography && !show.heroText ? (
+        <UtilityTypographyFields
+          sliderType={sliderType}
+          settings={settings}
+          update={update}
+          disabled={disabled}
+        />
+      ) : null}
 
       {show.productTypography ? (
         <FormLayout.Group>
-          <ClampedNumberField
-            label="Section heading size (px)"
-            value={settings.sectionHeadingFontSize ?? 28}
-            min={16}
-            max={48}
-            fallback={28}
-            onChange={(value) => update("sectionHeadingFontSize", value)}
-            disabled={disabled}
-          />
           <ClampedNumberField
             label="Space under heading (px)"
             value={settings.sectionHeadingGap ?? 16}
@@ -1762,34 +2379,6 @@ export default function StyleSettingsForm({
             onChange={(value) => update("sectionHeadingGap", value)}
             disabled={disabled}
           />
-        </FormLayout.Group>
-      ) : null}
-
-      {show.productTypography ? (
-        <FormLayout.Group>
-          <ClampedNumberField
-            label="Product title size (px)"
-            value={settings.productTitleFontSize ?? 16}
-            min={12}
-            max={28}
-            fallback={16}
-            onChange={(value) => update("productTitleFontSize", value)}
-            disabled={disabled}
-          />
-          <ClampedNumberField
-            label="Price size (px)"
-            value={settings.productPriceFontSize ?? 14}
-            min={10}
-            max={24}
-            fallback={14}
-            onChange={(value) => update("productPriceFontSize", value)}
-            disabled={disabled}
-          />
-        </FormLayout.Group>
-      ) : null}
-
-      {show.productTypography ? (
-        <FormLayout.Group>
           <ClampedNumberField
             label="Content gap (px)"
             value={settings.productContentGap ?? 8}
@@ -1799,6 +2388,11 @@ export default function StyleSettingsForm({
             onChange={(value) => update("productContentGap", value)}
             disabled={disabled}
           />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.productTypography ? (
+        <FormLayout.Group>
           <ClampedNumberField
             label="Pagination gap (px)"
             value={settings.paginationGap ?? 16}
@@ -1816,6 +2410,99 @@ export default function StyleSettingsForm({
             disabled={disabled || settings.productCardTransparent === true}
           />
         </FormLayout.Group>
+      ) : null}
+
+      {isStories ? (
+        <LeftColumnSection
+          title="Left column (optional)"
+          help="Leave all fields empty to keep story rings centered. If any field is filled, rings sit beside the text."
+        >
+          <SplitVisualSideField
+            settings={settings}
+            update={update}
+            disabled={disabled}
+            visualLabel="story rings"
+          />
+          <TextField
+            label="Subheading"
+            value={settings.sectionSubheading || ""}
+            onChange={(value) => update("sectionSubheading", value)}
+            placeholder="New season"
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <TextField
+            label="Heading"
+            value={settings.sectionHeading || ""}
+            onChange={(value) => update("sectionHeading", value)}
+            placeholder="The stories"
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <div style={{ gridColumn: "1 / -1" }}>
+            <TextField
+              label="Description"
+              value={settings.sectionDescription || ""}
+              onChange={(value) => update("sectionDescription", value)}
+              placeholder="A look behind the latest drop…"
+              multiline={3}
+              disabled={disabled}
+              autoComplete="off"
+            />
+          </div>
+          <TextField
+            label="Button text"
+            value={settings.storiesIntroCtaText || ""}
+            onChange={(value) => update("storiesIntroCtaText", value)}
+            placeholder="Shop the look"
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <TextField
+            label="Button URL"
+            value={settings.storiesIntroCtaUrl || ""}
+            onChange={(value) => update("storiesIntroCtaUrl", value)}
+            placeholder="/collections/all"
+            disabled={disabled}
+            autoComplete="off"
+          />
+          <ClampedNumberField
+            label="Heading size (desktop px)"
+            value={settings.storiesIntroHeadingSize ?? 48}
+            min={18}
+            max={80}
+            fallback={48}
+            onChange={(value) => update("storiesIntroHeadingSize", value)}
+            disabled={disabled}
+          />
+          <ClampedNumberField
+            label="Subheading size (desktop px)"
+            value={settings.storiesIntroSubheadingSize ?? 11}
+            min={8}
+            max={28}
+            fallback={11}
+            onChange={(value) => update("storiesIntroSubheadingSize", value)}
+            disabled={disabled}
+          />
+          <ClampedNumberField
+            label="Description size (desktop px)"
+            value={settings.storiesIntroDescriptionSize ?? 14}
+            min={10}
+            max={32}
+            fallback={14}
+            onChange={(value) => update("storiesIntroDescriptionSize", value)}
+            disabled={disabled}
+          />
+          <ClampedNumberField
+            label="Button text size (desktop px)"
+            value={settings.storiesIntroCtaSize ?? 11}
+            min={8}
+            max={22}
+            fallback={11}
+            onChange={(value) => update("storiesIntroCtaSize", value)}
+            disabled={disabled}
+          />
+        </LeftColumnSection>
       ) : null}
 
       {showLayoutRow ? (
@@ -2382,7 +3069,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {show.ctaSizing && show.atcButton ? (
+      {show.ctaSizing && show.atcButton && !isHeroCategory && !show.productTypography && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Buttons font size (px)"
@@ -2417,7 +3104,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {show.ctaSizing && !show.atcButton ? (
+      {show.ctaSizing && !show.atcButton && !isHeroCategory && !show.productTypography && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Buttons font size (px)"
@@ -2437,6 +3124,31 @@ export default function StyleSettingsForm({
             onChange={(value) => update("ctaPadding", value)}
             disabled={disabled}
           />
+        </FormLayout.Group>
+      ) : null}
+
+      {show.ctaSizing && (isHeroCategory || show.productTypography || show.utilityTypography) ? (
+        <FormLayout.Group>
+          <ClampedNumberField
+            label="Buttons padding (px)"
+            value={settings.ctaPadding ?? settings.atcPadding ?? 12}
+            min={4}
+            max={36}
+            fallback={12}
+            onChange={(next) => {
+              if (show.atcButton) {
+                onSettingsChange({
+                  ...settings,
+                  ctaPadding: next,
+                  atcPadding: next,
+                })
+              } else {
+                update("ctaPadding", next)
+              }
+            }}
+            disabled={disabled}
+          />
+          <div />
         </FormLayout.Group>
       ) : null}
 
@@ -2541,7 +3253,7 @@ export default function StyleSettingsForm({
         )
       ) : null}
 
-      {show.mobileHeroText ? (
+      {show.mobileHeroText && !isHeroCategory && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile heading size (px)"
@@ -2564,7 +3276,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {show.mobileHeroText && show.mobileCtaFont ? (
+      {show.mobileHeroText && show.mobileCtaFont && !isHeroCategory && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile description size (px)"
@@ -2587,7 +3299,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {show.mobileHeroText && !show.mobileCtaFont ? (
+      {show.mobileHeroText && !show.mobileCtaFont && !isHeroCategory && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile description size (px)"
@@ -2602,7 +3314,7 @@ export default function StyleSettingsForm({
         </FormLayout.Group>
       ) : null}
 
-      {!show.mobileHeroText && show.mobileCtaFont ? (
+      {!show.mobileHeroText && show.mobileCtaFont && !show.productTypography && !show.utilityTypography ? (
         <FormLayout.Group>
           <ClampedNumberField
             label="Mobile button size (px)"

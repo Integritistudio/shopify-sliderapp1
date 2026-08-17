@@ -63,6 +63,119 @@
     '  margin-inline: auto;',
     '}',
     '',
+    '.stacked-carousel__main {',
+    '  min-width: 0;',
+    '}',
+    '',
+    '/* Optional left-column copy — only when merchant adds heading / subheading / desc / button */',
+    '.stacked-carousel--split .stacked-carousel__inner {',
+    '  width: min(calc(100% - 3rem), 1200px);',
+    '  max-width: 1200px;',
+    '  margin-inline: auto;',
+    '  padding-inline: 0;',
+    '  display: grid;',
+    '  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);',
+    '  column-gap: clamp(1.25rem, 4vw, 3rem);',
+    '  row-gap: 1.5rem;',
+    '  align-items: center;',
+    '  justify-items: stretch;',
+    '  box-sizing: border-box;',
+    '  overflow: hidden;',
+    '}',
+    '',
+    '.stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__copy {',
+    '  order: 2;',
+    '  justify-self: end;',
+    '}',
+    '',
+    '.stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__main {',
+    '  order: 1;',
+    '}',
+    '',
+    '.stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__live {',
+    '  order: 3;',
+    '}',
+    '',
+    '.stacked-carousel__copy {',
+    '  display: none;',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__copy {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  align-items: flex-start;',
+    '  justify-self: start;',
+    '  text-align: left;',
+    '  width: 100%;',
+    '  max-width: 28rem;',
+    '  margin: 0;',
+    '  z-index: 2;',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__main {',
+    '  display: flex;',
+    '  flex-direction: column;',
+    '  align-items: center;',
+    '  min-width: 0;',
+    '  width: 100%;',
+    '  overflow: hidden;',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__stage {',
+    '  width: 100%;',
+    '  max-width: 100%;',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__controls {',
+    '  width: 100%;',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__eyebrow {',
+    '  margin-bottom: 0.7rem;',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__heading {',
+    '  font-size: var(--sc-intro-heading-size, 3rem);',
+    '}',
+    '',
+    '.stacked-carousel--split .stacked-carousel__subheading {',
+    '  margin: 0.85rem 0 0;',
+    '  max-width: none;',
+    '}',
+    '',
+    '.stacked-carousel__intro-cta {',
+    '  display: inline-flex;',
+    '  align-items: center;',
+    '  justify-content: center;',
+    '  margin-top: 1.25rem;',
+    '  min-height: 2.75rem;',
+    '  padding: 0.7rem 1.55rem;',
+    '  font-family: var(--sc-font-body);',
+    '  font-size: var(--sc-intro-cta-size, 0.6875rem);',
+    '  font-weight: 700;',
+    '  letter-spacing: 0.14em;',
+    '  text-transform: uppercase;',
+    '  text-decoration: none;',
+    '  color: var(--sc-surface);',
+    '  background: var(--sc-ink);',
+    '  border: 1px solid var(--sc-ink);',
+    '  border-radius: 1px;',
+    '  cursor: pointer;',
+    '  transition: background-color 200ms ease, color 200ms ease;',
+    '}',
+    '',
+    '.stacked-carousel__intro-cta:hover,',
+    '.stacked-carousel__intro-cta:focus-visible {',
+    '  background: transparent;',
+    '  color: var(--sc-ink);',
+    '  outline: none;',
+    '}',
+    '',
+    '.stacked-carousel__intro-cta:focus-visible {',
+    '  outline: 2px solid var(--sc-accent);',
+    '  outline-offset: 3px;',
+    '}',
+    '',
     '/* Header */',
     '.stacked-carousel__header {',
     '  text-align: center;',
@@ -72,7 +185,7 @@
     '.stacked-carousel__eyebrow {',
     '  display: block;',
     '  margin: 0 0 0.55rem;',
-    '  font-size: 0.6875rem;',
+    '  font-size: var(--sc-intro-subheading-size, 0.6875rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.22em;',
     '  text-transform: uppercase;',
@@ -82,7 +195,7 @@
     '.stacked-carousel__heading {',
     '  margin: 0;',
     '  font-family: var(--sc-font-display);',
-    '  font-size: clamp(2rem, 4.5vw, 3.25rem);',
+    '  font-size: var(--sc-intro-heading-size, 3rem);',
     '  font-weight: 500;',
     '  line-height: 1.1;',
     '  letter-spacing: -0.02em;',
@@ -92,7 +205,7 @@
     '.stacked-carousel__subheading {',
     '  margin: 0.75rem auto 0;',
     '  max-width: 28rem;',
-    '  font-size: 0.9rem;',
+    '  font-size: var(--sc-intro-description-size, 0.9rem);',
     '  line-height: 1.6;',
     '  color: var(--sc-ink-muted);',
     '}',
@@ -317,7 +430,7 @@
     '.stacked-card__title {',
     '  margin: 0;',
     '  font-family: var(--sc-font-display);',
-    '  font-size: clamp(1.2rem, 2.4vw, 1.5rem);',
+    '  font-size: var(--sc-slide-title-size, clamp(1.2rem, 2.4vw, 1.5rem));',
     '  font-weight: 500;',
     '  line-height: 1.25;',
     '  color: var(--sc-ink);',
@@ -340,7 +453,7 @@
     '  justify-content: center;',
     '  gap: 0.45rem;',
     '  margin: 0;',
-    '  font-size: 0.8125rem;',
+    '  font-size: var(--sc-slide-detail-size, 0.8125rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.03em;',
     '  color: var(--sc-ink);',
@@ -562,10 +675,76 @@
     '  border: 0;',
     '}',
     '',
+    '.stacked-carousel--split .stacked-carousel__live {',
+    '  grid-column: 1 / -1;',
+    '}',
+    '',
     '/* Responsive */',
     '@media (max-width: 989px) {',
     '  .stacked-carousel {',
     '    --sc-card-width: min(72vw, 340px);',
+    '  }',
+    '',
+    '  .stacked-carousel--split .stacked-carousel__inner {',
+    '    grid-template-columns: 1fr;',
+    '    width: min(calc(100% - 2.5rem), 1200px);',
+    '    margin-inline: auto;',
+    '    padding-inline: 0;',
+    '  }',
+    '',
+    '  .stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__copy,',
+    '  .stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__main,',
+    '  .stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__live {',
+    '    order: unset;',
+    '  }',
+    '',
+    '  .stacked-carousel--split.stacked-carousel--visual-left .stacked-carousel__copy {',
+    '    justify-self: unset;',
+    '  }',
+    '',
+    '  .stacked-carousel--split .stacked-carousel__copy {',
+    '    max-width: none;',
+    '  }',
+    '',
+    '  .stacked-carousel--split .stacked-carousel__main,',
+    '  .stacked-carousel--split .stacked-carousel__stage,',
+    '  .stacked-carousel--split .stacked-carousel__controls {',
+    '    width: 100%;',
+    '    align-items: center;',
+    '  }',
+    '',
+    '  .stacked-carousel--split .stacked-carousel__copy {',
+    '    align-items: center;',
+    '    text-align: center;',
+    '    max-width: none;',
+    '    margin-inline: auto;',
+    '  }',
+    '',
+    '  .stacked-carousel--split .stacked-carousel__subheading {',
+    '    margin-inline: auto;',
+    '  }',
+    '',
+    '  .stacked-carousel--split .stacked-carousel__intro-cta {',
+    '    align-self: center;',
+    '  }',
+    '',
+    '  .stacked-carousel__eyebrow,',
+    '  .stacked-carousel--split .stacked-carousel__eyebrow {',
+    '    font-size: clamp(0.625rem, 2.8vw, var(--sc-intro-subheading-size, 0.8125rem));',
+    '  }',
+    '',
+    '  .stacked-carousel__heading,',
+    '  .stacked-carousel--split .stacked-carousel__heading {',
+    '    font-size: clamp(1.75rem, 7vw, var(--sc-intro-heading-size, 2.5rem));',
+    '  }',
+    '',
+    '  .stacked-carousel__subheading,',
+    '  .stacked-carousel--split .stacked-carousel__subheading {',
+    '    font-size: clamp(0.8125rem, 3.4vw, var(--sc-intro-description-size, 1rem));',
+    '  }',
+    '',
+    '  .stacked-carousel__intro-cta {',
+    '    font-size: clamp(0.625rem, 2.6vw, var(--sc-intro-cta-size, 0.8125rem));',
     '  }',
     '}',
     '',
@@ -669,10 +848,8 @@
 
   function injectStyles() {
     if (stylesInjected || typeof document === 'undefined') return;
-    if (document.getElementById(STYLE_ID)) {
-      stylesInjected = true;
-      return;
-    }
+    var existing = document.getElementById(STYLE_ID);
+    if (existing) existing.remove();
     var style = document.createElement('style');
     style.id = STYLE_ID;
     style.type = 'text/css';
@@ -876,7 +1053,10 @@
   };
 
   StackedCarousel.prototype._syncCardWidth = function () {
-    var container = this.root.querySelector('.stacked-carousel__inner') || this.root;
+    var container =
+      this.root.querySelector('.stacked-carousel__main') ||
+      this.root.querySelector('.stacked-carousel__inner') ||
+      this.root;
     var width = container.clientWidth || global.innerWidth;
     var card = clamp(Math.round(width * 0.42), 240, 360);
     if (width < 750) card = clamp(Math.round(width * 0.84), 220, 320);
@@ -932,12 +1112,6 @@
       if (document.hidden) self._stopAutoplay();
       else self._startAutoplay();
     };
-    this.bound.onEnter = function () {
-      self._stopAutoplay();
-    };
-    this.bound.onLeave = function () {
-      self._startAutoplay();
-    };
     this.bound.onTouchMoveGuard = function (e) {
       if (!self.isDragging || self.lockAxis !== 'x') return;
       if (e.cancelable) e.preventDefault();
@@ -953,10 +1127,6 @@
     this.root.setAttribute('aria-roledescription', 'carousel');
     global.addEventListener('resize', this.bound.onResize);
     document.addEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.addEventListener('mouseenter', this.bound.onEnter);
-    this.root.addEventListener('mouseleave', this.bound.onLeave);
-    this.root.addEventListener('focusin', this.bound.onEnter);
-    this.root.addEventListener('focusout', this.bound.onLeave);
   };
 
   StackedCarousel.prototype._onResize = function () {
@@ -1344,7 +1514,7 @@
   StackedCarousel.prototype._startAutoplay = function () {
     var self = this;
     this._stopAutoplay();
-    if (!this.runtime.autoplay || this.slides.length < 2 || prefersReducedMotion()) return;
+    if (!this.runtime.autoplay || this.slides.length < 2) return;
     if (document.hidden) return;
     this.autoplayTimer = setInterval(function () {
       self.next();
@@ -1398,10 +1568,6 @@
     this.root.removeEventListener('keydown', this.bound.onKeyDown);
     global.removeEventListener('resize', this.bound.onResize);
     document.removeEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.removeEventListener('mouseenter', this.bound.onEnter);
-    this.root.removeEventListener('mouseleave', this.bound.onLeave);
-    this.root.removeEventListener('focusin', this.bound.onEnter);
-    this.root.removeEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       slide.style.transform = '';

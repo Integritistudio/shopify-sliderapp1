@@ -67,7 +67,7 @@
     ".logo-3d__eyebrow {",
     "  display: block;",
     "  margin: 0 0 0.6rem;",
-    "  font-size: 0.6875rem;",
+    "  font-size: var(--l3-section-subheading-size, 0.6875rem);",
     "  font-weight: 600;",
     "  letter-spacing: 0.22em;",
     "  text-transform: uppercase;",
@@ -77,7 +77,7 @@
     ".logo-3d__heading {",
     "  margin: 0;",
     "  font-family: var(--l3-font-display);",
-    "  font-size: clamp(1.65rem, 3.5vw, 2.35rem);",
+    "  font-size: var(--l3-section-heading-size, clamp(1.65rem, 3.5vw, 2.35rem));",
     "  font-weight: 600;",
     "  line-height: 1.15;",
     "  letter-spacing: -0.02em;",
@@ -86,7 +86,7 @@
     ".logo-3d__subheading {",
     "  margin: 0.75rem auto 0;",
     "  max-width: 28rem;",
-    "  font-size: 0.9rem;",
+    "  font-size: var(--l3-section-description-size, 0.9rem);",
     "  line-height: 1.55;",
     "  color: var(--l3-ink-muted);",
     "}",
@@ -227,7 +227,7 @@
     "",
     ".logo-3d__name {",
     "  margin: 0;",
-    "  font-size: 0.8125rem;",
+    "  font-size: var(--l3-slide-title-size, 0.8125rem);",
     "  font-weight: 600;",
     "  letter-spacing: -0.01em;",
     "  color: var(--l3-ink);",
@@ -236,7 +236,7 @@
     "",
     ".logo-3d__description {",
     "  margin: 0;",
-    "  font-size: 0.75rem;",
+    "  font-size: var(--l3-slide-detail-size, 0.75rem);",
     "  line-height: 1.4;",
     "  color: var(--l3-ink-muted);",
     "  max-width: 16ch;",
@@ -761,12 +761,6 @@ var DEFAULTS = {
       if (document.hidden) self._stopAutoplay();
       else self._startAutoplay();
     };
-    this.bound.onEnter = function () {
-      self._stopAutoplay();
-    };
-    this.bound.onLeave = function () {
-      self._startAutoplay();
-    };
     this.bound.onTouchMoveGuard = function (e) {
       if (!self.isDragging) return;
       if (Math.abs(self.dragDelta) > 8 && e.cancelable) e.preventDefault();
@@ -788,10 +782,6 @@ var DEFAULTS = {
     this.root.setAttribute('aria-roledescription', 'carousel');
     global.addEventListener('resize', this.bound.onResize);
     document.addEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.addEventListener('mouseenter', this.bound.onEnter);
-    this.root.addEventListener('mouseleave', this.bound.onLeave);
-    this.root.addEventListener('focusin', this.bound.onEnter);
-    this.root.addEventListener('focusout', this.bound.onLeave);
   };
 
   Logo3D.prototype._onResize = function () {
@@ -999,7 +989,8 @@ var DEFAULTS = {
 
   Logo3D.prototype._renderDragPreview = function (deltaX) {
     var stepSize = Math.max(70, (this.runtime.cylinderRadius || 320) * 0.28);
-    var progress = deltaX / stepSize;
+    // Negate so logos follow the pointer (drag right reveals previous).
+    var progress = -deltaX / stepSize;
     var self = this;
     var side = this._sideCount();
     this.slides.forEach(function (slide, i) {
@@ -1114,7 +1105,6 @@ var DEFAULTS = {
     var self = this;
     this._stopAutoplay();
     if (!this.runtime.autoplay || this.slides.length < 2) return;
-    if (this.runtime.respectReducedMotion && prefersReducedMotion()) return;
     if (document.hidden) return;
     this.autoplayTimer = setInterval(function () {
       self.next();
@@ -1174,10 +1164,6 @@ var DEFAULTS = {
     this.root.removeEventListener('keydown', this.bound.onKeyDown);
     global.removeEventListener('resize', this.bound.onResize);
     document.removeEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.removeEventListener('mouseenter', this.bound.onEnter);
-    this.root.removeEventListener('mouseleave', this.bound.onLeave);
-    this.root.removeEventListener('focusin', this.bound.onEnter);
-    this.root.removeEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       slide.style.transform = '';

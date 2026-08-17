@@ -84,6 +84,145 @@
     return ""
   }
 
+  function sanitizeFontFamilyName(value) {
+    return String(value || "")
+      .trim()
+      .replace(/^(font-family\s*:\s*)/i, "")
+      .split(",")[0]
+      .trim()
+      .replace(/["';{}<>\\]/g, "")
+      .slice(0, 80)
+  }
+
+  function loadGoogleFontFamily(name) {
+    const safe = sanitizeFontFamilyName(name)
+    if (!safe) return
+    if (/^(arial|helvetica|helvetica neue|times|times new roman|georgia|verdana|system-ui|inherit|serif|sans-serif|monospace)$/i.test(safe)) {
+      return
+    }
+    const id = "se-type3d-font-" + safe.toLowerCase().replace(/\s+/g, "-")
+    if (document.getElementById(id)) return
+    if (!document.getElementById("se-type3d-font-preconnect-g")) {
+      const g = document.createElement("link")
+      g.id = "se-type3d-font-preconnect-g"
+      g.rel = "preconnect"
+      g.href = "https://fonts.googleapis.com"
+      document.head.appendChild(g)
+      const s = document.createElement("link")
+      s.id = "se-type3d-font-preconnect-s"
+      s.rel = "preconnect"
+      s.href = "https://fonts.gstatic.com"
+      s.crossOrigin = "anonymous"
+      document.head.appendChild(s)
+    }
+    const familyParam = encodeURIComponent(safe).replace(/%20/g, "+")
+    const link = document.createElement("link")
+    link.id = id
+    link.rel = "stylesheet"
+    link.href = "https://fonts.googleapis.com/css2?family=" + familyParam + ":wght@400;500;600;700&display=swap"
+    link.onerror = function () {
+      link.onerror = null
+      link.href = "https://fonts.googleapis.com/css2?family=" + familyParam + "&display=swap"
+    }
+    document.head.appendChild(link)
+  }
+
+  function resolveType3dFontCss(source, customName, role) {
+    const src = String(source || "slider").toLowerCase()
+    if (src === "theme") {
+      return role === "heading"
+        ? "var(--font-heading-family, inherit)"
+        : "var(--font-body-family, inherit)"
+    }
+    if (src === "custom") {
+      const name = sanitizeFontFamilyName(customName)
+      if (!name) return ""
+      loadGoogleFontFamily(name)
+      return "'" + name + "', " + (role === "heading" ? "serif" : "sans-serif")
+    }
+    return ""
+  }
+
+  function type3dTypographyVars(settings, prefix, options) {
+    const opts = options || {}
+    const vars = []
+    const heading = resolveType3dFontCss(
+      settings.type3dHeadingFontSource,
+      settings.type3dHeadingFontCustom,
+      "heading",
+    )
+    const body = resolveType3dFontCss(
+      settings.type3dBodyFontSource,
+      settings.type3dBodyFontCustom,
+      "body",
+    )
+    if (heading) vars.push("--" + prefix + "-font-display:" + heading)
+    if (body) vars.push("--" + prefix + "-font-body:" + body)
+    const pushSize = (key, min, max, name) => {
+      if (settings[key] == null || settings[key] === "") return
+      const n = Number(settings[key])
+      if (!Number.isFinite(n)) return
+      vars.push("--" + prefix + "-" + name + ":" + Math.min(max, Math.max(min, n)) + "px")
+    }
+    if (!opts.skipSection) {
+      pushSize("type3dSectionHeadingSize", 18, 80, "section-heading-size")
+      pushSize("type3dSectionSubheadingSize", 8, 28, "section-subheading-size")
+      pushSize("type3dSectionDescriptionSize", 10, 32, "section-description-size")
+    }
+    pushSize("type3dSlideTitleSize", 10, 48, "slide-title-size")
+    pushSize("type3dSlideDetailSize", 8, 32, "slide-detail-size")
+    if (opts.meta) pushSize("type3dSlideMetaSize", 8, 28, "slide-meta-size")
+    return vars
+  }
+
+  function type3dTypographyMobileCss(uniqueId, rootSelector, prefix, settings, options) {
+    const opts = options || {}
+    const heading = resolveType3dFontCss(
+      settings.type3dHeadingFontSource,
+      settings.type3dHeadingFontCustom,
+      "heading",
+    )
+    const body = resolveType3dFontCss(
+      settings.type3dBodyFontSource,
+      settings.type3dBodyFontCustom,
+      "body",
+    )
+    let fontCss = ""
+    if (heading || body) {
+      fontCss = `
+        .slideease-container-${uniqueId} ${rootSelector} {`
+      if (heading) fontCss += `
+          --${prefix}-font-display: ${heading};`
+      if (body) fontCss += `
+          --${prefix}-font-body: ${body};`
+      fontCss += `
+        }`
+    }
+    const rows = []
+    const pushClamp = (key, min, max, name, minRem, vw) => {
+      if (settings[key] == null || settings[key] === "") return
+      const n = Number(settings[key])
+      if (!Number.isFinite(n)) return
+      const px = Math.min(max, Math.max(min, n))
+      rows.push("--" + prefix + "-" + name + ": clamp(" + minRem + ", " + vw + ", " + px + "px);")
+    }
+    if (!opts.skipSection) {
+      pushClamp("type3dSectionHeadingSize", 18, 80, "section-heading-size", "1.75rem", "7vw")
+      pushClamp("type3dSectionSubheadingSize", 8, 28, "section-subheading-size", "0.625rem", "2.8vw")
+      pushClamp("type3dSectionDescriptionSize", 10, 32, "section-description-size", "0.8125rem", "3.4vw")
+    }
+    pushClamp("type3dSlideTitleSize", 10, 48, "slide-title-size", "0.95rem", "3.2vw")
+    pushClamp("type3dSlideDetailSize", 8, 32, "slide-detail-size", "0.7rem", "2.6vw")
+    if (opts.meta) pushClamp("type3dSlideMetaSize", 8, 28, "slide-meta-size", "0.7rem", "2.4vw")
+    if (!rows.length) return fontCss
+    return `${fontCss}
+        @media (max-width: 989px) {
+          .slideease-container-${uniqueId} ${rootSelector} {
+            ${rows.join("\n            ")}
+          }
+        }`
+  }
+
   function resolveFrameHeight(settings) {
     const effect = settings.effect || settings.transition || "slide"
     const saved = Number(settings.height)
@@ -1284,11 +1423,13 @@
           }
           .slideease-container-${uniqueId} .se-product-card__title {
             margin: 0; font-size: var(--se-product-title-size, 16px); font-weight: 650; line-height: 1.3;
+            font-family: var(--se-product-title-font, inherit);
             min-height: calc(var(--se-product-title-size, 16px) * 1.3 * 2);
             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
           }
           .slideease-container-${uniqueId} .se-product-card__price {
             margin: 0; color: #5f5a72; font-weight: 600; font-size: var(--se-product-price-size, 14px);
+            font-family: var(--se-product-price-font, inherit);
           }
           .slideease-container-${uniqueId} .se-product-card__actions {
             display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center;
@@ -1302,7 +1443,7 @@
             background: var(--se-product-cta-bg, #170f49); color: var(--se-product-cta-color, #fff);
             font-size: var(--se-cta-font-size, 16px); font-weight: 650;
             line-height: 1; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-            text-decoration: none; cursor: pointer; font-family: inherit;
+            text-decoration: none; cursor: pointer; font-family: var(--se-product-cta-font, inherit);
           }
           .slideease-container-${uniqueId} .se-product-card__atc {
             display: inline-flex; align-items: center; justify-content: center;
@@ -1312,7 +1453,7 @@
             background: var(--se-atc-bg, #fff); color: var(--se-atc-color, #170f49);
             font-size: var(--se-cta-font-size, 16px); font-weight: 650;
             line-height: 1; transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-            text-decoration: none; cursor: pointer; font-family: inherit;
+            text-decoration: none; cursor: pointer; font-family: var(--se-product-cta-font, inherit);
           }
           /* Must follow ATC rules so Quick Add matches sales badge sizing (not CTA button sizing). */
           .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add {
@@ -1384,6 +1525,7 @@
           .slideease-container-${uniqueId} .se-section-heading {
             margin: 0 0 var(--se-section-heading-gap, 16px); text-align: center; color: #170f49;
             font-size: var(--se-section-heading-size, 28px);
+            font-family: var(--se-section-heading-font, inherit);
             font-weight: 700; letter-spacing: -0.02em;
           }
           .slideease-container-${uniqueId}.se-root--products {
@@ -1520,7 +1662,7 @@
           .slideease-container-${uniqueId}[data-effect="hero-boxed"] .se-eyebrow {
             display: inline-flex; width: fit-content; padding: 0.28rem 0.7rem; border-radius: 999px;
             border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08);
-            letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.72rem;
+            letter-spacing: 0.08em; text-transform: uppercase;
           }
           .slideease-container-${uniqueId}[data-effect="hero-fullwidth"] .se-cta,
           .slideease-container-${uniqueId}[data-effect="hero-video"] .se-cta,
@@ -1553,15 +1695,22 @@
           }
           .slideease-container-${uniqueId} .se-testimonial__text {
             margin: 0; flex: 0 1 auto; max-width: 22rem; width: 100%;
-            font-size: clamp(0.95rem, 1.15vw, 1.08rem); line-height: 1.55; font-weight: 500;
+            font-size: var(--se-u-heading-size, 17px); line-height: 1.55; font-weight: 500;
+            font-family: var(--se-heading-font, inherit);
             color: #170f49; text-align: center;
           }
           .slideease-container-${uniqueId} .se-testimonial__author {
             display: flex; align-items: center; justify-content: center; gap: 0.75rem;
             margin-top: 0.35rem; text-align: left; flex-shrink: 0;
           }
-          .slideease-container-${uniqueId} .se-testimonial__author strong { display: block; font-size: 0.9rem; font-weight: 650; color: #170f49; }
-          .slideease-container-${uniqueId} .se-testimonial__author span { display: block; color: #5f5a72; font-size: 0.8rem; margin-top: 0.12rem; }
+          .slideease-container-${uniqueId} .se-testimonial__author strong {
+            display: block; font-size: var(--se-u-subheading-size, 14px); font-weight: 650; color: #170f49;
+            font-family: var(--se-subheading-font, inherit);
+          }
+          .slideease-container-${uniqueId} .se-testimonial__author span {
+            display: block; color: #5f5a72; font-size: var(--se-u-desc-size, 13px); margin-top: 0.12rem;
+            font-family: var(--se-desc-font, inherit);
+          }
           .slideease-container-${uniqueId} .se-testimonial__avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid #f0f0f4; flex-shrink: 0; }
           @media (max-width: 640px) {
             .slideease-container-${uniqueId}.se-root--testimonials { padding-inline: 2.6rem; }
@@ -1646,18 +1795,25 @@
             padding: 0.9rem !important;
           }
           .slideease-container-${uniqueId}.se-root--stories .se-eyebrow {
-            font-size: 0.7rem;
+            font-size: var(--se-u-subheading-size, 11px);
+            font-family: var(--se-subheading-font, inherit);
             margin: 0 0 0.35rem;
           }
           .slideease-container-${uniqueId}.se-root--stories .se-heading {
-            font-size: 1.4rem;
+            font-size: var(--se-u-heading-size, 22px);
+            font-family: var(--se-heading-font, inherit);
             max-width: 100%;
             margin: 0 0 0.4rem;
           }
           .slideease-container-${uniqueId}.se-root--stories .se-desc {
-            font-size: 0.92rem;
+            font-size: var(--se-u-desc-size, 15px);
+            font-family: var(--se-desc-font, inherit);
             margin: 0 0 0.8rem;
             -webkit-line-clamp: 2;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-cta {
+            font-size: var(--se-u-cta-size, 14px);
+            font-family: var(--se-cta-font, inherit);
           }
           .slideease-container-${uniqueId}.se-root--stories .se-copy-plate {
             gap: 0.15rem;
@@ -1764,6 +1920,149 @@
           .slideease-container-${uniqueId}.se-root--stories .se-nav--next { right: 10px; }
           .slideease-container-${uniqueId}.se-root--stories .se-progress { display: none !important; }
           .slideease-container-${uniqueId}.se-root--stories .slideease-dots-${uniqueId} { display: none !important; }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-inner {
+            width: 100%;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy {
+            display: none;
+          }
+          .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-inner {
+            width: min(calc(100% - 3rem), 1200px);
+            max-width: 1200px;
+            margin-inline: auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            column-gap: clamp(1.25rem, 4vw, 3rem);
+            row-gap: 1.5rem;
+            align-items: center;
+            box-sizing: border-box;
+            overflow: hidden;
+          }
+          .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-copy {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-self: start;
+            text-align: left;
+            width: 100%;
+            max-width: 28rem;
+            margin: 0;
+            z-index: 2;
+          }
+          .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 0;
+            width: 100%;
+            overflow: hidden;
+          }
+          .slideease-container-${uniqueId}.se-root--stories.se-stories--split.se-stories--visual-left .se-stories-copy {
+            order: 2;
+            justify-self: end;
+          }
+          .slideease-container-${uniqueId}.se-root--stories.se-stories--split.se-stories--visual-left .se-stories-main {
+            order: 1;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__eyebrow {
+            display: block;
+            margin: 0 0 0.55rem;
+            font-size: var(--se-story-intro-subheading-size, 0.6875rem);
+            font-family: var(--se-subheading-font, inherit);
+            font-weight: 600;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #ed8104;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__heading {
+            margin: 0;
+            font-size: var(--se-story-intro-heading-size, 3rem);
+            font-family: var(--se-heading-font, inherit);
+            font-weight: 500;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #170f49;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__desc {
+            margin: 0.85rem 0 0;
+            max-width: none;
+            font-size: var(--se-story-intro-description-size, 0.9rem);
+            font-family: var(--se-desc-font, inherit);
+            line-height: 1.6;
+            color: #6a645c;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1.25rem;
+            min-height: 2.75rem;
+            padding: 0.7rem 1.55rem;
+            font-size: var(--se-story-intro-cta-size, 0.6875rem);
+            font-family: var(--se-cta-font, inherit);
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: #ffffff;
+            background: #170f49;
+            border: 1px solid #170f49;
+            border-radius: 1px;
+            cursor: pointer;
+            transition: background-color 200ms ease, color 200ms ease;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__cta:hover,
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__cta:focus-visible {
+            background: transparent;
+            color: #170f49;
+            outline: none;
+          }
+          .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__cta:focus-visible {
+            outline: 2px solid #ed8104;
+            outline-offset: 3px;
+          }
+          @media (max-width: 989px) {
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-inner {
+              grid-template-columns: 1fr;
+              width: min(calc(100% - 2.5rem), 1200px);
+              margin-inline: auto;
+            }
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split.se-stories--visual-left .se-stories-copy,
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split.se-stories--visual-left .se-stories-main {
+              order: unset;
+            }
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split.se-stories--visual-left .se-stories-copy {
+              justify-self: unset;
+            }
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-copy {
+              align-items: center;
+              text-align: center;
+              max-width: none;
+              margin-inline: auto;
+            }
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-main {
+              width: 100%;
+              align-items: center;
+            }
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-copy__desc {
+              margin-inline: auto;
+            }
+            .slideease-container-${uniqueId}.se-root--stories.se-stories--split .se-stories-copy__cta {
+              align-self: center;
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__eyebrow {
+              font-size: clamp(0.625rem, 2.8vw, var(--se-story-intro-subheading-size, 0.8125rem));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__heading {
+              font-size: clamp(1.75rem, 7vw, var(--se-story-intro-heading-size, 2.5rem));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__desc {
+              font-size: clamp(0.8125rem, 3.4vw, var(--se-story-intro-description-size, 1rem));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-stories-copy__cta {
+              font-size: clamp(0.625rem, 2.6vw, var(--se-story-intro-cta-size, 0.8125rem));
+            }
+          }
           @media (max-width: 640px) {
             .slideease-container-${uniqueId}.se-root--stories .se-stories-rings {
               justify-content: center;
@@ -1787,7 +2086,8 @@
           }
           .slideease-container-${uniqueId} .se-announce__text {
             font-weight: 600;
-            font-size: 0.92rem;
+            font-size: var(--se-u-heading-size, 15px);
+            font-family: var(--se-heading-font, inherit);
             line-height: 1.3;
           }
           .slideease-container-${uniqueId} .se-announce__ctas {
@@ -1804,7 +2104,8 @@
             border: 1px solid rgba(255,255,255,0.45);
             color: inherit;
             text-decoration: none;
-            font-size: 0.75rem;
+            font-size: var(--se-u-cta-size, 12px);
+            font-family: var(--se-cta-font, inherit);
             font-weight: 700;
             line-height: 1.2;
             background: transparent;
@@ -1975,7 +2276,7 @@
     }
 
     // Start coverflow engine early so styles/init arrive ASAP (reduces FOUC)
-    const premiumSrc = `${apiOrigin}/premium-coverflow.js?v=65`
+    const premiumSrc = `${apiOrigin}/premium-coverflow.js?v=68`
     const premiumReady = loadScriptOnce(premiumSrc)
 
     trackEvent("view", slides[0]?.id)
@@ -2061,6 +2362,7 @@
       `--cf-section-bg:${sectionBgValue}`,
       `--cf-sales-badge-bg:${escapeHtml(settings.salesBadgeBackground || "#170f49")}`,
       `--cf-sales-badge-pad:${Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)}px`,
+      ...type3dTypographyVars(settings, "cf"),
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderPremiumProductSlide(slide, settings, i)).join("")
@@ -2079,6 +2381,7 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".se-pcf", "cf", settings)}
         .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__stage,
         .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__controls,
         .slideease-container-${uniqueId} .se-pcf:not(.is-ready) .se-pcf__header {
@@ -2193,7 +2496,7 @@
     }
 
     // Start circular engine early so styles/init arrive ASAP (reduces FOUC)
-    const premiumSrc = `${apiOrigin}/premium-circular.js?v=65`
+    const premiumSrc = `${apiOrigin}/premium-circular.js?v=68`
     const premiumReady = loadScriptOnce(premiumSrc)
 
     trackEvent("view", slides[0]?.id)
@@ -2279,6 +2582,7 @@
       `--pcc-section-bg:${sectionBgValue}`,
       `--pcc-sales-badge-bg:${escapeHtml(settings.salesBadgeBackground || "#170f49")}`,
       `--pcc-sales-badge-pad:${Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)}px`,
+      ...type3dTypographyVars(settings, "pcc"),
     ].join(";")
 
     const slidesHtml = slides
@@ -2299,6 +2603,7 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".se-pcc", "pcc", settings)}
         .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__stage,
         .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__controls,
         .slideease-container-${uniqueId} .se-pcc:not(.is-ready) .se-pcc__header {
@@ -2476,7 +2781,7 @@
       return
     }
 
-    const engineSrc = `${apiOrigin}/collection-carousel.js?v=3`
+    const engineSrc = `${apiOrigin}/collection-carousel.js?v=6`
     const engineReady = loadScriptOnce(engineSrc)
 
     trackEvent("view", slides[0]?.id)
@@ -2537,6 +2842,7 @@
       `--c3-overlay:${carouselConfig.overlay}`,
       `--c3-radius:${carouselConfig.borderRadius}px`,
       `--c3-perspective:${carouselConfig.perspective}px`,
+      ...type3dTypographyVars(settings, "c3"),
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderCollectionSlide(slide, settings, i)).join("")
@@ -2555,6 +2861,7 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".collection-3d", "c3", settings)}
         .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__stage,
         .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__controls,
         .slideease-container-${uniqueId} .collection-3d:not(.is-ready) .collection-3d__header {
@@ -2774,7 +3081,7 @@
       return
     }
 
-    const engineSrc = `${apiOrigin}/premium-stacked.js?v=7`
+    const engineSrc = `${apiOrigin}/premium-stacked.js?v=19`
     const engineReady = loadScriptOnce(engineSrc)
     trackEvent("view", slides[0]?.id)
 
@@ -2791,28 +3098,43 @@
     const sectionSubheading = String(settings.sectionSubheading || "").trim()
     const sectionHeading = String(settings.sectionHeading || "").trim()
     const sectionDescription = String(settings.sectionDescription || "").trim()
-    const headerParts = []
+    const introCtaText = String(settings.stackIntroCtaText || "").trim()
+    const introCtaHref = safeUrl(settings.stackIntroCtaUrl || "")
+    const hasSplit = Boolean(sectionSubheading || sectionHeading || sectionDescription || introCtaText)
+    const visualLeft = hasSplit && String(settings.splitVisualSide || "right").toLowerCase() === "left"
+    const copyParts = []
     if (sectionSubheading) {
-      headerParts.push(`<span class="stacked-carousel__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
+      copyParts.push(`<span class="stacked-carousel__eyebrow">${escapeHtml(sectionSubheading)}</span>`)
     }
     if (sectionHeading) {
-      headerParts.push(`<h2 class="stacked-carousel__heading">${escapeHtml(sectionHeading)}</h2>`)
+      copyParts.push(`<h2 class="stacked-carousel__heading">${escapeHtml(sectionHeading)}</h2>`)
     }
     if (sectionDescription) {
-      headerParts.push(`<p class="stacked-carousel__subheading">${escapeHtml(sectionDescription)}</p>`)
+      copyParts.push(`<p class="stacked-carousel__subheading">${escapeHtml(sectionDescription)}</p>`)
     }
-    const headerHtml = headerParts.length
-      ? `<header class="stacked-carousel__header">${headerParts.join("")}</header>`
+    if (introCtaText) {
+      copyParts.push(
+        introCtaHref
+          ? `<a class="stacked-carousel__intro-cta" href="${escapeHtml(introCtaHref)}">${escapeHtml(introCtaText)}</a>`
+          : `<span class="stacked-carousel__intro-cta">${escapeHtml(introCtaText)}</span>`,
+      )
+    }
+    const copyHtml = hasSplit
+      ? `<div class="stacked-carousel__copy">${copyParts.join("")}</div>`
       : ""
 
     const showNav = settings.arrows !== false
     const showDots = settings.dots !== false
     const stackedConfig = {
       stackDepth: Number(settings.stackDepth) || 4,
-      horizontalOffset: Number(settings.stackHorizontalOffset) || 42,
+      horizontalOffset: visualLeft
+        ? -Math.abs(Number(settings.stackHorizontalOffset) || 42)
+        : Number(settings.stackHorizontalOffset) || 42,
       verticalOffset: Number(settings.stackVerticalOffset) || 22,
       scaleDifference: Number(settings.stackScaleDifference) || 0.07,
-      rotation: Number(settings.stackRotation) || 2,
+      rotation: visualLeft
+        ? -Math.abs(Number(settings.stackRotation) || 2)
+        : Number(settings.stackRotation) || 2,
       depthStep: Number(settings.stackDepthStep) || 56,
       perspective: Number(settings.stackPerspective) || 1200,
       animationDuration: Number(settings.speed) || 680,
@@ -2835,6 +3157,10 @@
 
     const quickAddBg = escapeHtml(settings.quickAddBackground || "#170f49")
     const quickAddSize = Math.min(Math.max(Number(settings.quickAddTextSize ?? 11), 8), 24)
+    const introHeadingSize = Math.min(Math.max(Number(settings.stackIntroHeadingSize ?? 48), 18), 80)
+    const introSubheadingSize = Math.min(Math.max(Number(settings.stackIntroSubheadingSize ?? 11), 8), 28)
+    const introDescriptionSize = Math.min(Math.max(Number(settings.stackIntroDescriptionSize ?? 14), 10), 32)
+    const introCtaSize = Math.min(Math.max(Number(settings.stackIntroCtaSize ?? 11), 8), 22)
     const styleVars = [
       `--sc-section-bg:${sectionBgValue}`,
       `--sc-perspective:${stackedConfig.perspective}px`,
@@ -2843,6 +3169,11 @@
       `--sc-sales-badge-pad:${Math.min(Math.max(Number(settings.salesBadgePadding ?? 8), 0), 24)}px`,
       `--sc-quick-add-bg:${quickAddBg}`,
       `--sc-quick-add-size:${quickAddSize}px`,
+      `--sc-intro-heading-size:${introHeadingSize}px`,
+      `--sc-intro-subheading-size:${introSubheadingSize}px`,
+      `--sc-intro-description-size:${introDescriptionSize}px`,
+      `--sc-intro-cta-size:${introCtaSize}px`,
+      ...type3dTypographyVars(settings, "sc", { skipSection: true }),
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderStackedProductSlide(slide, settings, i)).join("")
@@ -2861,9 +3192,10 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".stacked-carousel", "sc", settings, { skipSection: true })}
         .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__stage,
         .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__controls,
-        .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__header {
+        .slideease-container-${uniqueId} .stacked-carousel:not(.is-ready) .stacked-carousel__copy {
           opacity: 0 !important;
           visibility: hidden !important;
           pointer-events: none !important;
@@ -2873,31 +3205,33 @@
         }
         .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__stage,
         .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__controls,
-        .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__header {
+        .slideease-container-${uniqueId} .stacked-carousel.is-ready .stacked-carousel__copy {
           opacity: 1;
           visibility: visible;
           transition: opacity 160ms ease, visibility 160ms ease;
         }
       </style>
       <section class="slideease-container-${uniqueId} se-root se-root--premium se-root--products se-root--stacked" data-effect="premium-stacked" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" aria-roledescription="carousel">
-        <div class="stacked-carousel" data-stacked data-stacked-config='${escapeHtml(JSON.stringify(stackedConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "Featured products")}" aria-busy="true" style="${styleVars}">
+        <div class="stacked-carousel${hasSplit ? " stacked-carousel--split" : ""}${visualLeft ? " stacked-carousel--visual-left" : ""}" data-stacked data-stacked-config='${escapeHtml(JSON.stringify(stackedConfig))}' aria-label="${escapeHtml(sectionHeading || data.name || "Featured products")}" aria-busy="true" style="${styleVars}">
           <div class="stacked-carousel__inner">
-            ${headerHtml}
-            <div class="stacked-carousel__stage" data-stacked-stage>
-              <ul class="stacked-carousel__track" data-stacked-track>
-                ${slidesHtml}
-              </ul>
-            </div>
-            <div class="stacked-carousel__controls">
-              <div class="stacked-carousel__nav" data-stacked-nav${showNav ? "" : " hidden"}>
-                <button type="button" class="stacked-carousel__arrow" data-stacked-prev aria-label="Previous product">
-                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <button type="button" class="stacked-carousel__arrow" data-stacked-next aria-label="Next product">
-                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
+            ${copyHtml}
+            <div class="stacked-carousel__main">
+              <div class="stacked-carousel__stage" data-stacked-stage>
+                <ul class="stacked-carousel__track" data-stacked-track>
+                  ${slidesHtml}
+                </ul>
               </div>
-              <ul class="stacked-carousel__pagination" data-stacked-pagination aria-label="Product pagination"${showDots ? "" : " hidden"}></ul>
+              <div class="stacked-carousel__controls">
+                <div class="stacked-carousel__nav" data-stacked-nav${showNav ? "" : " hidden"}>
+                  <button type="button" class="stacked-carousel__arrow" data-stacked-prev aria-label="Previous product">
+                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10.2 2.2 4.4 8l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button type="button" class="stacked-carousel__arrow" data-stacked-next aria-label="Next product">
+                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5.8 2.2 11.6 8l-5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+                <ul class="stacked-carousel__pagination" data-stacked-pagination aria-label="Product pagination"${showDots ? "" : " hidden"}></ul>
+              </div>
             </div>
             <div class="stacked-carousel__live" data-stacked-live aria-live="polite" aria-atomic="true"></div>
           </div>
@@ -3035,7 +3369,7 @@
       return
     }
 
-    const engineSrc = `${apiOrigin}/testimonials-3d.js?v=1`
+    const engineSrc = `${apiOrigin}/testimonials-3d.js?v=4`
     const engineReady = loadScriptOnce(engineSrc)
     trackEvent("view", slides[0]?.id)
 
@@ -3094,6 +3428,7 @@
       `--t3-radius:${Number(settings.borderRadius ?? 18)}px`,
       `--t3-accent:${escapeHtml(settings.accentColor || "#2f6fed")}`,
       `--t3-star:${escapeHtml(settings.starColor || "#e6a817")}`,
+      ...type3dTypographyVars(settings, "t3", { meta: true }),
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderTestimonials3DSlide(slide, i)).join("")
@@ -3112,6 +3447,7 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".testimonials-3d", "t3", settings, { meta: true })}
         .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__stage,
         .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__controls,
         .slideease-container-${uniqueId} .testimonials-3d:not(.is-ready) .testimonials-3d__header {
@@ -3304,7 +3640,7 @@
       return
     }
 
-    const engineSrc = `${apiOrigin}/video-ugc-3d.js?v=3`
+    const engineSrc = `${apiOrigin}/video-ugc-3d.js?v=6`
     const engineReady = loadScriptOnce(engineSrc)
     trackEvent("view", slides[0]?.id)
 
@@ -3339,14 +3675,14 @@
       visibleSlides: Number(settings.ugcVisibleSlides) || 5,
       tabletVisibleSlides: 3,
       mobileVisibleSlides: 3,
-      autoplay: settings.autoplay !== false,
+      autoplay: true,
       mutedByDefault: settings.ugcMutedByDefault !== false,
       showMediaControls: settings.ugcShowMediaControls !== false,
       transitionDuration: Number(settings.speed) || 650,
       navigation: showNav,
       pagination: showDots,
       loop: settings.infinite !== false,
-      carouselAutoplay: Boolean(settings.ugcCarouselAutoplay),
+      carouselAutoplay: Boolean(settings.autoplay),
       carouselAutoplayDelay: Number(settings.autoplaySpeed) || 8000,
       clickNeighborToCenter: true,
       respectReducedMotion: true,
@@ -3366,6 +3702,7 @@
       `--vu-section-bg:${sectionBgValue}`,
       `--vu-perspective:${ugcConfig.perspective}px`,
       `--vu-radius:${Number(settings.borderRadius ?? 16)}px`,
+      ...type3dTypographyVars(settings, "vu", { meta: true }),
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderUgcFeedSlide(slide, i)).join("")
@@ -3384,6 +3721,7 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".video-ugc-3d", "vu", settings, { meta: true })}
         .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__stage,
         .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__controls,
         .slideease-container-${uniqueId} .video-ugc-3d:not(.is-ready) .video-ugc-3d__header {
@@ -3525,7 +3863,7 @@
       return
     }
 
-    const engineSrc = `${apiOrigin}/logo-3d.js?v=1`
+    const engineSrc = `${apiOrigin}/logo-3d.js?v=4`
     const engineReady = loadScriptOnce(engineSrc)
     trackEvent("view", slides[0]?.id)
 
@@ -3561,7 +3899,7 @@
       tabletVisibleSlides: 5,
       mobileVisibleSlides: 3,
       tiltIntensity: Number(settings.logo3dTiltIntensity) || 0.35,
-      autoplay: settings.autoplay !== false,
+      autoplay: Boolean(settings.autoplay),
       autoplayDelay: Number(settings.autoplaySpeed) || 3200,
       animationSpeed: Number(settings.speed) || 700,
       navigation: showNav,
@@ -3585,6 +3923,7 @@
       `--l3-section-bg:${sectionBgValue}`,
       `--l3-perspective:${l3Config.perspective}px`,
       `--l3-logo-size:${l3Config.logoSize}px`,
+      ...type3dTypographyVars(settings, "l3"),
     ].join(";")
 
     const slidesHtml = slides.map((slide, i) => renderLogo3DSlide(slide, i)).join("")
@@ -3603,6 +3942,7 @@
           margin-right: calc(50% - 50vw);
           box-sizing: border-box;
         }
+        ${type3dTypographyMobileCss(uniqueId, ".logo-3d", "l3", settings)}
         .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__stage,
         .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__controls,
         .slideease-container-${uniqueId} .logo-3d:not(.is-ready) .logo-3d__header {
@@ -3858,6 +4198,8 @@
         ? Math.min(Math.max(Number(settings.height) || 48, 36), 120)
         : resolveFrameHeight(settings)
     const isProductLayout = ["product-carousel", "product-showcase", "collection-rail"].includes(effect)
+    const isHeroCategory = ["hero-fullwidth", "hero-boxed", "autoplay", "center"].includes(effect)
+    const isUtilityTypography = ["testimonials", "stories", "announcement", "marquee"].includes(effect)
     const showArrows =
       settings.arrows !== false &&
       !["marquee", "logo-grid"].includes(effect)
@@ -3936,8 +4278,26 @@
       ? "transparent"
       : escapeHtml(settings.productCardBackground || "#ffffff")
     const productCardBorder = settings.productCardBorder === false ? "none" : "1px solid #e7e7e7"
+    const productSectionFont = isProductLayout
+      ? resolveType3dFontCss(settings.productSectionFontSource, settings.productSectionFontCustom, "heading")
+      : ""
+    const productTitleFont = isProductLayout
+      ? resolveType3dFontCss(settings.productTitleFontSource, settings.productTitleFontCustom, "heading")
+      : ""
+    const productPriceFont = isProductLayout
+      ? resolveType3dFontCss(settings.productPriceFontSource, settings.productPriceFontCustom, "body")
+      : ""
+    const productCtaFont = isProductLayout
+      ? resolveType3dFontCss(settings.productCtaFontSource, settings.productCtaFontCustom, "body")
+      : ""
+    const productFontStyleVars = [
+      productSectionFont ? `--se-section-heading-font:${productSectionFont};` : "",
+      productTitleFont ? `--se-product-title-font:${productTitleFont};` : "",
+      productPriceFont ? `--se-product-price-font:${productPriceFont};` : "",
+      productCtaFont ? `--se-product-cta-font:${productCtaFont};` : "",
+    ].join("")
     const productStyleVars = isProductLayout
-      ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-card-bg:${productCardBg};--se-product-card-border:${productCardBorder};--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;--se-sales-badge-pad:${salesBadgePad}px;--se-sales-badge-bg:${salesBadgeBg};--se-quick-add-bg:${quickAddBg};--se-quick-add-size:${quickAddSize}px;`
+      ? `--se-section-heading-size:${sectionHeadingSize}px;--se-section-heading-gap:${sectionHeadingGap}px;--se-product-title-size:${productTitleSize}px;--se-product-price-size:${productPriceSize}px;--se-product-content-gap:${productContentGap}px;--se-pagination-gap:${paginationGap}px;--se-product-card-bg:${productCardBg};--se-product-card-border:${productCardBorder};--se-product-cta-bg:${productCtaBg};--se-product-cta-color:${productCtaColor};--se-product-cta-hover-bg:${productCtaHover};--se-product-cta-hover-color:${productCtaHoverColor};--se-product-cta-border:${productCtaBorder};--se-atc-bg:${atcBg};--se-atc-color:${atcColor};--se-atc-border:${atcBorder};--se-atc-hover-bg:${atcHoverBg};--se-atc-hover-color:${atcHoverColor};--se-atc-pad:${atcPad}px;--se-atc-font-size:${atcFontSize}px;--se-atc-radius:${atcRadius}px;--se-atc-border-width:${atcBorderWidth}px;--se-sales-badge-pad:${salesBadgePad}px;--se-sales-badge-bg:${salesBadgeBg};--se-quick-add-bg:${quickAddBg};--se-quick-add-size:${quickAddSize}px;${productFontStyleVars}`
       : ""
     const logoWidth = Math.min(Math.max(Number(settings.logoWidth ?? 140), 40), 280)
     const logoHeight = Math.min(Math.max(Number(settings.logoHeight ?? 64), 24), 160)
@@ -3960,8 +4320,82 @@
           }`
         : ""
     const ctaStyleVars = `--se-cta-pad:${ctaPad}px;--se-cta-font-size:${ctaFontSize}px;--se-cta-radius:${ctaRadius}px;--se-cta-border-width:${ctaBorderWidth}px;--se-m-cta-font-size:${mobileCtaFontSize}px;`
+    const heroHeadingFont = isHeroCategory
+      ? resolveType3dFontCss(settings.heroHeadingFontSource, settings.heroHeadingFontCustom, "heading")
+      : ""
+    const heroSubheadingFont = isHeroCategory
+      ? resolveType3dFontCss(settings.heroSubheadingFontSource, settings.heroSubheadingFontCustom, "body")
+      : ""
+    const heroDescriptionFont = isHeroCategory
+      ? resolveType3dFontCss(settings.heroDescriptionFontSource, settings.heroDescriptionFontCustom, "body")
+      : ""
+    const heroCtaFont = isHeroCategory
+      ? resolveType3dFontCss(settings.heroCtaFontSource, settings.heroCtaFontCustom, "body")
+      : ""
+    const utilityHeadingFont = isUtilityTypography
+      ? resolveType3dFontCss(settings.utilityHeadingFontSource, settings.utilityHeadingFontCustom, "heading")
+      : ""
+    const utilitySubheadingFont = isUtilityTypography
+      ? resolveType3dFontCss(settings.utilitySubheadingFontSource, settings.utilitySubheadingFontCustom, "body")
+      : ""
+    const utilityDescriptionFont = isUtilityTypography
+      ? resolveType3dFontCss(settings.utilityDescriptionFontSource, settings.utilityDescriptionFontCustom, "body")
+      : ""
+    const utilityCtaFont = isUtilityTypography
+      ? resolveType3dFontCss(settings.utilityCtaFontSource, settings.utilityCtaFontCustom, "body")
+      : ""
+    const clampUtilitySize = (value, fallback, min, max) => {
+      const n = Number(value)
+      if (!Number.isFinite(n)) return fallback
+      return Math.min(Math.max(n, min), max)
+    }
+    const utilityHeadingSize = !isUtilityTypography
+      ? 0
+      : effect === "marquee"
+        ? headingFontSize
+        : effect === "testimonials"
+          ? clampUtilitySize(settings.utilityHeadingFontSize, 17, 12, 32)
+          : effect === "announcement"
+            ? clampUtilitySize(settings.utilityHeadingFontSize, 15, 10, 28)
+            : clampUtilitySize(settings.utilityHeadingFontSize, 22, 14, 48)
+    const utilitySubheadingSize = !isUtilityTypography
+      ? 0
+      : effect === "marquee"
+        ? subheadingFontSize
+        : effect === "testimonials"
+          ? clampUtilitySize(settings.utilitySubheadingFontSize, 14, 10, 24)
+          : clampUtilitySize(settings.utilitySubheadingFontSize, 11, 8, 22)
+    const utilityDescriptionSize = !isUtilityTypography
+      ? 0
+      : effect === "marquee"
+        ? descriptionFontSize
+        : effect === "testimonials"
+          ? clampUtilitySize(settings.utilityDescriptionFontSize, 13, 10, 22)
+          : clampUtilitySize(settings.utilityDescriptionFontSize, 15, 10, 28)
+    const utilityCtaSize = !isUtilityTypography
+      ? 0
+      : effect === "marquee"
+        ? ctaFontSize
+        : effect === "announcement"
+          ? clampUtilitySize(settings.utilityCtaFontSize, 12, 8, 20)
+          : clampUtilitySize(settings.utilityCtaFontSize, 14, 8, 22)
+    const heroFontStyleVars = [
+      heroHeadingFont ? `--se-heading-font:${heroHeadingFont};` : "",
+      heroSubheadingFont ? `--se-subheading-font:${heroSubheadingFont};` : "",
+      heroDescriptionFont ? `--se-desc-font:${heroDescriptionFont};` : "",
+      heroCtaFont ? `--se-cta-font:${heroCtaFont};` : "",
+    ].join("")
+    const utilityFontStyleVars = [
+      utilityHeadingFont ? `--se-heading-font:${utilityHeadingFont};` : "",
+      utilitySubheadingFont ? `--se-subheading-font:${utilitySubheadingFont};` : "",
+      utilityDescriptionFont ? `--se-desc-font:${utilityDescriptionFont};` : "",
+      utilityCtaFont ? `--se-cta-font:${utilityCtaFont};` : "",
+    ].join("")
+    const utilitySizeStyleVars = isUtilityTypography
+      ? `--se-u-heading-size:${utilityHeadingSize}px;--se-u-subheading-size:${utilitySubheadingSize}px;--se-u-desc-size:${utilityDescriptionSize}px;--se-u-cta-size:${utilityCtaSize}px;`
+      : ""
     const heroStyleVars = !isProductLayout
-      ? `--se-heading-size:${headingFontSize}px;--se-subheading-size:${subheadingFontSize}px;--se-desc-size:${descriptionFontSize}px;--se-m-heading-size:${mobileHeadingFontSize}px;--se-m-subheading-size:${mobileSubheadingFontSize}px;--se-m-desc-size:${mobileDescriptionFontSize}px;--se-heading-color:${headingColor};--se-subheading-color:${subheadingColor};--se-desc-color:${descriptionColor};--se-copy-gap:${copyGap}px;--se-pagination-offset:${paginationOffset}px;--se-progress-color:${progressBarColor};`
+      ? `--se-heading-size:${headingFontSize}px;--se-subheading-size:${subheadingFontSize}px;--se-desc-size:${descriptionFontSize}px;--se-m-heading-size:${mobileHeadingFontSize}px;--se-m-subheading-size:${mobileSubheadingFontSize}px;--se-m-desc-size:${mobileDescriptionFontSize}px;--se-heading-color:${headingColor};--se-subheading-color:${subheadingColor};--se-desc-color:${descriptionColor};--se-copy-gap:${copyGap}px;--se-pagination-offset:${paginationOffset}px;--se-progress-color:${progressBarColor};${heroFontStyleVars}`
       : ""
     const isMulti =
       [
@@ -3979,6 +4413,42 @@
     const isUtilityCompact = ["logo-grid", "testimonials"].includes(effect)
     const isStories = effect === "stories"
     const isAnnounce = effect === "announcement"
+    const storiesSectionSubheading = isStories ? String(settings.sectionSubheading || "").trim() : ""
+    const storiesSectionHeading = isStories ? String(settings.sectionHeading || "").trim() : ""
+    const storiesSectionDescription = isStories ? String(settings.sectionDescription || "").trim() : ""
+    const storiesIntroCtaText = isStories ? String(settings.storiesIntroCtaText || "").trim() : ""
+    const storiesIntroCtaHref = isStories ? safeUrl(settings.storiesIntroCtaUrl || "") : ""
+    const storiesHasSplit = Boolean(
+      storiesSectionSubheading || storiesSectionHeading || storiesSectionDescription || storiesIntroCtaText,
+    )
+    const storiesVisualLeft = storiesHasSplit && String(settings.splitVisualSide || "right").toLowerCase() === "left"
+    const storiesIntroHeadingSize = Math.min(Math.max(Number(settings.storiesIntroHeadingSize ?? 48), 18), 80)
+    const storiesIntroSubheadingSize = Math.min(Math.max(Number(settings.storiesIntroSubheadingSize ?? 11), 8), 28)
+    const storiesIntroDescriptionSize = Math.min(Math.max(Number(settings.storiesIntroDescriptionSize ?? 14), 10), 32)
+    const storiesIntroCtaSize = Math.min(Math.max(Number(settings.storiesIntroCtaSize ?? 11), 8), 22)
+    const storiesIntroStyleVars = isStories
+      ? `--se-story-intro-heading-size:${storiesIntroHeadingSize}px;--se-story-intro-subheading-size:${storiesIntroSubheadingSize}px;--se-story-intro-description-size:${storiesIntroDescriptionSize}px;--se-story-intro-cta-size:${storiesIntroCtaSize}px;`
+      : ""
+    const storiesCopyParts = []
+    if (storiesSectionSubheading) {
+      storiesCopyParts.push(`<span class="se-stories-copy__eyebrow">${escapeHtml(storiesSectionSubheading)}</span>`)
+    }
+    if (storiesSectionHeading) {
+      storiesCopyParts.push(`<h2 class="se-stories-copy__heading">${escapeHtml(storiesSectionHeading)}</h2>`)
+    }
+    if (storiesSectionDescription) {
+      storiesCopyParts.push(`<p class="se-stories-copy__desc">${escapeHtml(storiesSectionDescription)}</p>`)
+    }
+    if (storiesIntroCtaText) {
+      storiesCopyParts.push(
+        storiesIntroCtaHref
+          ? `<a class="se-stories-copy__cta" href="${escapeHtml(storiesIntroCtaHref)}">${escapeHtml(storiesIntroCtaText)}</a>`
+          : `<span class="se-stories-copy__cta">${escapeHtml(storiesIntroCtaText)}</span>`,
+      )
+    }
+    const storiesCopyHtml = storiesHasSplit
+      ? `<div class="se-stories-copy">${storiesCopyParts.join("")}</div>`
+      : ""
     const salesBadgeMode = isProductLayout
       ? normalizeSalesBadgeMode(settings.salesBadgeMode)
       : "off"
@@ -4039,16 +4509,15 @@
         </div>`
 
     insertAdjacent(`
-      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : isStories ? " se-root--stories" : isAnnounce ? " se-root--announce" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}${logoStyleVars}" aria-roledescription="carousel">
+      <section class="slideease-container-${uniqueId} se-root${isMulti ? " se-root--multi" : isStories ? " se-root--stories" : isAnnounce ? " se-root--announce" : " se-root--hero"}${isUtilityCompact ? " se-root--utility" : ""}${isProductLayout ? " se-root--products" : ""}${effect === "hero-boxed" ? " se-root--boxed" : ""}${effect === "testimonials" ? " se-root--testimonials" : ""}${isHeroCategory ? " se-root--hero-type" : ""}${isUtilityTypography ? " se-root--utility-type" : ""}${storiesHasSplit ? " se-stories--split" : ""}${storiesVisualLeft ? " se-stories--visual-left" : ""}${dotsPosition !== "center" ? ` se-root--dots-${dotsPosition}` : ""}" data-effect="${escapeHtml(effect)}" data-hero-anim="${escapeHtml(settings.heroAnimation && settings.heroAnimation !== "none" ? String(settings.heroAnimation) : "")}" data-sales-badge-mode="${escapeHtml(salesBadgeMode)}" data-sales-badge-format="${escapeHtml(salesBadgeFormat)}" data-sales-badge-text="${escapeHtml(salesBadgeText)}" style="--se-height:${frameHeight}px;--se-dot:${dotColor};--se-arrow-bg:${arrowBg};--se-arrow-color:${arrowColor};--se-autoplay:${autoplayMs}ms;${widthStyleVar}${ctaStyleVars}${heroStyleVars}${productStyleVars}${logoStyleVars}${storiesIntroStyleVars}${utilityFontStyleVars}${utilitySizeStyleVars}" aria-roledescription="carousel">
         ${
           ["product-carousel", "product-showcase", "collection-rail"].includes(effect) && settings.sectionHeading
             ? `<h2 class="se-section-heading">${escapeHtml(settings.sectionHeading)}</h2>`
             : ""
         }
-        ${storiesRings}
         ${
           isStories
-            ? `<div class="se-stories-stage">${arrowsHtml}${storiesProgress}${sliderHtml}</div>`
+            ? `<div class="se-stories-inner">${storiesCopyHtml}<div class="se-stories-main">${storiesRings}<div class="se-stories-stage">${arrowsHtml}${storiesProgress}${sliderHtml}</div></div></div>`
             : `${arrowsHtml}${sliderHtml}`
         }
         ${showProgress ? `<div class="se-progress" aria-hidden="true"><span class="se-progress__bar"></span></div>` : ""}
@@ -4271,6 +4740,7 @@
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             font-size: var(--se-subheading-size, clamp(0.68rem, 1vw, 0.76rem));
+            font-family: var(--se-subheading-font, inherit);
             color: var(--se-subheading-color, inherit);
             font-weight: 700;
             letter-spacing: 0.16em;
@@ -4283,6 +4753,7 @@
             max-width: 18ch;
             color: var(--se-heading-color, inherit);
             font-size: var(--se-heading-size, clamp(2.6rem, 5.6vw, 5rem));
+            font-family: var(--se-heading-font, inherit);
             font-weight: 780;
             letter-spacing: -0.045em;
             line-height: 1.05;
@@ -4296,6 +4767,7 @@
             max-width: 38rem;
             color: var(--se-desc-color, inherit);
             font-size: var(--se-desc-size, clamp(1.1rem, 1.8vw, 1.35rem));
+            font-family: var(--se-desc-font, inherit);
             line-height: 1.5;
             opacity: 0.92;
             display: -webkit-box;
@@ -4326,6 +4798,7 @@
             color: var(--se-cta-color);
             text-decoration: none;
             font-size: var(--se-cta-font-size);
+            font-family: var(--se-cta-font, inherit);
             font-weight: 750;
             line-height: 1;
             letter-spacing: 0.01em;
@@ -4656,6 +5129,70 @@
             .slideease-container-${uniqueId} .se-product-card__shop,
             .slideease-container-${uniqueId} .se-product-card__atc {
               font-size: var(--se-m-cta-font-size, var(--se-cta-font-size, 14px));
+            }
+            .slideease-container-${uniqueId}.se-root--hero-type .se-eyebrow {
+              font-size: clamp(0.625rem, 2.8vw, var(--se-subheading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--hero-type .se-heading {
+              font-size: clamp(1.75rem, 9vw, var(--se-heading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--hero-type .se-desc {
+              font-size: clamp(0.8125rem, 3.4vw, var(--se-desc-size));
+            }
+            .slideease-container-${uniqueId}.se-root--hero-type .se-cta {
+              font-size: clamp(0.75rem, 2.6vw, var(--se-cta-font-size));
+            }
+            .slideease-container-${uniqueId}.se-root--products .se-section-heading {
+              font-size: clamp(1rem, 4.2vw, var(--se-section-heading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--products .se-product-card__title {
+              font-size: clamp(0.75rem, 3.2vw, var(--se-product-title-size));
+            }
+            .slideease-container-${uniqueId}.se-root--products .se-product-card__price {
+              font-size: clamp(0.7rem, 2.6vw, var(--se-product-price-size));
+            }
+            .slideease-container-${uniqueId}.se-root--products .se-product-card__shop,
+            .slideease-container-${uniqueId}.se-root--products .se-product-card__atc:not(.se-product-card__quick-add) {
+              font-size: clamp(0.75rem, 2.6vw, var(--se-cta-font-size));
+            }
+            .slideease-container-${uniqueId}.se-root--testimonials .se-testimonial__text {
+              font-size: clamp(0.85rem, 3.4vw, var(--se-u-heading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--testimonials .se-testimonial__author strong {
+              font-size: clamp(0.75rem, 2.8vw, var(--se-u-subheading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--testimonials .se-testimonial__author span {
+              font-size: clamp(0.7rem, 2.4vw, var(--se-u-desc-size));
+            }
+            .slideease-container-${uniqueId}.se-root--announce .se-announce__text {
+              font-size: clamp(0.7rem, 3vw, var(--se-u-heading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--announce .se-announce__cta {
+              font-size: clamp(0.625rem, 2.4vw, var(--se-u-cta-size));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-eyebrow {
+              font-size: clamp(0.625rem, 2.8vw, var(--se-u-subheading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-heading {
+              font-size: clamp(0.95rem, 4.6vw, var(--se-u-heading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-desc {
+              font-size: clamp(0.75rem, 3.2vw, var(--se-u-desc-size));
+            }
+            .slideease-container-${uniqueId}.se-root--stories .se-cta {
+              font-size: clamp(0.7rem, 2.6vw, var(--se-u-cta-size));
+            }
+            .slideease-container-${uniqueId}.se-root--utility-type.se-root--multi .se-eyebrow {
+              font-size: clamp(0.625rem, 2.8vw, var(--se-subheading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--utility-type.se-root--multi .se-heading {
+              font-size: clamp(1.1rem, 5.4vw, var(--se-heading-size));
+            }
+            .slideease-container-${uniqueId}.se-root--utility-type.se-root--multi .se-desc {
+              font-size: clamp(0.75rem, 3.2vw, var(--se-desc-size));
+            }
+            .slideease-container-${uniqueId}.se-root--utility-type.se-root--multi .se-cta {
+              font-size: clamp(0.75rem, 2.6vw, var(--se-cta-font-size));
             }
             .slideease-container-${uniqueId} .se-product-card__atc.se-product-card__quick-add {
               font-size: var(--se-quick-add-size, 11px);

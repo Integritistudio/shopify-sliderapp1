@@ -71,7 +71,7 @@
     '.testimonials-3d__eyebrow {',
     '  display: block;',
     '  margin: 0 0 0.6rem;',
-    '  font-size: 0.6875rem;',
+    '  font-size: var(--t3-section-subheading-size, 0.6875rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.2em;',
     '  text-transform: uppercase;',
@@ -81,7 +81,7 @@
     '.testimonials-3d__heading {',
     '  margin: 0;',
     '  font-family: var(--t3-font-display);',
-    '  font-size: clamp(1.85rem, 4vw, 2.85rem);',
+    '  font-size: var(--t3-section-heading-size, clamp(1.85rem, 4vw, 2.85rem));',
     '  font-weight: 600;',
     '  line-height: 1.15;',
     '  letter-spacing: -0.02em;',
@@ -90,7 +90,7 @@
     '.testimonials-3d__subheading {',
     '  margin: 0.85rem auto 0;',
     '  max-width: 32rem;',
-    '  font-size: 0.9375rem;',
+    '  font-size: var(--t3-section-description-size, 0.9375rem);',
     '  line-height: 1.6;',
     '  color: var(--t3-ink-muted);',
     '}',
@@ -211,7 +211,7 @@
     '.testimonials-3d__quote {',
     '  margin: 0;',
     '  font-family: var(--t3-font-display);',
-    '  font-size: clamp(1.15rem, 2.4vw, 1.4rem);',
+    '  font-size: var(--t3-slide-title-size, clamp(1.15rem, 2.4vw, 1.4rem));',
     '  font-weight: 500;',
     '  line-height: 1.55;',
     '  letter-spacing: -0.01em;',
@@ -288,7 +288,7 @@
     '',
     '.testimonials-3d__name {',
     '  margin: 0;',
-    '  font-size: 0.9rem;',
+    '  font-size: var(--t3-slide-meta-size, 0.9rem);',
     '  font-weight: 700;',
     '  color: var(--t3-ink);',
     '  line-height: 1.3;',
@@ -312,7 +312,7 @@
     '',
     '.testimonials-3d__role {',
     '  margin: 0;',
-    '  font-size: 0.75rem;',
+    '  font-size: var(--t3-slide-detail-size, 0.75rem);',
     '  line-height: 1.35;',
     '  color: var(--t3-ink-muted);',
     '}',
@@ -825,12 +825,6 @@
         self._startAutoplay();
       }
     };
-    this.bound.onEnter = function () {
-      self._stopAutoplay();
-    };
-    this.bound.onLeave = function () {
-      self._startAutoplay();
-    };
     this.bound.onTouchMoveGuard = function (e) {
       if (!self.isDragging) return;
       if (Math.abs(self.dragDelta) > 8 && e.cancelable) e.preventDefault();
@@ -847,10 +841,6 @@
     this.root.setAttribute('aria-roledescription', 'carousel');
     global.addEventListener('resize', this.bound.onResize);
     document.addEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.addEventListener('mouseenter', this.bound.onEnter);
-    this.root.addEventListener('mouseleave', this.bound.onLeave);
-    this.root.addEventListener('focusin', this.bound.onEnter);
-    this.root.addEventListener('focusout', this.bound.onLeave);
   };
 
   Testimonials3D.prototype._onResize = function () {
@@ -1005,7 +995,8 @@
   };
 
   Testimonials3D.prototype._renderDragPreview = function (deltaX) {
-    var progress = deltaX / (this.runtime.spacing || 260);
+    // Negate so cards follow the pointer (drag right reveals previous).
+    var progress = -deltaX / (this.runtime.spacing || 260);
     var self = this;
     var side = this._sideCount();
     this.slides.forEach(function (slide, i) {
@@ -1120,7 +1111,6 @@
     var self = this;
     this._stopAutoplay();
     if (!this.runtime.autoplay || this.slides.length < 2) return;
-    if (this.runtime.respectReducedMotion && prefersReducedMotion()) return;
     if (document.hidden) return;
     this.autoplayTimer = setInterval(function () {
       self.next();
@@ -1174,10 +1164,6 @@
     this.root.removeEventListener('keydown', this.bound.onKeyDown);
     global.removeEventListener('resize', this.bound.onResize);
     document.removeEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.removeEventListener('mouseenter', this.bound.onEnter);
-    this.root.removeEventListener('mouseleave', this.bound.onLeave);
-    this.root.removeEventListener('focusin', this.bound.onEnter);
-    this.root.removeEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       slide.style.transform = '';

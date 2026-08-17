@@ -12,6 +12,64 @@ import {
   HERO_SLIDER_TYPES,
 } from "../utils/sliderConfig"
 import { safeUrl } from "../utils/escapeHtml"
+import {
+  resolveType3dFontFamily,
+  type3dPreviewSize,
+  ensureType3dCustomFonts,
+  resolveHeroFontFamily,
+  ensureHeroCustomFonts,
+  ensureProductCustomFonts,
+  ensureUtilityCustomFonts,
+} from "../utils/type3dTypography"
+
+function type3dFonts(settings, sliderType) {
+  return {
+    display: resolveType3dFontFamily(
+      settings.type3dHeadingFontSource,
+      settings.type3dHeadingFontCustom,
+      "heading",
+      sliderType,
+    ),
+    body: resolveType3dFontFamily(
+      settings.type3dBodyFontSource,
+      settings.type3dBodyFontCustom,
+      "body",
+      sliderType,
+    ),
+  }
+}
+
+function heroPreviewFonts(settings) {
+  return {
+    heading: resolveHeroFontFamily(settings.heroHeadingFontSource, settings.heroHeadingFontCustom, "heading"),
+    subheading: resolveHeroFontFamily(settings.heroSubheadingFontSource, settings.heroSubheadingFontCustom, "body"),
+    description: resolveHeroFontFamily(settings.heroDescriptionFontSource, settings.heroDescriptionFontCustom, "body"),
+    cta: resolveHeroFontFamily(settings.heroCtaFontSource, settings.heroCtaFontCustom, "body"),
+  }
+}
+
+function productPreviewFonts(settings) {
+  return {
+    section: resolveHeroFontFamily(settings.productSectionFontSource, settings.productSectionFontCustom, "heading"),
+    title: resolveHeroFontFamily(settings.productTitleFontSource, settings.productTitleFontCustom, "heading"),
+    price: resolveHeroFontFamily(settings.productPriceFontSource, settings.productPriceFontCustom, "body"),
+    cta: resolveHeroFontFamily(settings.productCtaFontSource, settings.productCtaFontCustom, "body"),
+  }
+}
+
+function utilityPreviewFonts(settings) {
+  return {
+    heading: resolveHeroFontFamily(settings.utilityHeadingFontSource, settings.utilityHeadingFontCustom, "heading"),
+    subheading: resolveHeroFontFamily(settings.utilitySubheadingFontSource, settings.utilitySubheadingFontCustom, "body"),
+    description: resolveHeroFontFamily(settings.utilityDescriptionFontSource, settings.utilityDescriptionFontCustom, "body"),
+    cta: resolveHeroFontFamily(settings.utilityCtaFontSource, settings.utilityCtaFontCustom, "body"),
+  }
+}
+
+function isUtilityCopyEffect(effect) {
+  const type = resolveSliderType(effect)
+  return type === "marquee" || type === "stories"
+}
 
 function isHeroEffect(effect) {
   return (
@@ -44,8 +102,17 @@ function CtaButtons({ slide, settings, compact = false, variant = "primary" }) {
   const padX = compact
     ? Math.max(8, Math.round((settings.ctaPadding ?? 12) * 0.95))
     : Math.round((settings.ctaPadding ?? 12) * 1.75)
-  const fontSizePx = resolveFontSize(settings, "ctaFontSize", 16, compact, 0.88)
+  const effectType = resolveSliderType(settings.effect)
+  const fontSizePx =
+    effectType === "stories"
+      ? compact
+        ? Math.max(10, Math.round((settings.utilityCtaFontSize ?? 14) * 0.88))
+        : settings.utilityCtaFontSize ?? 14
+      : resolveFontSize(settings, "ctaFontSize", 16, compact, 0.88)
   const fontSize = `${fontSizePx}px`
+  const ctaFontFamily = isUtilityCopyEffect(effectType)
+    ? utilityPreviewFonts(settings).cta
+    : heroPreviewFonts(settings).cta
   const radius = settings.ctaBorderRadius ?? 50
   const borderWidth = settings.ctaBorderWidth ?? 1
   const iconSize = compact
@@ -62,6 +129,7 @@ function CtaButtons({ slide, settings, compact = false, variant = "primary" }) {
     borderRadius: radius,
     fontWeight: 700,
     fontSize,
+    fontFamily: ctaFontFamily || undefined,
     lineHeight: 1,
     boxSizing: "border-box",
     minHeight: iconSize + padY * 2,
@@ -156,6 +224,18 @@ function SlideFrame({ slide, settings, compact, heightOverride, style = {}, medi
   const headingColor = settings.headingColor || slide.textColor || "#ffffff"
   const subColor = settings.subheadingColor || slide.textColor || "#ffffff"
   const descColor = settings.descriptionColor || slide.textColor || "#ffffff"
+  const effectType = resolveSliderType(settings.effect)
+  const utilityCopy = isUtilityCopyEffect(effectType)
+  const fonts = heroLayout ? heroPreviewFonts(settings) : utilityCopy ? utilityPreviewFonts(settings) : {}
+  const storyHeadingSize = compact
+    ? Math.max(14, Math.round((settings.utilityHeadingFontSize ?? 22) * 0.85))
+    : settings.utilityHeadingFontSize ?? 22
+  const storySubheadingSize = compact
+    ? Math.max(8, Math.round((settings.utilitySubheadingFontSize ?? 11) * 0.9))
+    : settings.utilitySubheadingFontSize ?? 11
+  const storyDescriptionSize = compact
+    ? Math.max(11, Math.round((settings.utilityDescriptionFontSize ?? 15) * 0.88))
+    : settings.utilityDescriptionFontSize ?? 15
 
   return (
     <div
@@ -213,14 +293,19 @@ function SlideFrame({ slide, settings, compact, heightOverride, style = {}, medi
               margin: heroLayout ? 0 : "0 0 0.35rem",
               fontSize: heroLayout
                 ? `${resolveFontSize(settings, "subheadingFontSize", 12, compact, 0.9)}px`
-                : compact
-                  ? "0.7rem"
-                  : "0.8rem",
+                : effectType === "stories"
+                  ? `${storySubheadingSize}px`
+                  : effectType === "marquee"
+                    ? `${resolveFontSize(settings, "subheadingFontSize", 12, compact, 0.9)}px`
+                    : compact
+                      ? "0.7rem"
+                      : "0.8rem",
               fontWeight: 700,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
               opacity: 0.95,
               color: heroLayout ? subColor : undefined,
+              fontFamily: fonts.subheading || undefined,
             }}
           >
             {subheading}
@@ -232,12 +317,17 @@ function SlideFrame({ slide, settings, compact, heightOverride, style = {}, medi
               margin: heroLayout ? 0 : "0 0 0.4rem",
               fontSize: heroLayout
                 ? `${resolveFontSize(settings, "headingFontSize", 42, compact, 0.5)}px`
-                : compact
-                  ? "1.4rem"
-                  : "2.35rem",
+                : effectType === "stories"
+                  ? `${storyHeadingSize}px`
+                  : effectType === "marquee"
+                    ? `${resolveFontSize(settings, "headingFontSize", 42, compact, 0.5)}px`
+                    : compact
+                      ? "1.4rem"
+                      : "2.35rem",
               fontWeight: 700,
               letterSpacing: "-0.02em",
               color: heroLayout ? headingColor : undefined,
+              fontFamily: fonts.heading || undefined,
             }}
           >
             {heading}
@@ -251,15 +341,20 @@ function SlideFrame({ slide, settings, compact, heightOverride, style = {}, medi
               lineHeight: 1.4,
               fontSize: heroLayout
                 ? `${resolveFontSize(settings, "descriptionFontSize", 16, compact, 0.85)}px`
-                : compact
-                  ? "0.92rem"
-                  : "1.15rem",
+                : effectType === "stories"
+                  ? `${storyDescriptionSize}px`
+                  : effectType === "marquee"
+                    ? `${resolveFontSize(settings, "descriptionFontSize", 16, compact, 0.85)}px`
+                    : compact
+                      ? "0.92rem"
+                      : "1.15rem",
               opacity: 0.9,
               display: "-webkit-box",
               WebkitLineClamp: compact ? 2 : 4,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
               color: heroLayout ? descColor : undefined,
+              fontFamily: fonts.description || undefined,
             }}
           >
             {description}
@@ -291,6 +386,7 @@ function HeroFrame({ slide, settings, compact, heightOverride, boxed = false, vi
   const headingSize = resolveFontSize(settings, "headingFontSize", 42, compact, 0.48)
   const subSize = resolveFontSize(settings, "subheadingFontSize", 12, compact, 0.85)
   const descSize = resolveFontSize(settings, "descriptionFontSize", 16, compact, 0.85)
+  const fonts = heroPreviewFonts(settings)
   const bottomPad = compact ? Math.max(28, 20 + paginationOffset) : Math.max(44, 28 + paginationOffset)
 
   const media = (
@@ -373,6 +469,7 @@ function HeroFrame({ slide, settings, compact, heightOverride, boxed = false, vi
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 color: subColor,
+                fontFamily: fonts.subheading || undefined,
               }}
             >
               {subheading}
@@ -387,6 +484,7 @@ function HeroFrame({ slide, settings, compact, heightOverride, boxed = false, vi
                 fontWeight: 700,
                 letterSpacing: "-0.03em",
                 color: headingColor,
+                fontFamily: fonts.heading || undefined,
               }}
             >
               {heading}
@@ -401,6 +499,7 @@ function HeroFrame({ slide, settings, compact, heightOverride, boxed = false, vi
                 opacity: 0.9,
                 maxWidth: "28rem",
                 color: descColor,
+                fontFamily: fonts.description || undefined,
               }}
             >
               {description}
@@ -484,6 +583,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
   const isSoldOut = slide.availableForSale === false
   const sharedRadius = settings.ctaBorderRadius ?? settings.atcBorderRadius ?? 50
   const titleFontSize = featured ? titleSize + 1 : titleSize
+  const fonts = productPreviewFonts(settings)
   const shopStyle = {
     display: "inline-flex",
     alignSelf: "flex-start",
@@ -493,6 +593,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
     background: settings.ctaBackground || "#170f49",
     color: settings.ctaTextColor || "#fff",
     fontSize: ctaSize,
+    fontFamily: fonts.cta || undefined,
     fontWeight: 650,
     lineHeight: 1,
   }
@@ -507,6 +608,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
     background: isSoldOut && showSoldOut ? "#f3f4f6" : settings.atcBackground || "#ffffff",
     color: isSoldOut && showSoldOut ? "#6b7280" : settings.atcTextColor || "#170f49",
     fontSize: ctaSize,
+    fontFamily: fonts.cta || undefined,
     fontWeight: 650,
     lineHeight: 1,
     opacity: isSoldOut && showSoldOut ? 0.85 : 1,
@@ -651,6 +753,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
           style={{
             fontWeight: 650,
             fontSize: titleFontSize,
+            fontFamily: fonts.title || undefined,
             lineHeight: 1.3,
             ...(reserveTitleSpace ? { minHeight: `calc(${titleFontSize}px * 1.3 * 2)` } : null),
             display: "-webkit-box",
@@ -662,7 +765,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
           {title}
         </div>
         {settings.showPrice !== false && price ? (
-          <div style={{ fontSize: priceSize, color: "#5f5a72", fontWeight: 600 }}>{price}</div>
+          <div style={{ fontSize: priceSize, fontFamily: fonts.price || undefined, color: "#5f5a72", fontWeight: 600 }}>{price}</div>
         ) : null}
         {(showAddToCart || showShopNow) && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
@@ -682,7 +785,7 @@ function ProductCard({ slide, settings, compact = false, featured = false, reser
   )
 }
 
-function SectionHeading({ text, compact, fontSize, gap }) {
+function SectionHeading({ text, compact, fontSize, gap, fontFamily }) {
   if (!text) return null
   const size = fontSize ?? 28
   const bottomGap = gap ?? 16
@@ -693,6 +796,7 @@ function SectionHeading({ text, compact, fontSize, gap }) {
           margin: 0,
           color: "#170f49",
           fontSize: compact ? Math.max(16, Math.round(size * 0.75)) : size,
+          fontFamily: fontFamily || undefined,
           fontWeight: 700,
           letterSpacing: "-0.02em",
         }}
@@ -706,6 +810,12 @@ function SectionHeading({ text, compact, fontSize, gap }) {
 /** Collection carousel preview — separate from Premium product 3D engines */
 function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
   const ink = "#141210"
+  const fonts = type3dFonts(settings, "collection-carousel")
+  const sectionHeadingSize = type3dPreviewSize(settings, "type3dSectionHeadingSize", 48, compact, 0.58)
+  const sectionSubheadingSize = type3dPreviewSize(settings, "type3dSectionSubheadingSize", 11, compact, 0.9)
+  const sectionDescriptionSize = type3dPreviewSize(settings, "type3dSectionDescriptionSize", 15, compact, 0.87)
+  const slideTitleSize = type3dPreviewSize(settings, "type3dSlideTitleSize", 28, compact, 0.75)
+  const slideDetailSize = type3dPreviewSize(settings, "type3dSlideDetailSize", 13, compact, 0.9)
   const showNav = settings.arrows !== false && slides.length > 1
   const showDots = settings.dots !== false && slides.length > 1
   const showCount = settings.showItemCount !== false
@@ -760,7 +870,7 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
         background: sectionBg,
         color: ink,
         padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.5rem 0.5rem 2.75rem",
-        fontFamily: '"Manrope", "Helvetica Neue", sans-serif',
+        fontFamily: fonts.body,
       }}
     >
       {hasHeader ? (
@@ -768,7 +878,7 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
           {settings.sectionSubheading ? (
             <div
               style={{
-                fontSize: 11,
+                fontSize: sectionSubheadingSize,
                 fontWeight: 600,
                 letterSpacing: "0.24em",
                 textTransform: "uppercase",
@@ -783,8 +893,8 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
             <h2
               style={{
                 margin: 0,
-                fontFamily: '"Cormorant Garamond", "Times New Roman", serif',
-                fontSize: compact ? 28 : 40,
+                fontFamily: fonts.display,
+                fontSize: sectionHeadingSize,
                 fontWeight: 500,
                 lineHeight: 1.05,
                 letterSpacing: "-0.02em",
@@ -798,7 +908,7 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
               style={{
                 margin: "10px auto 0",
                 maxWidth: 420,
-                fontSize: compact ? 13 : 15,
+                fontSize: sectionDescriptionSize,
                 lineHeight: 1.55,
                 color: "#6a645c",
               }}
@@ -919,8 +1029,8 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
                   ) : null}
                   <div
                     style={{
-                      fontFamily: '"Cormorant Garamond", "Times New Roman", serif',
-                      fontSize: compact ? 18 : 24,
+                      fontFamily: fonts.display,
+                      fontSize: slideTitleSize,
                       fontWeight: 500,
                       lineHeight: 1.15,
                     }}
@@ -928,7 +1038,7 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
                     {title}
                   </div>
                   {abs === 0 && description ? (
-                    <div style={{ fontSize: 12, lineHeight: 1.45, color: "rgba(255,255,255,0.78)", maxWidth: "28ch" }}>
+                    <div style={{ fontSize: slideDetailSize, lineHeight: 1.45, color: "rgba(255,255,255,0.78)", maxWidth: "28ch" }}>
                       {description}
                     </div>
                   ) : null}
@@ -1057,6 +1167,13 @@ function CollectionCarouselPreview({ slides, index, settings, compact, onPrev, o
 
 function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
   const ink = "#15181c"
+  const fonts = type3dFonts(settings, "testimonials-3d")
+  const sectionHeadingSize = type3dPreviewSize(settings, "type3dSectionHeadingSize", 40, compact, 0.72)
+  const sectionSubheadingSize = type3dPreviewSize(settings, "type3dSectionSubheadingSize", 11, compact, 0.9)
+  const sectionDescriptionSize = type3dPreviewSize(settings, "type3dSectionDescriptionSize", 15, compact, 0.87)
+  const quoteSize = type3dPreviewSize(settings, "type3dSlideTitleSize", 22, compact, 0.82)
+  const authorSize = type3dPreviewSize(settings, "type3dSlideMetaSize", 14, compact, 0.93)
+  const roleSize = type3dPreviewSize(settings, "type3dSlideDetailSize", 12, compact, 0.92)
   const showNav = settings.arrows !== false && slides.length > 1
   const showDots = settings.dots !== false && slides.length > 1
   const depth = Number(settings.t3Depth) || 200
@@ -1146,7 +1263,7 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
         background: sectionBg,
         color: ink,
         padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.5rem 0.5rem 2.75rem",
-        fontFamily: '"Plus Jakarta Sans", "Helvetica Neue", sans-serif',
+        fontFamily: fonts.body,
       }}
     >
       {hasHeader ? (
@@ -1154,7 +1271,7 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
           {settings.sectionSubheading ? (
             <div
               style={{
-                fontSize: 11,
+                fontSize: sectionSubheadingSize,
                 fontWeight: 600,
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
@@ -1169,8 +1286,8 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
             <h2
               style={{
                 margin: 0,
-                fontFamily: '"Source Serif 4", "Times New Roman", serif',
-                fontSize: compact ? 26 : 36,
+                fontFamily: fonts.display,
+                fontSize: sectionHeadingSize,
                 fontWeight: 600,
                 lineHeight: 1.15,
                 letterSpacing: "-0.02em",
@@ -1184,7 +1301,7 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
               style={{
                 margin: "10px auto 0",
                 maxWidth: 420,
-                fontSize: compact ? 13 : 15,
+                fontSize: sectionDescriptionSize,
                 lineHeight: 1.55,
                 color: "#5f6770",
               }}
@@ -1266,8 +1383,8 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
                 <blockquote
                   style={{
                     margin: 0,
-                    fontFamily: '"Source Serif 4", "Times New Roman", serif',
-                    fontSize: compact ? 14 : 17,
+                    fontFamily: fonts.display,
+                    fontSize: quoteSize,
                     fontWeight: 500,
                     lineHeight: 1.55,
                     letterSpacing: "-0.01em",
@@ -1319,7 +1436,7 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
                   )}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <div style={{ fontWeight: 700, fontSize: compact ? 13 : 14 }}>{author}</div>
+                      <div style={{ fontWeight: 700, fontSize: authorSize }}>{author}</div>
                       {verified ? (
                         <span
                           style={{
@@ -1335,7 +1452,7 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
                       ) : null}
                     </div>
                     {role ? (
-                      <div style={{ fontSize: compact ? 11 : 12, color: "#5f6770", marginTop: 2 }}>{role}</div>
+                      <div style={{ fontSize: roleSize, color: "#5f6770", marginTop: 2 }}>{role}</div>
                     ) : null}
                   </div>
                 </div>
@@ -1444,6 +1561,12 @@ function Testimonials3DPreview({ slides, index, settings, compact, onPrev, onNex
 /** 3D UGC Feed preview — vertical social cards with depth */
 function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
   const ink = "#f4f5f7"
+  const fonts = type3dFonts(settings, "ugc-feed")
+  const sectionHeadingSize = type3dPreviewSize(settings, "type3dSectionHeadingSize", 40, compact, 0.69)
+  const sectionSubheadingSize = type3dPreviewSize(settings, "type3dSectionSubheadingSize", 11, compact, 0.9)
+  const sectionDescriptionSize = type3dPreviewSize(settings, "type3dSectionDescriptionSize", 15, compact, 0.87)
+  const titleSize = type3dPreviewSize(settings, "type3dSlideTitleSize", 15, compact, 0.87)
+  const creatorSize = type3dPreviewSize(settings, "type3dSlideMetaSize", 12, compact, 0.92)
   const showNav = settings.arrows !== false && slides.length > 1
   const showDots = settings.dots !== false && slides.length > 1
   const depth = Number(settings.ugcDepth) || 180
@@ -1524,7 +1647,7 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
         background: sectionBg,
         color: ink,
         padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.25rem 0.5rem 2.5rem",
-        fontFamily: '"Plus Jakarta Sans", "Helvetica Neue", sans-serif',
+        fontFamily: fonts.body,
       }}
     >
       {hasHeader ? (
@@ -1532,7 +1655,7 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
           {settings.sectionSubheading ? (
             <div
               style={{
-                fontSize: 11,
+                fontSize: sectionSubheadingSize,
                 fontWeight: 600,
                 letterSpacing: "0.22em",
                 textTransform: "uppercase",
@@ -1547,8 +1670,8 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
             <h2
               style={{
                 margin: 0,
-                fontFamily: '"Syne", "Helvetica Neue", sans-serif',
-                fontSize: compact ? 22 : 32,
+                fontFamily: fonts.display,
+                fontSize: sectionHeadingSize,
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
                 lineHeight: 1.1,
@@ -1562,7 +1685,7 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
               style={{
                 margin: "10px auto 0",
                 maxWidth: 360,
-                fontSize: compact ? 12 : 14,
+                fontSize: sectionDescriptionSize,
                 lineHeight: 1.55,
                 color: "rgba(244,245,247,0.68)",
               }}
@@ -1692,7 +1815,7 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
                 )}
                 <div style={{ minWidth: 0 }}>
                   {creator ? (
-                    <div style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>{creator}</div>
+                    <div style={{ fontSize: creatorSize, fontWeight: 700, lineHeight: 1.2 }}>{creator}</div>
                   ) : null}
                   {handle ? (
                     <div style={{ fontSize: 10, color: "rgba(244,245,247,0.65)", lineHeight: 1.2 }}>{handle}</div>
@@ -1709,8 +1832,8 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
               >
                 <div
                   style={{
-                    fontFamily: '"Syne", "Helvetica Neue", sans-serif',
-                    fontSize: compact ? 13 : 15,
+                    fontFamily: fonts.display,
+                    fontSize: titleSize,
                     fontWeight: 700,
                     lineHeight: 1.2,
                     marginBottom: 4,
@@ -1842,6 +1965,12 @@ function UgcFeedPreview({ slides, index, settings, compact, onPrev, onNext, onGo
 /** 3D Brand Logos preview — cylindrical trusted-by carousel */
 function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
   const ink = "#161616"
+  const fonts = type3dFonts(settings, "logo-3d")
+  const sectionHeadingSize = type3dPreviewSize(settings, "type3dSectionHeadingSize", 36, compact, 0.69)
+  const sectionSubheadingSize = type3dPreviewSize(settings, "type3dSectionSubheadingSize", 11, compact, 0.9)
+  const sectionDescriptionSize = type3dPreviewSize(settings, "type3dSectionDescriptionSize", 15, compact, 0.87)
+  const brandSize = type3dPreviewSize(settings, "type3dSlideTitleSize", 13, compact, 0.92)
+  const brandDetailSize = type3dPreviewSize(settings, "type3dSlideDetailSize", 12, compact, 0.92)
   const showNav = settings.arrows !== false && slides.length > 1
   const showDots = settings.dots === true && slides.length > 1
   const depth = Number(settings.logo3dDepth) || 160
@@ -1921,7 +2050,7 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
         background: sectionBg,
         color: ink,
         padding: compact ? "1.5rem 0.5rem 1.75rem" : "2.5rem 0.5rem 2.75rem",
-        fontFamily: '"Instrument Sans", "Helvetica Neue", sans-serif',
+        fontFamily: fonts.body,
       }}
     >
       {hasHeader ? (
@@ -1929,7 +2058,7 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
           {settings.sectionSubheading ? (
             <div
               style={{
-                fontSize: 11,
+                fontSize: sectionSubheadingSize,
                 fontWeight: 600,
                 letterSpacing: "0.22em",
                 textTransform: "uppercase",
@@ -1944,7 +2073,8 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
             <h2
               style={{
                 margin: 0,
-                fontSize: compact ? 22 : 32,
+                fontFamily: fonts.display,
+                fontSize: sectionHeadingSize,
                 fontWeight: 600,
                 lineHeight: 1.15,
                 letterSpacing: "-0.02em",
@@ -1958,7 +2088,7 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
               style={{
                 margin: "10px auto 0",
                 maxWidth: 420,
-                fontSize: compact ? 13 : 15,
+                fontSize: sectionDescriptionSize,
                 lineHeight: 1.55,
                 color: "#6b6b66",
               }}
@@ -2048,7 +2178,7 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
                 <p
                   style={{
                     margin: 0,
-                    fontSize: compact ? 12 : 13,
+                    fontSize: brandSize,
                     fontWeight: 600,
                     opacity: active ? 1 : 0.75,
                   }}
@@ -2059,7 +2189,7 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
                   <p
                     style={{
                       margin: 0,
-                      fontSize: 12,
+                      fontSize: brandDetailSize,
                       lineHeight: 1.4,
                       color: "#6b6b66",
                       maxWidth: "16ch",
@@ -2182,6 +2312,9 @@ function Logo3DPreview({ slides, index, settings, compact, onPrev, onNext, onGoT
 function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNext, onGoTo }) {
   const ink = "#1c1a17"
   const surface = "#faf8f5"
+  const fonts = type3dFonts(settings, "premium-stacked")
+  const slideTitleSize = type3dPreviewSize(settings, "type3dSlideTitleSize", 22, compact, 0.8)
+  const slideDetailSize = type3dPreviewSize(settings, "type3dSlideDetailSize", 13, compact, 0.92)
   const showNav = settings.arrows !== false && slides.length > 1
   const showDots = settings.dots !== false && slides.length > 1
   const depth = Math.max(2, Number(settings.stackDepth) || 4)
@@ -2212,11 +2345,18 @@ function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNe
     : sectionBgCustom ||
       "radial-gradient(95% 75% at 50% 10%, rgba(255,255,255,0.55) 0%, transparent 55%), linear-gradient(165deg, #efece7 0%, #ddd8d0 100%)"
 
-  const hasHeader = Boolean(
+  const hasSplit = Boolean(
     String(settings.sectionSubheading || "").trim() ||
       String(settings.sectionHeading || "").trim() ||
-      String(settings.sectionDescription || "").trim(),
+      String(settings.sectionDescription || "").trim() ||
+      String(settings.stackIntroCtaText || "").trim(),
   )
+  const visualLeft = hasSplit && String(settings.splitVisualSide || "right").toLowerCase() === "left"
+  const introCtaText = String(settings.stackIntroCtaText || "").trim()
+  const introHeadingSize = Math.min(Math.max(Number(settings.stackIntroHeadingSize ?? 48), 18), 80)
+  const introSubheadingSize = Math.min(Math.max(Number(settings.stackIntroSubheadingSize ?? 11), 8), 28)
+  const introDescriptionSize = Math.min(Math.max(Number(settings.stackIntroDescriptionSize ?? 14), 10), 32)
+  const introCtaSize = Math.min(Math.max(Number(settings.stackIntroCtaSize ?? 11), 8), 22)
 
   const prevIndexRef = useRef(index)
   const [exiting, setExiting] = useState(null)
@@ -2273,11 +2413,12 @@ function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNe
   }
 
   const transformForLevel = (level) => {
-    const x = level * (compact ? Math.min(hOffset, 28) : hOffset)
+    const dir = visualLeft ? -1 : 1
+    const x = dir * level * (compact ? Math.min(hOffset, 28) : hOffset)
     const y = -level * (compact ? Math.min(vOffset, 16) : vOffset)
     const z = -level * (compact ? Math.min(depthStep, 44) : depthStep)
     const scale = Math.max(1 - level * scaleStep, 0.72)
-    const rotateZ = level * rotation
+    const rotateZ = dir * level * rotation
     const opacity = level === 0 ? 1 : Math.max(0.55, 1 - level * 0.12)
     return { x, y, z, scale, rotateZ, opacity }
   }
@@ -2419,8 +2560,8 @@ function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNe
           >
             <div
               style={{
-                fontFamily: '"Fraunces", "Times New Roman", serif',
-                fontSize: compact ? 16 : 20,
+                fontFamily: fonts.display,
+                fontSize: slideTitleSize,
                 fontWeight: 500,
                 lineHeight: 1.25,
               }}
@@ -2428,7 +2569,7 @@ function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNe
               {title}
             </div>
             {settings.showPrice !== false && price ? (
-              <div style={{ display: "flex", justifyContent: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
+              <div style={{ display: "flex", justifyContent: "center", gap: 8, fontSize: slideDetailSize, fontWeight: 600 }}>
                 <span>{price}</span>
                 {compareAt ? (
                   <span style={{ color: "#9a9288", textDecoration: "line-through", fontWeight: 500 }}>
@@ -2462,55 +2603,81 @@ function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNe
     )
   }
 
-  return (
+  const copyCol = hasSplit ? (
     <div
       style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: 12,
-        background: sectionBg,
-        color: ink,
-        padding: compact ? "1.5rem 0.75rem 1.75rem" : "2.25rem 1rem 2.5rem",
-        fontFamily: '"Sora", "Helvetica Neue", sans-serif',
+        display: "flex",
+        flexDirection: "column",
+        alignItems: compact ? "center" : "flex-start",
+        textAlign: compact ? "center" : "left",
+        width: "100%",
+        maxWidth: compact ? "none" : "28rem",
+        paddingInline: 0,
+        zIndex: 2,
+        justifySelf: visualLeft && !compact ? "end" : "start",
+        order: visualLeft && !compact ? 2 : undefined,
+        direction: "ltr",
       }}
     >
-      {hasHeader ? (
-        <header style={{ textAlign: "center", marginBottom: compact ? 16 : 24, paddingInline: 12 }}>
-          {settings.sectionSubheading ? (
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: "#3d5a4c",
-                marginBottom: 8,
-              }}
-            >
-              {settings.sectionSubheading}
-            </div>
-          ) : null}
-          {settings.sectionHeading ? (
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: '"Fraunces", "Times New Roman", serif',
-                fontSize: compact ? 26 : 36,
-                fontWeight: 500,
-                lineHeight: 1.1,
-              }}
-            >
-              {settings.sectionHeading}
-            </h2>
-          ) : null}
-          {settings.sectionDescription ? (
-            <p style={{ margin: "10px auto 0", maxWidth: 380, fontSize: 14, lineHeight: 1.55, color: "#6a645c" }}>
-              {settings.sectionDescription}
-            </p>
-          ) : null}
-        </header>
+      {settings.sectionSubheading ? (
+        <div
+          style={{
+            fontSize: compact ? Math.max(8, Math.round(introSubheadingSize * 0.9)) : introSubheadingSize,
+            fontWeight: 600,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "#3d5a4c",
+            marginBottom: 8,
+          }}
+        >
+          {settings.sectionSubheading}
+        </div>
       ) : null}
+      {settings.sectionHeading ? (
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: fonts.display,
+            fontSize: compact ? Math.max(18, Math.round(introHeadingSize * 0.7)) : introHeadingSize,
+            fontWeight: 500,
+            lineHeight: 1.1,
+          }}
+        >
+          {settings.sectionHeading}
+        </h2>
+      ) : null}
+      {settings.sectionDescription ? (
+        <p style={{ margin: "10px 0 0", fontSize: compact ? Math.max(11, Math.round(introDescriptionSize * 0.9)) : introDescriptionSize, lineHeight: 1.55, color: "#6a645c" }}>
+          {settings.sectionDescription}
+        </p>
+      ) : null}
+      {introCtaText ? (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 16,
+            minHeight: 36,
+            padding: "8px 18px",
+            fontSize: compact ? Math.max(8, Math.round(introCtaSize * 0.9)) : introCtaSize,
+            fontWeight: 700,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: surface,
+            background: ink,
+            border: `1px solid ${ink}`,
+            borderRadius: 1,
+          }}
+        >
+          {introCtaText}
+        </span>
+      ) : null}
+    </div>
+  ) : null
 
+  const stageBlock = (
+    <div style={{ minWidth: 0, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", overflow: "hidden", direction: "ltr", order: visualLeft && !compact ? 1 : undefined }}>
       <div
         style={{
           position: "relative",
@@ -2601,6 +2768,49 @@ function StackedCarouselPreview({ slides, index, settings, compact, onPrev, onNe
       )}
     </div>
   )
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 12,
+        background: sectionBg,
+        color: ink,
+        padding: compact ? "1.5rem 0.75rem 1.75rem" : "2.25rem 1rem 2.5rem",
+        fontFamily: fonts.body,
+      }}
+    >
+      <div
+        style={
+          hasSplit && !compact
+            ? {
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                columnGap: 28,
+                alignItems: "center",
+                width: "100%",
+                maxWidth: 920,
+                marginInline: "auto",
+                boxSizing: "border-box",
+                overflow: "hidden",
+              }
+            : hasSplit && compact
+              ? {
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 16,
+                  width: "100%",
+                }
+              : undefined
+        }
+      >
+        {copyCol}
+        {stageBlock}
+      </div>
+    </div>
+  )
 }
 
 /** Standalone Premium coverflow / circular preview — does NOT reuse ProductCard / NavArrows / Slick dots */
@@ -2622,12 +2832,20 @@ function PremiumCoverflowPreview({
   const surfaceAlt = circular ? "#e6e9ee" : "#e4e0d9"
   const inkSoft = circular ? "#98a4b0" : "#9a948c"
   const metal = circular ? "#9a8660" : "#8a6a3d"
-  const displayFont = circular
-    ? '"Libre Baskerville", Georgia, "Times New Roman", serif'
-    : '"Cormorant Garamond", Georgia, "Times New Roman", serif'
-  const bodyFont = circular
-    ? 'Outfit, "Helvetica Neue", Arial, sans-serif'
-    : 'Manrope, "Helvetica Neue", sans-serif'
+  const typeKey = circular ? "premium-circular" : "premium-coverflow"
+  const fonts = type3dFonts(settings, typeKey)
+  const displayFont = fonts.display
+  const bodyFont = fonts.body
+  const sectionHeadingSize = type3dPreviewSize(settings, "type3dSectionHeadingSize", circular ? 40 : 48, compact, 0.58)
+  const sectionSubheadingSize = type3dPreviewSize(settings, "type3dSectionSubheadingSize", 11, compact, 0.9)
+  const sectionDescriptionSize = type3dPreviewSize(settings, "type3dSectionDescriptionSize", 15, compact, 0.87)
+  const slideTitleSize = type3dPreviewSize(settings, "type3dSlideTitleSize", circular ? 18 : 22, compact, 0.82)
+  const slideDetailSize = type3dPreviewSize(settings, "type3dSlideDetailSize", 13, compact, 0.92)
+  const hasHeader = Boolean(
+    String(settings.sectionSubheading || "").trim() ||
+      String(settings.sectionHeading || "").trim() ||
+      String(settings.sectionDescription || "").trim(),
+  )
   const stageRef = useRef(null)
   const [stageWidth, setStageWidth] = useState(compact ? 280 : 980)
   const showPrice = settings.showPrice !== false
@@ -2761,6 +2979,52 @@ function PremiumCoverflowPreview({
         fontFamily: bodyFont,
       }}
     >
+      {hasHeader ? (
+        <header style={{ textAlign: "center", marginBottom: compact ? 16 : 28, paddingInline: 16 }}>
+          {settings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: sectionSubheadingSize,
+                fontWeight: 600,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: metal,
+                marginBottom: 8,
+              }}
+            >
+              {settings.sectionSubheading}
+            </div>
+          ) : null}
+          {settings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: displayFont,
+                fontSize: sectionHeadingSize,
+                fontWeight: circular ? 400 : 500,
+                lineHeight: 1.08,
+                letterSpacing: "-0.02em",
+                color: ink,
+              }}
+            >
+              {settings.sectionHeading}
+            </h2>
+          ) : null}
+          {settings.sectionDescription ? (
+            <p
+              style={{
+                margin: "10px auto 0",
+                maxWidth: 480,
+                fontSize: sectionDescriptionSize,
+                lineHeight: 1.55,
+                color: circular ? "#5c6570" : "#6b6560",
+              }}
+            >
+              {settings.sectionDescription}
+            </p>
+          ) : null}
+        </header>
+      ) : null}
       <div
         ref={stageRef}
         style={{
@@ -2927,7 +3191,7 @@ function PremiumCoverflowPreview({
                       style={{
                         margin: 0,
                         fontFamily: displayFont,
-                        fontSize: compact ? 18 : circular ? 20 : 22,
+                        fontSize: slideTitleSize,
                         fontWeight: circular ? 400 : 500,
                         lineHeight: 1.25,
                         letterSpacing: "0.01em",
@@ -2944,7 +3208,7 @@ function PremiumCoverflowPreview({
                           alignItems: "baseline",
                           justifyContent: "center",
                           gap: 8,
-                          fontSize: compact ? 12 : 13,
+                          fontSize: slideDetailSize,
                           fontWeight: 600,
                           letterSpacing: "0.04em",
                           color: ink,
@@ -3442,6 +3706,42 @@ export default function SliderPreview({
   const mergedSettings = useMemo(() => mergeSliderSettings(sliderType, settings || {}), [sliderType, settings])
   const typeInfo = getSliderTypeInfo(sliderType)
   const effect = resolveSliderType(mergedSettings.effect || sliderType)
+
+  useEffect(() => {
+    ensureType3dCustomFonts(mergedSettings)
+    ensureHeroCustomFonts(mergedSettings)
+    ensureProductCustomFonts(mergedSettings)
+    ensureUtilityCustomFonts(mergedSettings)
+  }, [
+    mergedSettings.type3dHeadingFontSource,
+    mergedSettings.type3dHeadingFontCustom,
+    mergedSettings.type3dBodyFontSource,
+    mergedSettings.type3dBodyFontCustom,
+    mergedSettings.heroHeadingFontSource,
+    mergedSettings.heroHeadingFontCustom,
+    mergedSettings.heroSubheadingFontSource,
+    mergedSettings.heroSubheadingFontCustom,
+    mergedSettings.heroDescriptionFontSource,
+    mergedSettings.heroDescriptionFontCustom,
+    mergedSettings.heroCtaFontSource,
+    mergedSettings.heroCtaFontCustom,
+    mergedSettings.productSectionFontSource,
+    mergedSettings.productSectionFontCustom,
+    mergedSettings.productTitleFontSource,
+    mergedSettings.productTitleFontCustom,
+    mergedSettings.productPriceFontSource,
+    mergedSettings.productPriceFontCustom,
+    mergedSettings.productCtaFontSource,
+    mergedSettings.productCtaFontCustom,
+    mergedSettings.utilityHeadingFontSource,
+    mergedSettings.utilityHeadingFontCustom,
+    mergedSettings.utilitySubheadingFontSource,
+    mergedSettings.utilitySubheadingFontCustom,
+    mergedSettings.utilityDescriptionFontSource,
+    mergedSettings.utilityDescriptionFontCustom,
+    mergedSettings.utilityCtaFontSource,
+    mergedSettings.utilityCtaFontCustom,
+  ])
   const isHeroType = HERO_SLIDER_TYPES.includes(resolveSliderType(sliderType))
   const heroAnimation =
     isHeroType && mergedSettings.heroAnimation && mergedSettings.heroAnimation !== "none"
@@ -3858,6 +4158,7 @@ export default function SliderPreview({
             compact={compact}
             fontSize={mergedSettings.sectionHeadingFontSize}
             gap={mergedSettings.sectionHeadingGap}
+            fontFamily={productPreviewFonts(mergedSettings).section}
           />
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${cards.length}, minmax(0, 1fr))`, gap: 12, alignItems: "stretch" }}>
             {cards.map((slide, i) => (
@@ -3888,6 +4189,7 @@ export default function SliderPreview({
             compact={compact}
             fontSize={mergedSettings.sectionHeadingFontSize}
             gap={mergedSettings.sectionHeadingGap}
+            fontFamily={productPreviewFonts(mergedSettings).section}
           />
           <div style={{ display: "grid", gridTemplateColumns: compact ? "1fr" : "0.85fr 1.2fr 0.85fr", gap: 12, alignItems: "center" }}>
             {(compact ? [current] : items).map((slide, i) => {
@@ -3926,6 +4228,16 @@ export default function SliderPreview({
         arrowBg: mergedSettings.arrowBg || "#ffffff",
         arrowColor: mergedSettings.arrowColor || "#170f49",
       }
+      const fonts = utilityPreviewFonts(mergedSettings)
+      const quoteSize = compact
+        ? Math.max(13, Math.round((mergedSettings.utilityHeadingFontSize ?? 17) * 0.88))
+        : mergedSettings.utilityHeadingFontSize ?? 17
+      const nameSize = compact
+        ? Math.max(11, Math.round((mergedSettings.utilitySubheadingFontSize ?? 14) * 0.9))
+        : mergedSettings.utilitySubheadingFontSize ?? 14
+      const roleSize = compact
+        ? Math.max(10, Math.round((mergedSettings.utilityDescriptionFontSize ?? 13) * 0.9))
+        : mergedSettings.utilityDescriptionFontSize ?? 13
       return (
         <div
           style={{
@@ -3980,7 +4292,8 @@ export default function SliderPreview({
                     margin: 0,
                     maxWidth: "22rem",
                     width: "100%",
-                    fontSize: compact ? "0.92rem" : "1.05rem",
+                    fontSize: quoteSize,
+                    fontFamily: fonts.heading || undefined,
                     lineHeight: 1.55,
                     fontWeight: 500,
                     textAlign: "center",
@@ -4004,9 +4317,13 @@ export default function SliderPreview({
                     />
                   ) : null}
                   <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: 650, fontSize: "0.9rem" }}>{slide.subheading || "Customer"}</div>
+                    <div style={{ fontWeight: 650, fontSize: nameSize, fontFamily: fonts.subheading || undefined }}>
+                      {slide.subheading || "Customer"}
+                    </div>
                     {slide.description ? (
-                      <div style={{ fontSize: "0.8rem", color: "#5f5a72", marginTop: 2 }}>{slide.description}</div>
+                      <div style={{ fontSize: roleSize, fontFamily: fonts.description || undefined, color: "#5f5a72", marginTop: 2 }}>
+                        {slide.description}
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -4110,9 +4427,114 @@ export default function SliderPreview({
     }
 
     if (effect === "stories") {
-      return (
-        <div style={{ position: "relative" }}>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", overflowX: "auto", paddingBottom: 12 }}>
+      const storiesIntroCtaText = String(mergedSettings.storiesIntroCtaText || "").trim()
+      const storiesHasSplit = Boolean(
+        String(mergedSettings.sectionSubheading || "").trim() ||
+          String(mergedSettings.sectionHeading || "").trim() ||
+          String(mergedSettings.sectionDescription || "").trim() ||
+          storiesIntroCtaText,
+      )
+      const storiesVisualLeft = storiesHasSplit && String(mergedSettings.splitVisualSide || "right").toLowerCase() === "left"
+      const storiesIntroHeadingSize = Math.min(Math.max(Number(mergedSettings.storiesIntroHeadingSize ?? 48), 18), 80)
+      const storiesIntroSubheadingSize = Math.min(Math.max(Number(mergedSettings.storiesIntroSubheadingSize ?? 11), 8), 28)
+      const storiesIntroDescriptionSize = Math.min(Math.max(Number(mergedSettings.storiesIntroDescriptionSize ?? 14), 10), 32)
+      const storiesIntroCtaSize = Math.min(Math.max(Number(mergedSettings.storiesIntroCtaSize ?? 11), 8), 22)
+      const fonts = utilityPreviewFonts(mergedSettings)
+      const storiesCopyCol = storiesHasSplit ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: compact ? "center" : "flex-start",
+            textAlign: compact ? "center" : "left",
+            width: "100%",
+            maxWidth: compact ? "none" : "28rem",
+            zIndex: 2,
+            direction: "ltr",
+            justifySelf: storiesVisualLeft && !compact ? "end" : "start",
+            order: storiesVisualLeft && !compact ? 2 : undefined,
+          }}
+        >
+          {mergedSettings.sectionSubheading ? (
+            <div
+              style={{
+                fontSize: compact ? Math.max(8, Math.round(storiesIntroSubheadingSize * 0.9)) : storiesIntroSubheadingSize,
+                fontFamily: fonts.subheading || undefined,
+                fontWeight: 600,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "#ed8104",
+                marginBottom: 8,
+              }}
+            >
+              {mergedSettings.sectionSubheading}
+            </div>
+          ) : null}
+          {mergedSettings.sectionHeading ? (
+            <h2
+              style={{
+                margin: 0,
+                fontSize: compact ? Math.max(18, Math.round(storiesIntroHeadingSize * 0.7)) : storiesIntroHeadingSize,
+                fontFamily: fonts.heading || undefined,
+                fontWeight: 500,
+                lineHeight: 1.1,
+                color: "#170f49",
+              }}
+            >
+              {mergedSettings.sectionHeading}
+            </h2>
+          ) : null}
+          {mergedSettings.sectionDescription ? (
+            <p
+              style={{
+                margin: "10px 0 0",
+                fontSize: compact ? Math.max(11, Math.round(storiesIntroDescriptionSize * 0.9)) : storiesIntroDescriptionSize,
+                fontFamily: fonts.description || undefined,
+                lineHeight: 1.55,
+                color: "#6a645c",
+              }}
+            >
+              {mergedSettings.sectionDescription}
+            </p>
+          ) : null}
+          {storiesIntroCtaText ? (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 16,
+                minHeight: 36,
+                padding: "8px 18px",
+                fontSize: compact ? Math.max(8, Math.round(storiesIntroCtaSize * 0.9)) : storiesIntroCtaSize,
+                fontFamily: fonts.cta || undefined,
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#ffffff",
+                background: "#170f49",
+                border: "1px solid #170f49",
+                borderRadius: 1,
+              }}
+            >
+              {storiesIntroCtaText}
+            </span>
+          ) : null}
+        </div>
+      ) : null
+      const storiesMain = (
+        <div
+          style={{
+            minWidth: 0,
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            direction: "ltr",
+            order: storiesVisualLeft && !compact ? 1 : undefined,
+          }}
+        >
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", overflowX: "auto", paddingBottom: 12, width: "100%" }}>
             {visibleSlides.map((slide, i) => (
               <button
                 key={`story-ring-${slide.id}`}
@@ -4150,7 +4572,7 @@ export default function SliderPreview({
               </button>
             ))}
           </div>
-          <div style={{ position: "relative", maxWidth: 360, margin: "0 auto" }}>
+          <div style={{ position: "relative", maxWidth: 360, margin: "0 auto", width: "100%" }}>
             <div style={{ height: 3, background: "#e7e7e7", borderRadius: 999, overflow: "hidden", marginBottom: 10 }}>
               <div style={{ width: `${((index + 1) / visibleSlides.length) * 100}%`, height: "100%", background: "#ed8104", transition: "width 0.3s ease" }} />
             </div>
@@ -4164,9 +4586,46 @@ export default function SliderPreview({
           </div>
         </div>
       )
+      return (
+        <div
+          style={
+            storiesHasSplit && !compact
+              ? {
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                  columnGap: 28,
+                  alignItems: "center",
+                  width: "100%",
+                  maxWidth: 920,
+                  marginInline: "auto",
+                  boxSizing: "border-box",
+                  overflow: "hidden",
+                }
+              : storiesHasSplit && compact
+                ? {
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 16,
+                    width: "100%",
+                  }
+                : { position: "relative" }
+          }
+        >
+          {storiesCopyCol}
+          {storiesMain}
+        </div>
+      )
     }
 
     if (effect === "announcement") {
+      const fonts = utilityPreviewFonts(mergedSettings)
+      const messageSize = compact
+        ? Math.max(11, Math.round((mergedSettings.utilityHeadingFontSize ?? 15) * 0.88))
+        : mergedSettings.utilityHeadingFontSize ?? 15
+      const announceCtaSize = compact
+        ? Math.max(9, Math.round((mergedSettings.utilityCtaFontSize ?? 12) * 0.9))
+        : mergedSettings.utilityCtaFontSize ?? 12
       return (
         <div style={{ position: "relative" }}>
           <div
@@ -4189,7 +4648,7 @@ export default function SliderPreview({
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontSize: compact ? "0.82rem" : "0.92rem", fontWeight: 600 }}>
+            <span style={{ fontSize: messageSize, fontFamily: fonts.heading || undefined, fontWeight: 600 }}>
               {current.heading || current.title || "Announcement"}
             </span>
             {current.ctaText || current.cta2Text ? (
@@ -4201,7 +4660,8 @@ export default function SliderPreview({
                       padding: "0.25rem 0.65rem",
                       borderRadius: 999,
                       border: "1px solid rgba(255,255,255,0.45)",
-                      fontSize: "0.75rem",
+                      fontSize: announceCtaSize,
+                      fontFamily: fonts.cta || undefined,
                       fontWeight: 700,
                     }}
                   >
@@ -4215,7 +4675,8 @@ export default function SliderPreview({
                       padding: "0.25rem 0.65rem",
                       borderRadius: 999,
                       border: "1px solid rgba(255,255,255,0.45)",
-                      fontSize: "0.75rem",
+                      fontSize: announceCtaSize,
+                      fontFamily: fonts.cta || undefined,
                       fontWeight: 700,
                       background: "transparent",
                     }}

@@ -90,7 +90,7 @@
     '.se-pcc__eyebrow {',
     '  display: block;',
     '  margin: 0 0 0.7rem;',
-    '  font-size: 0.6875rem;',
+    '  font-size: var(--pcc-section-subheading-size, 0.6875rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.24em;',
     '  text-transform: uppercase;',
@@ -99,7 +99,7 @@
     '.se-pcc__heading {',
     '  margin: 0;',
     '  font-family: var(--pcc-font-display);',
-    '  font-size: clamp(1.85rem, 4.2vw, 3rem);',
+    '  font-size: var(--pcc-section-heading-size, clamp(1.85rem, 4.2vw, 3rem));',
     '  font-weight: 400;',
     '  line-height: 1.18;',
     '  letter-spacing: -0.01em;',
@@ -108,7 +108,7 @@
     '.se-pcc__subheading {',
     '  margin: 0.9rem auto 0;',
     '  max-width: 34rem;',
-    '  font-size: 0.9375rem;',
+    '  font-size: var(--pcc-section-description-size, 0.9375rem);',
     '  font-weight: 500;',
     '  line-height: 1.65;',
     '  color: var(--pcc-ink-muted);',
@@ -339,7 +339,7 @@
     '.se-pcc-card__title {',
     '  margin: 0;',
     '  font-family: var(--pcc-font-display);',
-    '  font-size: clamp(0.95rem, 1.9vw, 1.125rem);',
+    '  font-size: var(--pcc-slide-title-size, clamp(0.95rem, 1.9vw, 1.125rem));',
     '  font-weight: 400;',
     '  line-height: 1.35;',
     '  letter-spacing: 0;',
@@ -360,7 +360,7 @@
     '  justify-content: center;',
     '  gap: 0.5rem;',
     '  margin: 0;',
-    '  font-size: 0.875rem;',
+    '  font-size: var(--pcc-slide-detail-size, 0.875rem);',
     '  font-weight: 600;',
     '  letter-spacing: 0.03em;',
     '  color: var(--pcc-ink);',
@@ -922,12 +922,6 @@
       if (document.hidden) self._stopAutoplay();
       else self._startAutoplay();
     };
-    this.bound.onEnter = function () {
-      self._stopAutoplay();
-    };
-    this.bound.onLeave = function () {
-      self._startAutoplay();
-    };
     this.bound.onPageShow = function (e) {
       if (!e.persisted || self.destroyed) return;
       self.root.classList.add('is-instant');
@@ -949,10 +943,6 @@
     global.addEventListener('resize', this.bound.onResize);
     global.addEventListener('pageshow', this.bound.onPageShow);
     document.addEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.addEventListener('mouseenter', this.bound.onEnter);
-    this.root.addEventListener('mouseleave', this.bound.onLeave);
-    this.root.addEventListener('focusin', this.bound.onEnter);
-    this.root.addEventListener('focusout', this.bound.onLeave);
   };
 
   PremiumCircular.prototype._onResize = function () {
@@ -1143,7 +1133,7 @@
   };
 
   PremiumCircular.prototype._renderDragPreview = function (deltaX) {
-    var progress = deltaX / (this.runtime.spacing || DEFAULTS.spacing);
+    var progress = -deltaX / (this.runtime.spacing || DEFAULTS.spacing);
     var self = this;
     this.slides.forEach(function (slide, i) {
       var offset = self._offsetForIndex(i, self.index);
@@ -1264,7 +1254,7 @@
   PremiumCircular.prototype._startAutoplay = function () {
     var self = this;
     this._stopAutoplay();
-    if (!this.runtime.autoplay || this.slides.length < 2 || prefersReducedMotion()) return;
+    if (!this.runtime.autoplay || this.slides.length < 2) return;
     if (document.hidden) return;
     this.autoplayTimer = setInterval(function () {
       self.next();
@@ -1318,10 +1308,6 @@
     global.removeEventListener('resize', this.bound.onResize);
     global.removeEventListener('pageshow', this.bound.onPageShow);
     document.removeEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.removeEventListener('mouseenter', this.bound.onEnter);
-    this.root.removeEventListener('mouseleave', this.bound.onLeave);
-    this.root.removeEventListener('focusin', this.bound.onEnter);
-    this.root.removeEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       slide.style.transform = '';

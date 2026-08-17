@@ -68,7 +68,7 @@
     ".video-ugc-3d__eyebrow {",
     "  display: block;",
     "  margin: 0 0 0.55rem;",
-    "  font-size: 0.6875rem;",
+    "  font-size: var(--vu-section-subheading-size, 0.6875rem);",
     "  font-weight: 600;",
     "  letter-spacing: 0.22em;",
     "  text-transform: uppercase;",
@@ -78,7 +78,7 @@
     ".video-ugc-3d__heading {",
     "  margin: 0;",
     "  font-family: var(--vu-font-display);",
-    "  font-size: clamp(1.85rem, 4vw, 2.85rem);",
+    "  font-size: var(--vu-section-heading-size, clamp(1.85rem, 4vw, 2.85rem));",
     "  font-weight: 700;",
     "  line-height: 1.1;",
     "  letter-spacing: -0.02em;",
@@ -87,7 +87,7 @@
     ".video-ugc-3d__subheading {",
     "  margin: 0.75rem auto 0;",
     "  max-width: 28rem;",
-    "  font-size: 0.9rem;",
+    "  font-size: var(--vu-section-description-size, 0.9rem);",
     "  line-height: 1.55;",
     "  color: var(--vu-ink-muted);",
     "}",
@@ -304,7 +304,7 @@
     "",
     ".video-ugc-3d__name {",
     "  margin: 0;",
-    "  font-size: 0.75rem;",
+    "  font-size: var(--vu-slide-meta-size, 0.75rem);",
     "  font-weight: 700;",
     "  line-height: 1.2;",
     "  color: #fff;",
@@ -339,7 +339,7 @@
     ".video-ugc-3d__title {",
     "  margin: 0;",
     "  font-family: var(--vu-font-display);",
-    "  font-size: 0.95rem;",
+    "  font-size: var(--vu-slide-title-size, 0.95rem);",
     "  font-weight: 700;",
     "  line-height: 1.25;",
     "  color: #fff;",
@@ -347,7 +347,7 @@
     "",
     ".video-ugc-3d__description {",
     "  margin: 0;",
-    "  font-size: 0.75rem;",
+    "  font-size: var(--vu-slide-detail-size, 0.75rem);",
     "  line-height: 1.4;",
     "  color: rgba(255, 255, 255, 0.78);",
     "  display: -webkit-box;",
@@ -1088,12 +1088,6 @@ var DEFAULTS = {
         self._startSlideAutoplay();
       }
     };
-    this.bound.onEnter = function () {
-      self._stopSlideAutoplay();
-    };
-    this.bound.onLeave = function () {
-      self._startSlideAutoplay();
-    };
     this.bound.onTouchMoveGuard = function (e) {
       if (!self.isDragging) return;
       if (Math.abs(self.dragDelta) > 8 && e.cancelable) e.preventDefault();
@@ -1115,10 +1109,6 @@ var DEFAULTS = {
     this.root.setAttribute('aria-roledescription', 'carousel');
     global.addEventListener('resize', this.bound.onResize);
     document.addEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.addEventListener('mouseenter', this.bound.onEnter);
-    this.root.addEventListener('mouseleave', this.bound.onLeave);
-    this.root.addEventListener('focusin', this.bound.onEnter);
-    this.root.addEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       var video = slide.querySelector('video');
@@ -1361,7 +1351,7 @@ var DEFAULTS = {
   };
 
   VideoUgc3D.prototype._renderDragPreview = function (deltaX) {
-    var progress = deltaX / (this.runtime.spacing || 200);
+    var progress = -deltaX / (this.runtime.spacing || 200);
     var self = this;
     var side = this._sideCount();
     this.slides.forEach(function (slide, i) {
@@ -1487,7 +1477,6 @@ var DEFAULTS = {
     var self = this;
     this._stopSlideAutoplay();
     if (!this.runtime.carouselAutoplay || this.slides.length < 2) return;
-    if (this.runtime.respectReducedMotion && prefersReducedMotion()) return;
     if (document.hidden) return;
     this.autoplayTimer = setInterval(function () {
       self.next();
@@ -1547,10 +1536,6 @@ var DEFAULTS = {
     this.root.removeEventListener('keydown', this.bound.onKeyDown);
     global.removeEventListener('resize', this.bound.onResize);
     document.removeEventListener('visibilitychange', this.bound.onVisibility);
-    this.root.removeEventListener('mouseenter', this.bound.onEnter);
-    this.root.removeEventListener('mouseleave', this.bound.onLeave);
-    this.root.removeEventListener('focusin', this.bound.onEnter);
-    this.root.removeEventListener('focusout', this.bound.onLeave);
 
     this.slides.forEach(function (slide) {
       var video = slide.querySelector('video');
